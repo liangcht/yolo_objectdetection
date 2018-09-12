@@ -1,0 +1,7 @@
+*/toolkit-execute text eol=lf
+*.sh text eol=lf
+*.prototxt text eol=lf
+*/tmux.conf text eol=lf
+*.caffemodel filter=lfs diff=lfs merge=lfs -text
+*.pyd filter=lfs diff=lfs merge=lfs -text
+*.dll filter=lfs diff=lfs merge=lfs -text

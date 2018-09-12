@@ -1,0 +1,33 @@
+{
+  "ClusterId": "philly-prod-cy4",
+  "VcId": "input",
+  "JobName": "evaljob",
+  "UserName": "ehazar",
+  "BuildId": 70838,
+  "ToolType": "cust",
+  "ConfigFile": "ehazar/philly/mmod/runeval.py",
+  "Inputs": [{
+      "Name": "dataDir",
+      "Path": "/hdfs/input/jianfw/data/qd_data"
+    }
+  ],
+  "Outputs": [],
+  "IsDebug": false,
+  "CustomDockerName": "custom-msrccs-caffe-devel",
+  "RackId": "anyConnected",
+  "MinGPUs": 8,
+  "PrevModelPath": null,
+  "ExtraParams": "-p sys/jobs/application_1519817686014_7645/models -s ehazar/tax/Tax1300SGV1_2/Tax1300SGV1_2_darknet19_moretraindata_bb_only/solver.prototxt -s ehazar/tax/Tax1300SGV1_2/Tax1300SGV1_2_darknet19_moretraindata_bb_nobb/solver.prototxt",
+  "SubmitCode": "p",
+  "IsMemCheck": false,
+  "IsCrossRack": false,
+  "Registry": null,
+  "RegistryUsername": null,
+  "RegistryPassword": null,
+  "Repository": null,
+  "Tag": "default",
+  "OneProcessPerContainer": true,
+  "DynamicContainerSize": false,
+  "NumOfContainers": "1",
+  "CustomMPIArgs": null
+}

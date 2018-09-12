@@ -1,0 +1,6 @@
+opencv-python==3.3.0.9
+protobuf==2.6.1
+progressbar
+easydict
+mpi4py
+loky

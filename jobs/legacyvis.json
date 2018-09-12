@@ -1,0 +1,33 @@
+{
+  "ClusterId": "philly-prod-cy4",
+  "VcId": "input",
+  "JobName": "visjob_356400",
+  "UserName": "ehazar",
+  "BuildId": 70839,
+  "ToolType": "cust",
+  "ConfigFile": "ehazar/philly/mmod/runvis.py",
+  "Inputs": [{
+      "Name": "dataDir",
+      "Path": "/hdfs/input/jianfw/data/qd_data"
+    }
+  ],
+  "Outputs": [],
+  "IsDebug": false,
+  "CustomDockerName": "custom-msrccs-caffe-devel",
+  "RackId": "anyConnected",
+  "MinGPUs": 8,
+  "PrevModelPath": null,
+  "ExtraParams": "-range 1836400 1856400 -p ehazar/tax/Tax1300SGV1_1/Tax1300SGV1_1_darknet19_1_bb_nobb/train.prototxt -weights ehazar/trained/tax/Tax1300SGV1_1_darknet19_448_B_noreorg_extraconv2_tree_init3491_IndexLossWeight0_bb_nobb/snapshot/model_iter_244004.caffemodel",
+  "SubmitCode": "p",
+  "IsMemCheck": false,
+  "IsCrossRack": false,
+  "Registry": null,
+  "RegistryUsername": null,
+  "RegistryPassword": null,
+  "Repository": null,
+  "Tag": "default",
+  "OneProcessPerContainer": true,
+  "DynamicContainerSize": false,
+  "NumOfContainers": "1",
+  "CustomMPIArgs": null
+}

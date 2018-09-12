@@ -1,0 +1,34 @@
+{
+  "ClusterId": "philly-prod-cy4",
+  "VcId": "input",
+  "JobName": "trainjob",
+  "UserName": "ehazar",
+  "BuildId": 0,
+  "ToolType": null,
+  "ConfigFile": "ehazar/philly/mmod/runcaffe.py",
+  "Inputs": [{
+      "Name": "dataDir",
+      "Path": "/hdfs/ehazar/data"
+    }
+  ],
+  "Outputs": [],
+  "IsDebug": false,
+  "CustomDockerName": null,
+  "RackId": "anyConnected",
+  "MinGPUs": 16,
+  "PrevModelPath": null,
+  "ExtraParams": "-s ehazar/qd_output/cifar10/solver.prototxt",
+  "SubmitCode": "p",
+  "IsMemCheck": false,
+  "IsCrossRack": false,
+  "Registry": "phillyregistry.azurecr.io",
+  "RegistryUsername": null,
+  "RegistryPassword": null,
+  "Repository": "philly/jobs/custom/msrccs-caffe",
+  "Tag": "latest",
+  "OneProcessPerContainer": true,
+  "DynamicContainerSize": true,
+  "NumOfContainers": "0",
+  "CustomMPIArgs": null,
+  "Timeout": null
+}

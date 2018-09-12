@@ -1,0 +1,33 @@
+{
+  "ClusterId": "philly-prod-cy4",
+  "VcId": "input",
+  "JobName": "trainjob_seeing",
+  "UserName": "ehazar",
+  "BuildId": 70839,
+  "ToolType": "cust",
+  "ConfigFile": "ehazar/philly/mmod/runcaffe.py",
+  "Inputs": [{
+      "Name": "dataDir",
+      "Path": "/hdfs/input/jianfw/data/qd_data"
+    }
+  ],
+  "Outputs": [],
+  "IsDebug": false,
+  "CustomDockerName": "custom-msrccs-caffe-devel",
+  "RackId": "anyConnected",
+  "MinGPUs": 8,
+  "PrevModelPath": null,
+  "ExtraParams": "-s ehazar/qd_output/TaxSeeing_V1_1_darknet19_p_bb_only/solver.prototxt -s ehazar/qd_output/TaxSeeing_V1_1_darknet19_p_bb_nobb/solver.prototxt  -weights ehazar/qd_output/Tax4k_V1_2_darknet19_no_visual_genome_bb_nobb/snapshot/model_iter_900000.caffemodel -ignore_shape_mismatch",
+  "SubmitCode": "p",
+  "IsMemCheck": false,
+  "IsCrossRack": false,
+  "Registry": null,
+  "RegistryUsername": null,
+  "RegistryPassword": null,
+  "Repository": null,
+  "Tag": "default",
+  "OneProcessPerContainer": true,
+  "DynamicContainerSize": false,
+  "NumOfContainers": "1",
+  "CustomMPIArgs": null
+}
