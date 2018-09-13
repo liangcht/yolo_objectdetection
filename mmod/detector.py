@@ -75,7 +75,7 @@ def write_predict(outtsv_file, in_queue):
                 if not result:
                     break
                 uid, image_key, result = result
-                tell = fp.tell
+                tell = fp.tell()
                 fp.write("{}\t{}\n".format(
                     image_key,
                     json.dumps(result, separators=(',', ':'), sort_keys=True),

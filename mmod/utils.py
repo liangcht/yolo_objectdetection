@@ -522,14 +522,17 @@ def open_with_lineidx(path, with_temp=False):
     with open(tsv_file, 'wb') as fp, open(lineidx_file, 'wb') as fpidx:
         class _WithLineIdx(object):
             def __init__(self):
-                self.tell = 0
+                self._offset = 0
 
             def write(self, buf):
                 """Write the buffer to file
                 """
                 fp.write(buf)
-                fpidx.write("{}\n".format(self.tell))
-                self.tell += len(buf)
+                fpidx.write("{}\n".format(self._offset))
+                self._offset += len(buf)
+
+            def tell(self):
+                return self._offset
 
         yield _WithLineIdx()
 
