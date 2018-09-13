@@ -2,13 +2,13 @@ import os.path as op
 import numpy as np
 import json
 import logging
-from itertools import izip
 from contextlib import contextmanager
 from collections import OrderedDict
 
 from mmod.utils import is_in_sorted, search_in_sorted, search_both_sorted, tsv_read, splitfilename, tsv_multi_column, \
     FileCache, file_cache
 from mmod.simple_parser import load_labelmap_list, is_number
+from mmod.simple_tsv import SimpleTsv
 
 
 class TsvFile(object):
@@ -139,7 +139,7 @@ class TsvFile(object):
                 # find the current value
                 return self[norm_key]
             if len(norm_key) != 3:
-                raise ValueError("{} is not valid err: {}".format(key))
+                raise ValueError("{} is not valid".format(key))
             return norm_key
         # key is flat index
         if key < 0:
@@ -207,13 +207,9 @@ class TsvFile(object):
         self._sources = OrderedDict()
         self._labels = OrderedDict()
         for source_idx, source in enumerate(sources):
-            inidx_file = op.splitext(source)[0] + '.lineidx'
-            assert op.isfile(inidx_file), "TSV index file does not exist: {}".format(inidx_file)
-            with open(inidx_file, 'r') as fp:
-                count = 0
-                for _ in fp:
-                    count += 1
-            assert count < 0xFFFFFFFF, "File too large: {}".format(inidx_file)
+            tsv = SimpleTsv(source)
+            count = len(tsv)
+            assert count < 0xFFFFFFFF, "File too large: {}".format(tsv)
             deleted_lines = 0
             lrng = []
             if labels:
@@ -229,7 +225,7 @@ class TsvFile(object):
                                 lrng.append(np.uint32(label_count))
                             label_count += 1
                     assert label_count == count, "label file: {} length {} != {} length of {}".format(
-                        label_file, label_count, count, inidx_file
+                        label_file, label_count, count, tsv
                     )
                     if deleted_lines:
                         count -= deleted_lines
@@ -285,6 +281,13 @@ class TsvFile(object):
         """
         for source in self._sources:
             yield source
+
+    def iter_source_range(self):
+        """Iterate data sources and their line range
+        :rtype: str
+        """
+        for source, (lrng, _) in self._sources.iteritems():
+            yield source, lrng
 
     @property
     def composite_non_inverted(self):
@@ -646,21 +649,9 @@ class TsvFile(object):
         source, _, idx = self[key]
         offsets = self._offsets.get(source)
         if offsets is None:
-            inidx_file = op.splitext(source)[0] + '.lineidx'
             label_file = self._labels.get(source)
-            if label_file:
-                # read indices while excluding the deleted ones
-                with open(inidx_file, 'r') as fp, open(label_file, 'r') as fp_label:
-                    offsets = []
-                    for index, label in izip(fp, fp_label):
-                        if label.startswith('d\t'):
-                            continue
-                        offsets.append(int(index))
-
-            else:
-                with open(inidx_file, 'r') as fp:
-                    offsets = [int(index) for index in fp.readlines()]
-            offsets = np.array(offsets, dtype=np.int64)
+            tsv = SimpleTsv(source, label_file)
+            offsets = np.array(tsv.offsets(), dtype=np.int64)
             self._offsets[source] = offsets
         return source, offsets[idx]
 
@@ -681,24 +672,8 @@ class TsvFile(object):
         offsets = self._label_offsets.get(label_file)
         if offsets is None:
             lrng, _ = self._sources[source]
-            inidx_file = op.splitext(label_file)[0] + '.lineidx'
-
-            if op.isfile(inidx_file):
-                offsets = np.empty(len(lrng), dtype=np.int64)
-                # if the label file has an index
-                with open(inidx_file, 'r') as fp:
-                    idx_offsets = np.array([int(index) for index in fp.readlines()], dtype=np.int64)
-                for ii in xrange(len(lrng)):
-                    offsets[ii] = idx_offsets[lrng[ii]]
-            else:
-                with open(label_file, 'r') as fp:
-                    offsets = []
-                    offset = 0
-                    for line in iter(fp.readline, ""):
-                        if not line.startswith('d\t'):
-                            offsets.append(offset)
-                        offset = fp.tell()
-                offsets = np.array(offsets, dtype=np.int64)
+            tsv = SimpleTsv(label_file, label_file)
+            offsets = np.array(tsv.offsets(), dtype=np.int64)
             self._label_offsets[label_file] = offsets
         return label_file, offsets[idx]
 
@@ -710,6 +685,3 @@ class TsvFile(object):
         """
         key = self[key]
         return json.dumps(key[:2], separators=(',', ':'))
-
-
-LineIndex = TsvFile

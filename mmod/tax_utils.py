@@ -3,7 +3,7 @@ import numpy as np
 import os.path as op
 from mmod.imdb import ImageDatabase
 from mmod.taxonomy import Taxonomy
-from mmod.utils import open_with_lineidx, splitfilename
+from mmod.utils import open_with_lineidx, splitfilename, open_file
 
 
 def iterate_tsv_imdb(path, valid_splits=None):
@@ -77,54 +77,51 @@ def create_inverted(db, path=None, shuffle=None, labelmap=None, only_inverted=Fa
         shuffle = op.splitext(db.path)[0] + '.shuffle.txt'
     if labelmap is None:
         labelmap = op.join(op.dirname(db.path), 'labelmap.txt')
-    if only_inverted:
+    if only_inverted and op.isfile(shuffle):
         with open(shuffle) as fp:
             shuffles = [[int(l) for l in line.split()] for line in fp.readlines()]
-
-        shuffle_line = 0
-        source_lines = {}
-        for source_idx, line in shuffles:
-            source = db.source(source_idx)
-            source_lines[(source, line)] = shuffle_line
-            shuffle_line += 1
-        with open_with_lineidx(path) as fp:
-            prev_label = None
-            label_shuffle_lines = []
-            for label, source, lines in db.iterate_inverted():
-                shuffle_lines = [source_lines[(source, line)] for line in lines]
-                if not shuffle_lines:
-                    continue
-                if label == prev_label:
-                    label_shuffle_lines += shuffle_lines
-                else:
-                    if label_shuffle_lines:
-                        assert prev_label
-                        label_shuffle_lines = [str(l) for l in np.sort(label_shuffle_lines)]
-                        fp.write("{}\t{}\n".format(
-                            prev_label, " ".join(label_shuffle_lines)
+    else:
+        shuffles = []
+        with open_file(None) if only_inverted else open_with_lineidx(shuffle) as fps:
+            for source, lrng in db.iter_source_range():
+                source_idx = db.source_index(source)
+                for line in lrng:
+                    shuffles.append([source_idx, line])
+                    if fps:
+                        fps.write("{}\t{}\n".format(
+                            source_idx, line
                         ))
-                    label_shuffle_lines = shuffle_lines
-                    prev_label = label
-            if label_shuffle_lines:
-                assert prev_label
-                label_shuffle_lines = [str(l) for l in np.sort(label_shuffle_lines)]
-                fp.write("{}\t{}\n".format(
-                    prev_label, " ".join(label_shuffle_lines)
-                ))
 
-        return
-    line_idx = 0
-    with open_with_lineidx(path) as fp, open_with_lineidx(shuffle) as fps, open(labelmap, "w") as fpl:
+    shuffle_line = 0
+    source_lines = {}
+    for source_idx, line in shuffles:
+        source = db.source(source_idx)
+        source_lines[(source, line)] = shuffle_line
+        shuffle_line += 1
+    with open_with_lineidx(path) as fp, \
+            open_file(None) if only_inverted else open(labelmap, "w") as fpl:
+        prev_label = None
+        label_shuffle_lines = []
         for label, source, lines in db.iterate_inverted():
-            source_idx = db.source_index(source)
-            shuffle_lines = []
-            for line in lines:
-                fps.write("{}\t{}\n".format(
-                    source_idx, line
-                ))
-                shuffle_lines.append(str(line_idx))
-                line_idx += 1
+            if fpl:
+                fpl.write("{}\n".format(label))
+            shuffle_lines = [source_lines[(source, line)] for line in lines]
+            if not shuffle_lines:
+                continue
+            if label == prev_label:
+                label_shuffle_lines += shuffle_lines
+            else:
+                if label_shuffle_lines:
+                    assert prev_label
+                    label_shuffle_lines = [str(l) for l in np.sort(label_shuffle_lines)]
+                    fp.write("{}\t{}\n".format(
+                        prev_label, " ".join(label_shuffle_lines)
+                    ))
+                label_shuffle_lines = shuffle_lines
+                prev_label = label
+        if label_shuffle_lines:
+            assert prev_label
+            label_shuffle_lines = [str(l) for l in np.sort(label_shuffle_lines)]
             fp.write("{}\t{}\n".format(
-                label, " ".join(shuffle_lines)
+                prev_label, " ".join(label_shuffle_lines)
             ))
-            fpl.write("{}\n".format(label))

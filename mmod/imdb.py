@@ -275,6 +275,16 @@ class ImageDatabase(object):
         for source in self._index.iter_sources():
             yield source
 
+    def iter_source_range(self):
+        """Iterate data sources
+        :rtype: str
+        """
+        if self.is_directory or self.is_image:
+            raise NotImplementedError("not implemented for db: '{}'".format(self.type))
+
+        for source, lrng in self._index.iter_source_range():
+            yield source, lrng
+
     @property
     def type(self):
         if self._type == self._DB_TYPE_DIRECTORY:
