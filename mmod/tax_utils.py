@@ -207,7 +207,6 @@ def create_collage(db, path=None, max_label=100, target_size=100, start_label=No
         # try to pack them in one pass
         max_h = 0  # maximum height in the current row
         x, y = 0, 0
-        y2 = 0
         for key, rect in zip(keys, key_rects):
             im = db.image(key)
             left, top, right, bot = rect
@@ -232,6 +231,6 @@ def create_collage(db, path=None, max_label=100, target_size=100, start_label=No
             x = x2
 
         # clip the collage
-        collage = collage[:y2, :, :]
+        collage = collage[:y + max_h, :, :]
         logging.info("Writing collage {}".format(jpg_path))
         cv2.imwrite(jpg_path, collage)
