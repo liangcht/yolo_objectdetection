@@ -32,6 +32,7 @@ class TsvFile(object):
         self._shuffle_file = None
         self._is_composite = False
         self._shuffle = None
+        self._cmapfile = None
         self._has_inverted = {}
 
         self._check_keys = False
@@ -270,6 +271,9 @@ class TsvFile(object):
             if op.isfile(inverted_file) and op.isfile(shuffle_file):
                 self._inverted_file = inverted_file
                 self._shuffle_file = shuffle_file
+            cmapfile = op.join(op.dirname(source), "labelmap.txt")
+            if op.isfile(cmapfile):
+                self._cmapfile = cmapfile
 
             return sources, labels
 
@@ -290,8 +294,16 @@ class TsvFile(object):
             yield source, lrng
 
     @property
+    def is_composite(self):
+        """Is this a composite TSV (trainX, testX)
+        """
+        return self._is_composite
+
+    @property
     def composite_non_inverted(self):
-        return self._is_composite and not self._inverted_file
+        """Composite TSV without single inverted file
+        """
+        return self.is_composite and not self._inverted_file
 
     @property
     def has_inverted(self):
@@ -299,6 +311,7 @@ class TsvFile(object):
         :rtype: bool
         """
         if self._inverted_file:
+            # if composite we use it
             return True
         if not isinstance(self._has_inverted, dict):
             return self._has_inverted
@@ -309,6 +322,19 @@ class TsvFile(object):
                 return self._has_inverted
         self._has_inverted = True
         return self._has_inverted
+
+    @property
+    def has_cmapfile(self):
+        """If all sourced have cmapfile
+        :rtype: bool
+        """
+        if self._cmapfile:
+            # if composite we use it
+            return True
+        for cmapfile in self._cmaps.values():
+            if cmapfile is None:
+                return False
+        return True
 
     def _cached_inverted_offsets(self, inverted_file, cmap_list=None, cache=None):
         offsets = self._inverted_offsets.get(inverted_file)
@@ -481,6 +507,12 @@ class TsvFile(object):
         :type source: str
         :rtype: str
         """
+        if self._cmapfile:
+            # if there is a single labelmap for the composite db, use it
+            for label in load_labelmap_list(self._cmapfile):
+                yield label
+            return
+
         cmap = set()
 
         sources = self._sources
@@ -506,15 +538,6 @@ class TsvFile(object):
                     continue
                 cmap.add(label)
                 yield label
-
-    def cmap(self, source):
-        """Cached class-mapping for a given source
-        :param source: source data source to limit the labels from
-        :type source: str
-        :rtype: list
-        """
-
-        return self._cached_cmap(source)
 
     def _type(self, source):
         source = op.normpath(source).replace("\\", "/")

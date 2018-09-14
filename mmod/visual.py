@@ -7,6 +7,7 @@ from matplotlib.patches import Rectangle
 import pandas as pd
 
 from mmod.simple_parser import load_labelmap_list
+from mmod.im_utils import int_rect
 
 STANDARD_COLORS = [
     'green', 'lightgreen',
@@ -39,7 +40,7 @@ def draw_rect(ax, all_cls, cls, rect, score=None):
         all_cls[cls] = color, bgcolor
     else:
         color, bgcolor = all_cls[cls]
-    left, top, right, bot = [int(c) for c in rect]
+    left, top, right, bot = int_rect(rect)
 
     if score is not None:
         text = '%s: %.3f' % (cls, score)
@@ -67,17 +68,18 @@ def draw_rect(ax, all_cls, cls, rect, score=None):
     return h0, h1
 
 
-def visualize(exp, key, results, thresh=0.0, save=False, return_as_array=True, fig=None):
+def visualize(im, results, thresh=0.0, return_as_array=True, fig=None, path=None):
     """Visual debugging of a single prediction.
-    :type exp: mmod.experiment.Experiment
-    :param key: the image key in imdb
+    :param im: image
+    :type im: np.ndarray
     :param results: detection results to visualize
     :type results: list
     :param thresh: threshold to apply on top of the results
-    :param save: if should save the visualization
     :param return_as_array: if should return the visualization as an array
     :param fig: figure to draw on
     :type fig: Figure
+    :param path: output path to save
+    :type path: str
     """
     if fig is None:
         fig = Figure()
@@ -88,10 +90,6 @@ def visualize(exp, key, results, thresh=0.0, save=False, return_as_array=True, f
     ax.get_xaxis().set_visible(False)
     ax.get_yaxis().set_visible(False)
 
-    im = exp.imdb[key]
-    if im is None:
-        logging.error("Ignore {}".format(key))
-        return
     im = im[:, :, (2, 1, 0)]  # BGR to RGB
 
     all_cls = {}
@@ -109,8 +107,7 @@ def visualize(exp, key, results, thresh=0.0, save=False, return_as_array=True, f
         return ax, handles
 
     canvas.draw()
-    if save:
-        path = exp.vis_path(key)
+    if path:
         if op.splitext(path)[1].lower() not in _VALID_IMAGE_TYPES:
             path += ".jpg"  # supported format
         fig.savefig(path, bbox_inches='tight', pad_inches=0)

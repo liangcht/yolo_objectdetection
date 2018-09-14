@@ -36,6 +36,11 @@ def im_rescale(im, target_size):
     return im_resized
 
 
+def int_rect(rect):
+    left, top, right, bot = rect
+    return int(np.floor(left)), int(np.floor(top)), int(np.ceil(right)), int(np.ceil(bot))
+
+
 VALID_IMAGE_TYPES = ['.jpg', '.jpeg', '.tiff', '.bmp', '.png']
 
 
