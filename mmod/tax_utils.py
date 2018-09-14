@@ -5,7 +5,7 @@ import os.path as op
 from mmod.imdb import ImageDatabase
 from mmod.taxonomy import Taxonomy
 from mmod.utils import open_with_lineidx, splitfilename, open_file, makedirs
-from mmod.im_utils import im_rescale
+from mmod.im_utils import im_rescale, int_rect
 
 
 def iterate_tsv_imdb(path, valid_splits=None):
@@ -129,7 +129,7 @@ def create_inverted(db, path=None, shuffle=None, labelmap=None, only_inverted=Fa
             ))
 
 
-def create_collage(db, path=None, max_label=100, target_size=100):
+def create_collage(db, path=None, max_label=100, target_size=100, start_label=None, end_label=None):
     """Create single inverted file for a db
     :param db: the imdb to create
     :type db: ImageDatabase
@@ -137,12 +137,23 @@ def create_collage(db, path=None, max_label=100, target_size=100):
     :type path: str
     :param max_label: maximum number of samples per-label
     :param target_size: patch size to align maximum dimension to
+    :param start_label: starting label to start creating the collage for
+    :param end_label: final label to create collage for
     """
     if path is None:
         path = op.join(op.dirname(db.path), "collage_{}".format(max_label))
         makedirs(path, exist_ok=True)
     assert op.isdir(path), "{} directory is not accessable".format(path)
+    first_seen = False
+
     for label in db.iter_cmap():
+        if end_label and label == end_label:
+            break
+        if start_label:
+            if label == start_label:
+                first_seen = True
+            if not first_seen:
+                continue
         logging.info("Sampling collage for {}".format(label))
         keys = list(db.iter_label(label))
         total = len(keys)
@@ -153,13 +164,13 @@ def create_collage(db, path=None, max_label=100, target_size=100):
             ]
             # take first/random rect from each key frame
             key_rects = [
-                np.array(db.truth_list(key, label)[0]['rect'], dtype=int)
+                np.array(int_rect(db.truth_list(key, label)[0]['rect']))
                 for key in keys
             ]
         else:
             # some keys (with multiple rects) could be duplicated
             all_rects = [
-                [np.array(rect['rect'], dtype=int) for rect in db.truth_list(key, label)]
+                [np.array(int_rect(rect['rect'])) for rect in db.truth_list(key, label)]
                 for key in keys
             ]
             all_counts = {key: len(rects) for key, rects in zip(keys, all_rects)}
@@ -184,6 +195,9 @@ def create_collage(db, path=None, max_label=100, target_size=100):
             keys = new_keys
             del all_rects, all_counts, key_indices, new_keys
 
+        if not keys:
+            logging.error("Ignore label: {} for lack of data".format(label))
+            continue
         rows = np.ceil(np.sqrt(len(keys)))
         cols = np.ceil(len(keys) / rows)
         jpg_path = op.join(path, "{}_{}.jpg".format(label.replace(" ", "_"), total))
@@ -197,6 +211,9 @@ def create_collage(db, path=None, max_label=100, target_size=100):
         for key, rect in zip(keys, key_rects):
             im = db.image(key)
             left, top, right, bot = rect
+            if bot <= top or right <= left:
+                logging.error("Ignore Invalid ROI: {} for label: {} key: {}".format(rect, label, key))
+                continue
             roi = im_rescale(im[top:bot, left:right], target_size)
             h, w = roi.shape[:2]
             x2 = x + w
