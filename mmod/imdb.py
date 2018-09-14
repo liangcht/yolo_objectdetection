@@ -123,7 +123,8 @@ class ImageDatabase(object):
         """
         if self.is_directory or self.is_image:
             raise NotImplementedError("truth not implemented for db: '{}'".format(self.type))
-        if self.is_tsv or self.is_prototxt:
+        # if there is no inverted file
+        if not self._index.has_inverted:
             # if there is a single labelmap for the db, use it
             labelmap = op.join(op.dirname(self._path), "labelmap.txt")
             if op.isfile(labelmap):
@@ -131,7 +132,7 @@ class ImageDatabase(object):
                 for label in cmap_list:
                     yield label
                 return
-        if not self._index.has_inverted:
+            # use the truth
             for label in self.all_truths(cache_truth=True):
                 yield label
             return

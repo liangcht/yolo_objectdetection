@@ -28,6 +28,8 @@ def img_from_base64(imagestring):
 
 def im_rescale(im, target_size):
     im_size_max = max(im.shape[0:2])
+    if target_size == im_size_max:
+        return im
     im_scale = float(target_size) / float(im_size_max)
     im_resized = cv2.resize(im, None, None, fx=im_scale, fy=im_scale,
                             interpolation=cv2.INTER_LINEAR)
