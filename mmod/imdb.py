@@ -9,11 +9,10 @@ from mmod.simple_parser import tsv_data_sources, read_model_proto, softmax_tree_
 from mmod.tsv_file import TsvFile
 from mmod.im_utils import img_from_base64, img_from_file, recursive_files_list, VALID_IMAGE_TYPES
 from mmod.utils import tsv_read, file_cache, FileCache
-from mmod.simple_parser import load_labelmap_list
 
 
 class ImageDatabase(object):
-    _IGNORE_ATTRS = {'_cache', '_cached_truth'}
+    _IGNORE_ATTRS = {'_cache', '_cached_truth', '_image_keys'}
 
     _DB_TYPE_DIRECTORY = 1  # a directory with jpg files
     _DB_TYPE_PROTOTXT = 2   # a prototxt with data
@@ -28,6 +27,7 @@ class ImageDatabase(object):
         self._name = name  # type: str
         self._tax_path = None  # type: str
         self._cached_truth = None  # type: dict
+        self._image_keys = {}
         if op.isdir(path):
             self._type = self._DB_TYPE_DIRECTORY
         else:
@@ -420,6 +420,19 @@ class ImageDatabase(object):
         if self.is_directory or self.is_image:
             return self.normkey(key)
         return self._index.uid(key)
+
+    def uid_of_image_key(self, image_key):
+        """Return the unique id of the key
+        :rtype: str
+        """
+        if self.is_directory or self.is_image:
+            return self.normkey(image_key)
+        if self._image_keys:
+            return self._image_keys[image_key]
+        logging.info("Create UID to Image Key mapping in {}".format(self))
+        for key in self:
+            self._image_keys[self.image_key(key)] = self.uid(key)
+        return self.uid_of_image_key(image_key)
 
     def image_key(self, key):
         """Return the image key for a key

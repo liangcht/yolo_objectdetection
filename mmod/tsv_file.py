@@ -12,7 +12,8 @@ from mmod.simple_tsv import SimpleTsv
 
 
 class TsvFile(object):
-    _IGNORE_DICTS = {'_offsets', '_label_offsets', '_inverted_offsets', '_cache', '_is_open', '_shuffle'}
+    _IGNORE_DICTS = {'_offsets', '_label_offsets', '_inverted_offsets', '_cache',
+                     '_is_open', '_shuffle'}
 
     def __init__(self, sources, labels=None, cmapfiles=None):
         self._len = 0
@@ -128,7 +129,10 @@ class TsvFile(object):
                 raise KeyError("{} is not in the index".format(key))
             return key
         if isinstance(key, basestring):
-            # key is a string, it is json encoded key
+            key = key.strip()
+            if not key.startswith('['):  # fast check
+                raise ValueError("{} is not valid".format(key))
+            # key must be a json encoded list
             try:
                 norm_key = json.loads(key)
                 if not isinstance(norm_key, list) or len(norm_key) < 2 or len(norm_key) > 3:
@@ -177,6 +181,10 @@ class TsvFile(object):
                 return False
             return idx + rng[0] in rng and is_in_sorted(lrng, lidx)
         if isinstance(key, basestring):
+            key = key.strip()
+            if not key.startswith('['):  # fast check
+                # key is a list
+                return False
             try:
                 key = self[key]
             except (ValueError, KeyError):

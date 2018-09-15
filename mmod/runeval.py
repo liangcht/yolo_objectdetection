@@ -163,17 +163,14 @@ def run_detect(gpus, caffenet=None, caffemodel=None,
     return exp
 
 
-def run_eval(truths, outtsv_file, ovthresh=None):
+def run_eval(exp, ovthresh=None):
     """Run evaluation of the predictions
-    :param truths: truth
-    :type truths: dict
-    :param outtsv_file: output prediction tsv file
-    :type outtsv_file: str | list[str]
+    :param exp: The experiment to initialize with
+    :type exp: Experiment
     :param ovthresh: overlap thresholds
     :returns: err_map: mean average precision
     """
-    logging.info("Evaluating {}".format(outtsv_file))
-    report_file, result = deteval(truths, outtsv_file, ovthresh=ovthresh)
+    report_file, result = deteval(exp, ovthresh=ovthresh)
     simple_file = report_file + '.map.json'
     simple_class_file = report_file + '.class_ap.json'
     if op.isfile(simple_class_file) and op.isfile(simple_file):
@@ -335,7 +332,6 @@ def main():
             logging.info("gpus: {}->{}".format(gpus[0], gpus[-1]))
             done = False
             more = False
-            _truth_cache = {}
             _done_set = set()
             _last_time = None
             while more or not done:
@@ -378,13 +374,9 @@ def main():
                         if exp is None:
                             errs = []
                             break
-                        truths = _truth_cache.get(exp.name, exp.imdb.all_truths())
-                        if exp.name not in _truth_cache:
-                            _truth_cache[exp.name] = truths
-                        outtsv_file = exp.predict_path
-                        del exp
 
-                        err_map = run_eval(truths, outtsv_file)
+                        err_map = run_eval(exp)
+                        del exp
                         if err_map is None:
                             continue
                         errs.append(err_map * 100)

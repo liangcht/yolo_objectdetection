@@ -8,61 +8,6 @@ import copy
 from mmod.io_utils import read_to_buffer
 
 
-def load_truths(filein):
-    """
-    Return: dict [class][image id] => bboxes
-    """
-    retdict = dict()
-    with open(filein, "r") as tsvin:
-        for line in tsvin:
-            cols = [x.strip() for x in line.split("\t")]
-            if len(cols) < 2:
-                continue
-            key = cols[0]
-            rects = json.loads(cols[1]) if cols[1] != '' else []
-            for rect in rects:
-                label = rect['class'].strip()
-                if label not in retdict:
-                    retdict[label] = dict()
-                if key not in retdict[label]:
-                    retdict[label][key] = []
-                # groundtruth coords are 0-based. +1
-                bbox = [x + 1 for x in rect['rect']]
-                retdict[label][key] += [(rect['diff'] if 'diff' in rect else 0, bbox)]
-    return retdict
-
-
-def load_dets(filesin, thresh=0.0):
-    """load the detection results, organized by classes
-    Return: dict [class] => list of (image id, conf, bbox), in ascending order of conf
-    """
-    if not isinstance(filesin, list):
-        filesin = [filesin]
-    retdict = dict()
-    for filein in filesin:
-        logging.info("Loading detections from: {}".format(filein))
-        with open(filein, "r") as tsvin:
-            for line in tsvin:
-                cols = [x.strip() for x in line.split("\t")]
-                if len(cols) < 2:
-                    continue
-                key = cols[0]
-                rects = json.loads(cols[1])
-                for rect in rects:
-                    conf = rect['conf']
-                    if conf < thresh:
-                        continue
-                    label = rect['class'].strip()
-                    # coords +1 as we did for load_truths
-                    bbox = [x + 1 for x in rect['rect']]
-                    if label not in retdict:
-                        retdict[label] = []
-                    retdict[label] += [(key, conf, bbox)]
-    for label in retdict:
-        retdict[label] = sorted(retdict[label], key=lambda y: -y[1])
-    return retdict
-
-
 def rect_area(rc):
     return (rc[2] - rc[0] + 1) * (rc[3] - rc[1] + 1)
 
@@ -212,8 +157,17 @@ def print_pr(report, thresh):
     print("\t%9.6f\t%9.6f\t%9.6f" % (th, prec, rec))
 
 
-def get_report(truths, dets, ovths):
-    logging.info('Generating report')
+def get_report(exp, dets, ovths):
+    """Evaluate Detection
+    :param exp: The experiment related to predictions
+    :type exp: mmod.experiment.Experiment
+    :param dets: detection results
+    :param ovths: overlap thresholds
+    """
+    truths = exp.imdb.all_truths()
+    assert truths, "no truth is given"
+
+    logging.info('Generating report for {}'.format(exp))
     truths_list = {'overall': truths}
     reports = dict()
     for part in truths_list:
@@ -296,22 +250,26 @@ def lift_truths(truths, label_tree):
     return result
 
 
-def deteval(truths, dets, name='',
+def deteval(exp,
+            name='',
             precths=None, ovthresh=None):
+    """Evaluate Detection
+    :param exp: The experiment related to predictions
+    :type exp: mmod.experiment.Experiment
+    :param name: name to override experiment name
+    :param precths: Percentages
+    :param ovthresh: overlap threshold
+    """
     if precths is None:
         precths = [0.8, 0.9, 0.95]
     if ovthresh is None:
         ovthresh = [-1.0, 0.3, 0.5]
 
-    assert truths, "no truth is given"
-    assert dets, "argument dets is missing!"
+    outtsv_file = exp.predict_path
 
-    # Load data
-    if not isinstance(dets, list):
-        dets = [dets]
-    detsfile = dets
+    logging.info("Evaluating {} in {}".format(outtsv_file, exp))
 
-    (report_dir, fbase, ext) = splitpath(detsfile[0])
+    report_dir, fbase, _ = splitpath(outtsv_file)
 
     # save the evaluation result to the report file, which can be used as baseline
     exp_name = name if name != "" else fbase
@@ -326,13 +284,10 @@ def deteval(truths, dets, name='',
         logging.info("Read report from: {}".format(report_file))
         reports = json.loads(read_to_buffer(report_file))
     else:
-        if dets != '':
-            detresults = load_dets(detsfile)
-        else:
-            assert False, "argument dets/vocdets is missing!"
+        detresults = exp.load_detections()
 
         # brief report on different object size
-        reports = get_report(truths, detresults, ovthresh)
+        reports = get_report(exp, detresults, ovthresh)
 
         # detail report with p-r curve
         logging.info('Saving the report: {}'.format(report_file))

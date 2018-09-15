@@ -111,24 +111,3 @@ def result2bblist(im, probs, boxes, class_map, thresh=0):
 
 def result2json(*args, **kwargs):
     return json.dumps(result2bblist(*args, **kwargs), separators=(',', ':'))
-
-
-def read_results(tsv_file, thresh=0.0):
-    """Read prediction results and filter them
-    :param tsv_file: TSV file with predictions
-    :param thresh: threshold below which to ignore the results
-    """
-    results = []
-    with open(tsv_file, 'r') as tsv_in:
-        for line in tsv_in:
-            cols = [x.strip() for x in line.split("\t")]
-            det_results = json.loads(cols[1])
-            try:
-                key = json.loads(cols[0])
-            except ValueError:
-                key = cols[0]
-            results += [
-                dict(key=key, **crect)
-                for crect in det_results if crect['conf'] >= thresh
-            ]
-    return results

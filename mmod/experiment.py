@@ -1,8 +1,9 @@
 import logging
 import os.path as op
 import re
+import json
 
-from mmod.utils import makedirs
+from mmod.utils import makedirs, open_file, tsv_read
 from mmod.simple_parser import parse_key_value, load_labelmap_list
 
 
@@ -11,7 +12,7 @@ class Experiment(object):
                  caffemodel_clone=None,
                  name=None, vis_path=None, cmapfile=None,
                  input_range=None, root=None, data=None, reset=False, expid=None):
-        """
+        """Experiment (training, or evaluation) using an image database
         :type imdb: mmod.imdb.ImageDatabase
         :param caffenet: test.prototxt file path
         :type caffenet: str
@@ -283,6 +284,59 @@ class Experiment(object):
             caffenet
         )
         return self._tree_file
+
+    def load_detections(self, predict_path=None, thresh=0.0):
+        """Load predictions from file
+        :param predict_path:
+        :param thresh: threshold to ignore detections
+        :rtype: dict
+        """
+        if predict_path is None:
+            predict_path = self.predict_path
+        retdict = dict()
+        logging.info("Loading detections from: {} for {}".format(predict_path, self))
+        keys_file = predict_path + ".keys"
+        if not op.isfile(keys_file):
+            keys_file = None
+            # TODO: Try creating .keys file in-place
+        uid_as_key = None
+        with open(predict_path, "r") as tsvin, \
+                open(keys_file, "r") if keys_file else open_file(None) as kfp:
+            while True:
+                try:
+                    line = next(tsvin)
+                except StopIteration:
+                    break
+                key = None
+                if kfp:
+                    key_line = next(kfp)
+                    key = key_line.split("\t")[0]
+                cols = [x.strip() for x in line.split("\t")]
+                if len(cols) < 2:
+                    logging.error("Invalid prediction in {}".format(predict_path))
+                    continue
+                if key is None:
+                    key = cols[0]
+                    if uid_as_key is None:
+                        # assume all the file is either in imdb or not
+                        uid_as_key = key in self.imdb
+                    if not uid_as_key:
+                        # key is image_key, convert to uid
+                        key = self.imdb.uid_of_image_key(image_key=key)
+                rects = json.loads(cols[1])
+                for rect in rects:
+                    conf = rect['conf']
+                    if conf < thresh:
+                        continue
+                    label = rect['class'].strip()
+                    # coords +1 as we did for load_truths
+                    bbox = [x + 1 for x in rect['rect']]
+                    if label not in retdict:
+                        retdict[label] = []
+                    retdict[label] += [(key, conf, bbox)]
+        for label in retdict:
+            retdict[label] = sorted(retdict[label], key=lambda y: -y[1])
+        return retdict
 
     def _auto_test(self, reset):
         """Automatically set caffenet and caffemodel, based on imdb
