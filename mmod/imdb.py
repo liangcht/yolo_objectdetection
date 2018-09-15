@@ -440,8 +440,11 @@ class ImageDatabase(object):
         """
         if self.is_directory or self.is_image:
             return self.normkey(key)
-        tsv_path, offset = self._index.offset(key)
-        tsv_in = self._index.open(tsv_path)
+        tsv_path, offset = self._index.label_offset(key)
+        if not self._cache:
+            self._cache = FileCache()
+
+        tsv_in = self._cache.open(tsv_path)
         cols = tsv_read(tsv_in, 1, seek_offset=offset)
         return cols[0]
 

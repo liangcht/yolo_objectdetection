@@ -3,7 +3,7 @@ import os.path as op
 import re
 import json
 
-from mmod.utils import makedirs, open_file, tsv_read
+from mmod.utils import makedirs, open_file
 from mmod.simple_parser import parse_key_value, load_labelmap_list
 
 
