@@ -11,7 +11,7 @@ class Taxonomy(object):
     }
 
     def __init__(self, path, trans_path=None, param_path=None):
-        self._len = 0
+        self._len = None
         self._leaf_count = 0
         self._path = path
         self._trans_path = trans_path
@@ -34,7 +34,7 @@ class Taxonomy(object):
         self._cmap = None
 
     def __len__(self):
-        if self._translation is None:
+        if self._len is None:
             self._load_yaml()
         return self._len
 
@@ -171,6 +171,14 @@ class Taxonomy(object):
                 noffset = val["noffset"]
                 if noffset not in self._global_translation[name]:
                     self._global_translation[name].append(noffset)
+
+    def iter_search_nodes(self, name):
+        """Iterate over Taxonomy node(s) with given name
+        """
+        if self._len is None:
+            self._load_yaml()
+        for node in self._root.iter_search_nodes(name=name):
+            yield node
 
     def translate_from_global(self, class_label):
         """Translate a class label globally regardless of datasource
@@ -333,6 +341,7 @@ class Taxonomy(object):
             sub_root.add_features(sub_group=child_subgroups)
 
     def _load_yaml(self):
+        self._len = 0
         self._translation = {}
         config_tax = load_from_yaml_file(self._yaml_file)
         assert isinstance(config_tax, list), "invalid {}".format(self._yaml_file)

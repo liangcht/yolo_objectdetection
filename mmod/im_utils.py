@@ -1,3 +1,4 @@
+import logging
 import cv2
 import base64
 import os
@@ -83,3 +84,55 @@ def recursive_files_list(path, ext_list=None, ignore_prefixes=None):
             ext_list=ext_list, ignore_prefixes=ignore_prefixes
         )
     return file_list
+
+
+def tile_rects(db, keys, key_rects, target_size, label, jpg_path):
+    """Create single inverted file for a db
+    :param db: the imdb to create
+    :type db: ImageDatabase
+    :param keys: keys in db to draw images from
+    :param key_rects: rects associated with above keys
+    :param target_size: patch size to align maximum dimension to
+    :param label: current label
+    :param jpg_path: output jpg path
+    """
+    rows = np.ceil(np.sqrt(len(keys)))
+    cols = np.ceil(len(keys) / rows)
+    collage = np.zeros((int(rows) * target_size, int(cols) * target_size, 3))
+
+    # try to pack them in one pass
+    max_h = 0  # maximum height in the current row
+    max_x = 0  # maximum x seen
+    x, y = 0, 0
+    for key, rect in zip(keys, key_rects):
+        im = db.image(key)
+        left, top, right, bot = rect
+        if bot <= top or right <= left:
+            logging.error("Ignore Invalid ROI: {} for label: {} key: {}".format(rect, label, key))
+            continue
+        roi = im_rescale(im[top:bot, left:right], target_size)
+        h, w = roi.shape[:2]
+        x2 = x + w
+        y2 = y + h
+        if x2 > collage.shape[1]:
+            # next row
+            x = 0
+            y += max_h
+            y2 = y + h
+            x2 = x + w
+            max_h = 0
+        if x2 > max_x:
+            max_x = x2
+        if h > max_h:
+            max_h = h
+        collage[y:y2, x:x2] = roi
+
+        x = x2
+
+    # clip the collage
+    collage = collage[:y + max_h, :max_x, :]
+    if jpg_path:
+        logging.info("Writing collage {}".format(jpg_path))
+        cv2.imwrite(jpg_path, collage)
+
+    return collage

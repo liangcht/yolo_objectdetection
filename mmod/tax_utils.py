@@ -1,11 +1,10 @@
 import logging
-import cv2
 import numpy as np
 import os.path as op
 from mmod.imdb import ImageDatabase
 from mmod.taxonomy import Taxonomy
 from mmod.utils import open_with_lineidx, splitfilename, open_file, makedirs
-from mmod.im_utils import im_rescale, int_rect
+from mmod.im_utils import int_rect, tile_rects
 
 
 def iterate_tsv_imdb(path, valid_splits=None):
@@ -29,7 +28,7 @@ def iterate_tsv_imdb(path, valid_splits=None):
 
 def sample_tax(tax, dbs, max_label):
     """Sample the taxonomy from dbs for max_label samples
-    :type tax: Taxonomy
+    :type tax: mmod.taxonomy.Taxonomy
     :param dbs: image dbs already set for the taxonomy
     :type dbs: list[ImageDatabase]
     :param max_label: maximum number of samples per-label
@@ -129,26 +128,68 @@ def create_inverted(db, path=None, shuffle=None, labelmap=None, only_inverted=Fa
             ))
 
 
-def create_collage(db, path=None, max_label=100, target_size=100, start_label=None, end_label=None):
+def _sample_rects(keys, rects, max_label):
+    all_counts = {key: len(rects) for key, rects in zip(keys, rects)}
+    key_indices = {key: idx for idx, key in enumerate(keys)}
+    new_keys = []
+    key_rects = []
+    while all_counts:
+        to_remove = []
+        for key, count in all_counts.iteritems():
+            if not count:
+                continue
+            new_keys.append(key)
+            key_rects.append(rects[key_indices[key]][count - 1])
+            if len(new_keys) == max_label:
+                break
+        if len(new_keys) == max_label:
+            break
+        for key in all_counts:
+            all_counts[key] -= 1
+            if not all_counts[key]:
+                to_remove.append(key)
+        for key in to_remove:
+            all_counts.pop(key, None)
+    return new_keys, key_rects
+
+
+def create_collage(db, tax=None, path=None, max_label=100, max_children=200, target_size=100,
+                   start_label=None, end_label=None, seed=None):
     """Create single inverted file for a db
     :param db: the imdb to create
     :type db: ImageDatabase
+    :param tax: taxonomy to sample leafs
+    :type tax: mmod.taxonomy.Taxonomy
     :param path: output directory path for collages
     :type path: str
     :param max_label: maximum number of samples per-label
+    :param max_children: maximum number of samples per leaf-labels
     :param target_size: patch size to align maximum dimension to
     :param start_label: starting label to start creating the collage for
     :param end_label: final label to create collage for
+    :param seed: random seed
     """
+    if seed is None:
+        seed = np.random.randint(low=0, high=0xffffffff)
+    np.random.seed(seed)
     if path is None:
-        path = op.join(op.dirname(db.path), "collage_{}".format(max_label))
+        path = op.join(op.dirname(db.path), "collage_{}_{}".format(max_label, seed))
         makedirs(path, exist_ok=True)
+    if tax is None and max_children:
+        for tree_file in ["tree.txt", "root.yaml"]:
+            tree = op.join(op.dirname(db.path), tree_file)
+            if op.isfile(tree):
+                tax = Taxonomy(tree)
+                break
     assert op.isdir(path), "{} directory is not accessable".format(path)
     first_seen = False
+    last_seen = False
 
     for label in db.iter_cmap():
-        if end_label and label == end_label:
+        if last_seen:
             break
+        if end_label and label == end_label:
+            last_seen = True
         if start_label:
             if label == start_label:
                 first_seen = True
@@ -169,68 +210,36 @@ def create_collage(db, path=None, max_label=100, target_size=100, start_label=No
             ]
         else:
             # some keys (with multiple rects) could be duplicated
-            all_rects = [
+            key_rects = [
                 [np.array(int_rect(rect['rect'])) for rect in db.truth_list(key, label)]
                 for key in keys
             ]
-            all_counts = {key: len(rects) for key, rects in zip(keys, all_rects)}
-            key_indices = {key: idx for idx, key in enumerate(keys)}
-            new_keys = []
-            key_rects = []
-            while all_counts:
-                to_remove = []
-                for key, count in all_counts.iteritems():
-                    new_keys.append(key)
-                    key_rects.append(all_rects[key_indices[key]][count - 1])
-                    if len(new_keys) == max_label:
-                        break
-                if len(new_keys) == max_label:
-                    break
-                for key in all_counts:
-                    all_counts[key] -= 1
-                    if not all_counts[key]:
-                        to_remove.append(key)
-                for key in to_remove:
-                    all_counts.pop(key, None)
-            keys = new_keys
-            del all_rects, all_counts, key_indices, new_keys
+            keys, key_rects = _sample_rects(keys, key_rects, max_label)
 
-        if not keys:
+        if keys:
+            jpg_path = op.join(path, "{}_{}.jpg".format(label.replace(" ", "_"), total))
+            tile_rects(db, keys, key_rects, target_size, label, jpg_path)
+            del keys, key_rects
+        else:
             logging.error("Ignore label: {} for lack of data".format(label))
+
+        if not tax or not max_children:
             continue
-        rows = np.ceil(np.sqrt(len(keys)))
-        cols = np.ceil(len(keys) / rows)
-        jpg_path = op.join(path, "{}_{}.jpg".format(label.replace(" ", "_"), total))
-        collage = np.zeros((int(rows) * target_size, int(cols) * target_size, 3))
-
-        # TODO: re-arrange based on landscape, vertical patches to better fit
-        # try to pack them in one pass
-        max_h = 0  # maximum height in the current row
-        x, y = 0, 0
-        for key, rect in zip(keys, key_rects):
-            im = db.image(key)
-            left, top, right, bot = rect
-            if bot <= top or right <= left:
-                logging.error("Ignore Invalid ROI: {} for label: {} key: {}".format(rect, label, key))
+        for node in tax.iter_search_nodes(label):
+            if node.is_leaf():
                 continue
-            roi = im_rescale(im[top:bot, left:right], target_size)
-            h, w = roi.shape[:2]
-            x2 = x + w
-            y2 = y + h
-            if x2 > collage.shape[1]:
-                # next row
-                x = 0
-                y += max_h
-                y2 = y + h
-                x2 = x + w
-                max_h = 0
-            if h > max_h:
-                max_h = h
-            collage[y:y2, x:x2] = roi
-
-            x = x2
-
-        # clip the collage
-        collage = collage[:y + max_h, :, :]
-        logging.info("Writing collage {}".format(jpg_path))
-        cv2.imwrite(jpg_path, collage)
+            logging.info("Sampling children of {}".format(label))
+            children = list(node.iter_leaf_names())
+            keys = []
+            key_rects = []
+            for child_label in children:
+                new_keys = list(db.iter_label(child_label))
+                key_rects += [
+                    [np.array(int_rect(rect['rect'])) for rect in db.truth_list(key, child_label)]
+                    for key in new_keys
+                ]
+                keys += new_keys
+            total = len(keys)
+            keys, key_rects = _sample_rects(keys, key_rects, max_children)
+            jpg_path = op.join(path, "{}_children_{}.jpg".format(label.replace(" ", "_"), len(children), total))
+            tile_rects(db, keys, key_rects, target_size, label, jpg_path)
