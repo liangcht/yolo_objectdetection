@@ -165,7 +165,8 @@ def _sample_rects(db, keys, labels, max_label):
             for key in keys:
                 rects = key_rects[key]
                 new_keys.append(key)
-                new_rects.append(rects.pop())
+                idx = np.random.randint(len(rects))
+                new_rects.append(rects.pop(idx))
                 if len(new_keys) == max_label:
                     break
                 if not rects:
@@ -232,7 +233,7 @@ def create_collage(db, tax=None, path=None, max_label=100, max_children=200, tar
         if total > max_label:
             keys = [
                 keys[idx]
-                for idx in np.sort(np.random.choice(max_label, replace=False, size=(max_label,)))
+                for idx in np.sort(np.random.choice(total, replace=False, size=(max_label,)))
             ]
             # take first/random rect from each key frame
             key_rects = [
