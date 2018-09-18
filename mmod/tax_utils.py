@@ -128,29 +128,60 @@ def create_inverted(db, path=None, shuffle=None, labelmap=None, only_inverted=Fa
             ))
 
 
-def _sample_rects(keys, rects, max_label):
-    all_counts = {key: len(rects) for key, rects in zip(keys, rects)}
-    key_indices = {key: idx for idx, key in enumerate(keys)}
+def _sample_rects(db, keys, labels, max_label):
+    if isinstance(labels, basestring):
+        labels = [labels] * len(keys)
+        multi_label = False
+    else:
+        multi_label = len(np.unique(labels)) > 1
+    assert len(keys) == len(labels)
+
+    # re-arrange so that we first sample each label, then each key and then each rect for the (label, key)
+    label_keys = {}
+    for key, label in zip(keys, labels):
+        rects = [np.array(int_rect(rect['rect'])) for rect in db.truth_list(key, label)]
+        key_rects = label_keys.get(label)
+        if not key_rects:
+            label_keys[label] = {key: rects}
+            continue
+        old_rects = key_rects.get(key)
+        if not old_rects:
+            key_rects[key] = rects
+            continue
+        old_rects += rects
+
     new_keys = []
-    key_rects = []
-    while all_counts:
-        to_remove = []
-        for key, count in all_counts.iteritems():
-            if not count:
-                continue
-            new_keys.append(key)
-            key_rects.append(rects[key_indices[key]][count - 1])
+    new_rects = []
+    while label_keys and len(new_keys) < max_label:
+        to_remove_label = []
+        for label, key_rects in label_keys.iteritems():
+            if not multi_label:
+                keys = key_rects
+            else:
+                # each time we see the same label, shuffle the keys
+                keys = key_rects.keys()
+                np.random.shuffle(keys)
+            to_remove = []
+            for key in keys:
+                rects = key_rects[key]
+                new_keys.append(key)
+                new_rects.append(rects.pop())
+                if len(new_keys) == max_label:
+                    break
+                if not rects:
+                    to_remove.append(key)
+                if multi_label:
+                    # break to process the next label before next key of the same label
+                    break
             if len(new_keys) == max_label:
                 break
-        if len(new_keys) == max_label:
-            break
-        for key in all_counts:
-            all_counts[key] -= 1
-            if not all_counts[key]:
-                to_remove.append(key)
-        for key in to_remove:
-            all_counts.pop(key, None)
-    return new_keys, key_rects
+            for key in to_remove:
+                key_rects.pop(key, None)
+            if not key_rects:
+                to_remove_label.append(label)
+        for label in to_remove_label:
+            label_keys.pop(label, None)
+    return new_keys, new_rects
 
 
 def create_collage(db, tax=None, path=None, max_label=100, max_children=200, target_size=100,
@@ -209,12 +240,7 @@ def create_collage(db, tax=None, path=None, max_label=100, max_children=200, tar
                 for key in keys
             ]
         else:
-            # some keys (with multiple rects) could be duplicated
-            key_rects = [
-                [np.array(int_rect(rect['rect'])) for rect in db.truth_list(key, label)]
-                for key in keys
-            ]
-            keys, key_rects = _sample_rects(keys, key_rects, max_label)
+            keys, key_rects = _sample_rects(db, keys, label, max_label)
 
         if keys:
             jpg_path = op.join(path, "{}_{}.jpg".format(label.replace(" ", "_"), total))
@@ -231,15 +257,13 @@ def create_collage(db, tax=None, path=None, max_label=100, max_children=200, tar
             logging.info("Sampling children of {}".format(label))
             children = list(node.iter_leaf_names())
             keys = []
-            key_rects = []
+            labels = []
             for child_label in children:
                 new_keys = list(db.iter_label(child_label))
-                key_rects += [
-                    [np.array(int_rect(rect['rect'])) for rect in db.truth_list(key, child_label)]
-                    for key in new_keys
-                ]
                 keys += new_keys
+                labels += [child_label] * len(new_keys)
+                del new_keys
             total = len(keys)
-            keys, key_rects = _sample_rects(keys, key_rects, max_children)
+            keys, key_rects = _sample_rects(db, keys, labels, max_children)
             jpg_path = op.join(path, "{}_children_{}.jpg".format(label.replace(" ", "_"), len(children), total))
             tile_rects(db, keys, key_rects, target_size, label, jpg_path)
