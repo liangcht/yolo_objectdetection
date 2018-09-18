@@ -265,5 +265,5 @@ def create_collage(db, tax=None, path=None, max_label=100, max_children=200, tar
                 del new_keys
             total = len(keys)
             keys, key_rects = _sample_rects(db, keys, labels, max_children)
-            jpg_path = op.join(path, "{}_children_{}.jpg".format(label.replace(" ", "_"), len(children), total))
+            jpg_path = op.join(path, "{}_children_{}_{}.jpg".format(label.replace(" ", "_"), len(children), total))
             tile_rects(db, keys, key_rects, target_size, label, jpg_path)
