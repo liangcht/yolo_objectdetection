@@ -1,0 +1,155 @@
+input: "last_conv"
+input: "label"
+force_backward: true
+input_shape {
+  dim: 6
+  dim: 125
+  dim: 13
+  dim: 13
+}
+input_shape {
+    dim: 6
+    dim: 150
+}
+layer {
+  name: "slice_region"
+  type: "Slice"
+  bottom: "last_conv"
+  top: "xy"
+  top: "wh"
+  top: "obj"
+  top: "conf"
+  slice_param {
+    slice_point: 10
+    slice_point: 20
+    slice_point: 25
+  }
+}
+layer {
+  name: "sigmoid_xy"
+  type: "Sigmoid"
+  bottom: "xy"
+  top: "xy"
+}
+layer {
+  name: "sigmoid_obj"
+  type: "Sigmoid"
+  bottom: "obj"
+  top: "obj"
+}
+layer {
+  name: "region_target"
+  type: "RegionTarget"
+  bottom: "xy"
+  bottom: "wh"
+  bottom: "obj"
+  bottom: "label"
+  top: "t_xy"
+  top: "t_wh"
+  top: "t_xywh_weight"
+  top: "t_o_obj"
+  top: "t_o_noobj"
+  top: "t_label"
+  propagate_down: false
+  propagate_down: false
+  propagate_down: false
+  propagate_down: false
+  region_target_param {
+    biases: 1.08
+    biases: 1.19
+    biases: 3.42
+    biases: 4.41
+    biases: 6.63
+    biases: 11.38
+    biases: 9.42
+    biases: 5.11
+    biases: 16.62
+    biases: 10.52
+  }
+}
+layer {
+  name: "xy_loss"
+  type: "EuclideanLoss"
+  bottom: "xy"
+  bottom: "t_xy"
+  bottom: "t_xywh_weight"
+  top: "xy_loss"
+  loss_weight: 1.0
+  propagate_down: true
+  propagate_down: false
+  propagate_down: false
+}
+layer {
+  name: "wh_loss"
+  type: "EuclideanLoss"
+  bottom: "wh"
+  bottom: "t_wh"
+  bottom: "t_xywh_weight"
+  top: "wh_loss"
+  loss_weight: 1.0
+  propagate_down: true
+  propagate_down: false
+  propagate_down: false
+}
+layer {
+  name: "o_obj_loss"
+  type: "EuclideanLoss"
+  bottom: "obj"
+  bottom: "t_o_obj"
+  top: "o_obj_loss"
+  loss_weight: 5.0
+  propagate_down: true
+  propagate_down: false
+}
+layer {
+  name: "o_noobj_loss"
+  type: "EuclideanLoss"
+  bottom: "obj"
+  bottom: "t_o_noobj"
+  top: "o_noobj_loss"
+  loss_weight: 1.0
+  propagate_down: true
+  propagate_down: false
+}
+layer {
+  name: "reshape_t_label"
+  type: "Reshape"
+  bottom: "t_label"
+  top: "reshape_t_label"
+  reshape_param {
+    shape {
+      dim: -1
+      dim: 1
+      dim: 0
+      dim: 0
+    }
+  }
+}
+layer {
+  name: "reshape_conf"
+  type: "Reshape"
+  bottom: "conf"
+  top: "reshape_conf"
+  reshape_param {
+    shape {
+      dim: -1
+      dim: 20
+      dim: 0
+      dim: 0
+    }
+  }
+}
+layer {
+  name: "softmax_loss"
+  type: "SoftmaxWithLoss"
+  bottom: "reshape_conf"
+  bottom: "reshape_t_label"
+  top: "softmax_loss"
+  loss_weight: 5.0
+  propagate_down: true
+  propagate_down: false
+  loss_param {
+    ignore_label: -1
+    normalization: BATCH_SIZE
+  }
+}

@@ -1,0 +1,49 @@
+input: "last_conv"
+input: "label"
+force_backward: true
+input_shape {
+  dim: 6
+  dim: 125
+  dim: 13
+  dim: 13
+}
+input_shape {
+    dim: 6
+    dim: 150
+}
+
+layer {
+  name: "region_loss"
+  type: "RegionLoss"
+  bottom: "last_conv"
+  bottom: "label"
+  top: "region_loss"
+  param {
+    lr_mult: 0
+    decay_mult: 0
+  }
+  propagate_down: true
+  propagate_down: false
+  region_loss_param {
+    classes: 20
+    coords: 4
+    bias_match: true
+    tree: "./aux_data/tree.txt"
+    class_scale: 1.0
+    noobject_scale: 1.0
+    coord_scale: 1.0
+    thresh: 0.6
+    biases: 1.08
+    biases: 1.19
+    biases: 3.42
+    biases: 4.41
+    biases: 6.63
+    biases: 11.38
+    biases: 9.42
+    biases: 5.11
+    biases: 16.62
+    biases: 10.52
+    debug_info: 100
+  }
+}
+

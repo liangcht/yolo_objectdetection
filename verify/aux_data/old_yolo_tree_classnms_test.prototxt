@@ -1,0 +1,38 @@
+input: "last_conv"
+input: "im_info"
+input_shape {
+  dim: 1
+  dim: 125
+  dim: 13
+  dim: 13
+}
+input_shape {
+  dim: 1
+  dim: 2
+}
+layer {
+  name: "bbox"
+  type: "RegionOutput"
+  bottom: "last_conv"
+  bottom: "im_info"
+  top: "bbox"
+  top: "prob"
+  region_output_param {
+    tree: "./aux_data/tree.txt"
+    thresh: 0.005
+    hier_thresh: 0.001
+    class_specific_nms: true
+    classes: 20
+    biases: 1.08
+    biases: 1.19
+    biases: 3.42
+    biases: 4.41
+    biases: 6.63
+    biases: 11.38
+    biases: 9.42
+    biases: 5.11
+    biases: 16.62
+    biases: 10.52
+  }
+}
+

@@ -1,0 +1,122 @@
+input: "last_conv"
+input: "im_info"
+input_shape {
+  dim: 1
+  dim: 125
+  dim: 13
+  dim: 13
+}
+input_shape {
+  dim: 1
+  dim: 2
+}
+layer {
+  name: "slice_region"
+  type: "Slice"
+  bottom: "last_conv"
+  top: "xy"
+  top: "wh"
+  top: "obj"
+  top: "conf"
+  slice_param {
+    slice_point: 10
+    slice_point: 20
+    slice_point: 25
+  }
+}
+layer {
+  name: "sigmoid_xy"
+  type: "Sigmoid"
+  bottom: "xy"
+  top: "xy"
+}
+layer {
+  name: "sigmoid_obj"
+  type: "Sigmoid"
+  bottom: "obj"
+  top: "obj"
+}
+layer {
+  name: "reshape_conf"
+  type: "Reshape"
+  bottom: "conf"
+  top: "reshape_conf"
+  reshape_param {
+    shape {
+      dim: 20
+      dim: 5
+    }
+    axis: 1
+    num_axes: 1
+  }
+}
+layer {
+  name: "softmaxtree_conf"
+  type: "SoftmaxTree"
+  bottom: "reshape_conf"
+  top: "softmaxtree_conf"
+  softmaxtree_param {
+    tree: "./aux_data/tree.txt"
+  }
+}
+layer {
+  name: "top_class"
+  type: "TreePrediction"
+  bottom: "softmaxtree_conf"
+  top: "top_class"
+  treeprediction_param {
+    tree: "./aux_data/tree.txt"
+    threshold: 0.001
+  }
+}
+layer {
+  name: "bbox"
+  type: "YoloBBs"
+  bottom: "xy"
+  bottom: "wh"
+  bottom: "im_info"
+  top: "bbox"
+  yolobbs_param {
+    biases: 1.08
+    biases: 1.19
+    biases: 3.42
+    biases: 4.41
+    biases: 6.63
+    biases: 11.38
+    biases: 9.42
+    biases: 5.11
+    biases: 16.62
+    biases: 10.52
+  }
+}
+layer {
+  name: "to_dense"
+  type: "YoloEvalCompat"
+  bottom: "obj"
+  bottom: "top_class"
+  top: "dense_obj"
+  yoloevalcompat_param {
+    classes: 20
+    move_axis: false
+  }
+}
+layer {
+  name: "nms"
+  type: "NMSFilter"
+  bottom: "bbox"
+  bottom: "dense_obj"
+  top: "nms_prob"
+  nmsfilter_param {
+    pre_threshold: 0.005
+    classes: 20
+  }
+}
+layer {
+  name: "yolo_eval"
+  type: "YoloEvalCompat"
+  bottom: "nms_prob"
+  top: "prob"
+  yoloevalcompat_param {
+    append_max: false
+  }
+}

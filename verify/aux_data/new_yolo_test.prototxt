@@ -1,0 +1,82 @@
+input: "last_conv"
+input: "im_info"
+input_shape {
+  dim: 1
+  dim: 125
+  dim: 13
+  dim: 13
+}
+input_shape {
+  dim: 1
+  dim: 2
+}
+layer {
+  name: "slice_region"
+  type: "Slice"
+  bottom: "last_conv"
+  top: "xy"
+  top: "wh"
+  top: "obj"
+  top: "conf"
+  slice_param {
+    slice_point: 10
+    slice_point: 20
+    slice_point: 25
+  }
+}
+layer {
+  name: "sigmoid_xy"
+  type: "Sigmoid"
+  bottom: "xy"
+  top: "xy"
+}
+layer {
+  name: "sigmoid_obj"
+  type: "Sigmoid"
+  bottom: "obj"
+  top: "obj"
+}
+layer {
+  name: "reshape_conf"
+  type: "Reshape"
+  bottom: "conf"
+  top: "reshape_conf"
+  reshape_param {
+    shape {
+      dim: -1
+      dim: 20
+      dim: 0
+      dim: 0
+    }
+  }
+}
+layer {
+  name: "softmax_conf"
+  type: "Softmax"
+  bottom: "reshape_conf"
+  top: "softmax_conf"
+}
+layer {
+  name: "bbox"
+  type: "RegionPrediction"
+  bottom: "xy"
+  bottom: "wh"
+  bottom: "obj"
+  bottom: "softmax_conf"
+  bottom: "im_info"
+  top: "bbox"
+  top: "prob"
+  region_prediction_param {
+    thresh: 0.005
+    biases: 1.08000004292
+    biases: 1.19000005722
+    biases: 3.42000007629
+    biases: 4.40999984741
+    biases: 6.63000011444
+    biases: 11.3800001144
+    biases: 9.42000007629
+    biases: 5.11000013351
+    biases: 16.6200008392
+    biases: 10.5200004578
+  }
+}

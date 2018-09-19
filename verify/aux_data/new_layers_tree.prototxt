@@ -1,0 +1,244 @@
+input: "last_conv"
+input: "label_bb"
+input: "label_nobb"
+force_backward: true
+input_shape {
+  dim: 6
+  dim: 125
+  dim: 13
+  dim: 13
+}
+input_shape {
+    dim: 4
+    dim: 150
+}
+input_shape {
+    dim: 2
+    dim: 150
+}
+layer {
+  name: "slice_batch"
+  type: "Slice"
+  bottom: "last_conv"
+  top: "conv_bb"
+  top: "conv_no_bb"
+  slice_param {
+    slice_point: 4
+    axis: 0
+  }
+}
+layer {
+  name: "slice_region_bb"
+  type: "Slice"
+  bottom: "conv_bb"
+  top: "xy"
+  top: "wh"
+  top: "obj"
+  top: "conf"
+  slice_param {
+    slice_point: 10
+    slice_point: 20
+    slice_point: 25
+  }
+}
+layer {
+  name: "sigmoid_xy"
+  type: "Sigmoid"
+  bottom: "xy"
+  top: "xy"
+}
+layer {
+  name: "sigmoid_obj"
+  type: "Sigmoid"
+  bottom: "obj"
+  top: "obj"
+}
+layer {
+  name: "region_target"
+  type: "RegionTarget"
+  bottom: "xy"
+  bottom: "wh"
+  bottom: "obj"
+  bottom: "label_bb"
+  top: "t_xy"
+  top: "t_wh"
+  top: "t_xywh_weight"
+  top: "t_o_obj"
+  top: "t_o_noobj"
+  top: "t_label"
+  propagate_down: false
+  propagate_down: false
+  propagate_down: false
+  propagate_down: false
+  region_target_param {
+    biases: 1.08
+    biases: 1.19
+    biases: 3.42
+    biases: 4.41
+    biases: 6.63
+    biases: 11.38
+    biases: 9.42
+    biases: 5.11
+    biases: 16.62
+    biases: 10.52
+  }
+}
+layer {
+  name: "xy_loss"
+  type: "EuclideanLoss"
+  bottom: "xy"
+  bottom: "t_xy"
+  bottom: "t_xywh_weight"
+  top: "xy_loss"
+  loss_weight: 0.666666
+  propagate_down: true
+  propagate_down: false
+  propagate_down: false
+}
+layer {
+  name: "wh_loss"
+  type: "EuclideanLoss"
+  bottom: "wh"
+  bottom: "t_wh"
+  bottom: "t_xywh_weight"
+  top: "wh_loss"
+  loss_weight: 0.666666
+  propagate_down: true
+  propagate_down: false
+  propagate_down: false
+}
+layer {
+  name: "o_obj_loss"
+  type: "EuclideanLoss"
+  bottom: "obj"
+  bottom: "t_o_obj"
+  top: "o_obj_loss"
+  loss_weight: 3.333333
+  propagate_down: true
+  propagate_down: false
+}
+layer {
+  name: "o_noobj_loss"
+  type: "EuclideanLoss"
+  bottom: "obj"
+  bottom: "t_o_noobj"
+  top: "o_noobj_loss"
+  loss_weight: 0.666666
+  propagate_down: true
+  propagate_down: false
+}
+layer {
+  name: "reshape_conf"
+  type: "Reshape"
+  bottom: "conf"
+  top: "reshape_conf"
+  reshape_param {
+    shape {
+      dim: 20
+      dim: 5
+    }
+    axis: 1
+    num_axes: 1
+  }
+}
+layer {
+  name: "softmaxtree_loss"
+  type: "SoftmaxTreeWithLoss"
+  bottom: "reshape_conf"
+  bottom: "t_label"
+  top: "softmaxtree_loss"
+  loss_weight: 0.666666
+  propagate_down: true
+  propagate_down: false
+  loss_param {
+    ignore_label: -1
+    normalization: BATCH_SIZE
+  }
+  softmaxtree_param {
+    tree: "./aux_data/tree.txt"
+  }
+}
+layer {
+  name: "slice_label"
+  type: "Slice"
+  bottom: "label_nobb"
+  top: "label_nobb_xywh"
+  top: "label_nobb_class"
+  top: "label_nobb_multi"
+  slice_param {
+    slice_point: 4
+    slice_point: 5
+  }
+}
+layer {
+  name: "slice_region_nobb"
+  type: "Slice"
+  bottom: "conv_no_bb"
+  top: "xywh"
+  top: "obj_nobb"
+  top: "conf_nobb"
+  slice_param {
+    slice_point: 20
+    slice_point: 25
+  }
+}
+layer {
+  name: "ignore_nobb"
+  type: "Silence"
+  bottom: "xywh"
+  bottom: "label_nobb_xywh"
+  bottom: "label_nobb_multi"
+}
+layer {
+  name: "sigmoid_obj_nobb"
+  type: "Sigmoid"
+  bottom: "obj_nobb"
+  top: "obj_nobb"
+}
+layer {
+  name: "reshape_conf_nobb"
+  type: "Reshape"
+  bottom: "conf_nobb"
+  top: "reshape_conf_nobb"
+  reshape_param {
+    shape {
+      dim: 20
+      dim: 5
+    }
+    axis: 1
+    num_axes: 1
+  }
+}
+layer {
+  name: "softmaxtree_loss_nobb"
+  type: "SoftmaxTreeWithLoss"
+  bottom: "reshape_conf_nobb"
+  bottom: "label_nobb_class"
+  bottom: "obj_nobb"
+  top: "softmaxtree_loss_nobb"
+  top: "obj_index"
+  loss_weight: 0.333333
+  loss_weight: 0.0
+  propagate_down: true
+  propagate_down: false
+  propagate_down: false
+  loss_param {
+    normalization: BATCH_SIZE
+  }
+  softmaxtree_param {
+    tree: "./aux_data/tree.txt"
+  }
+  softmaxtree_loss_param {
+    with_objectness: true
+  }
+}
+layer {
+  name: "obj_loss_nobb"
+  type: "IndexedThresholdLoss"
+  bottom: "obj_nobb"
+  bottom: "obj_index"
+  top: "obj_loss_nobb"
+  loss_weight: 0.333333
+  propagate_down: true
+  propagate_down: false
+}
