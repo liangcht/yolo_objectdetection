@@ -18,8 +18,13 @@ std::vector<at::Tensor> smtl_cuda_backward(
 
 // C++ interface
 
-#define CHECK_CUDA(x) AT_ASSERT(x.type().is_cuda(), #x " must be a CUDA tensor")
-#define CHECK_CONTIGUOUS(x) AT_ASSERT(x.is_contiguous(), #x " must be contiguous")
+// Work-around ATen regression
+#ifndef AT_ASSERTM
+#define AT_ASSERTM AT_ASSERT
+#endif
+
+#define CHECK_CUDA(x) AT_ASSERTM(x.type().is_cuda(), #x " must be a CUDA tensor")
+#define CHECK_CONTIGUOUS(x) AT_ASSERTM(x.is_contiguous(), #x " must be contiguous")
 #define CHECK_INPUT(x) CHECK_CUDA(x); CHECK_CONTIGUOUS(x)
 
 std::vector<at::Tensor> smtl_forward(
@@ -39,8 +44,8 @@ std::vector<at::Tensor> smtl_forward(
     inner_num *= prob.size(i);
   int dim = prob.numel() / outer_num;
 
-  AT_ASSERT(label.numel() == outer_num * inner_num, "number of labels must match number of predictions")
-  AT_ASSERT(parent.numel() == prob.size(axis), "Channel count must match tree node count")
+  AT_ASSERTM(label.numel() == outer_num * inner_num, "number of labels must match number of predictions")
+  AT_ASSERTM(parent.numel() == prob.size(axis), "Channel count must match tree node count")
 
   return smtl_cuda_forward(
       prob, label,
