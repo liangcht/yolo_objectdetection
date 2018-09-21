@@ -56,7 +56,7 @@ Installation
     With `develop` you do not need to call the above again when changing `.py` 
     files. But if you change an extension you will have to call this again to build.
 
-Caffe
+Caffe setup
 ===========
 If you want to also install caffe for Anaconda, you should re-build opencv suitable for it. 
    Refer to [pt04/Dockerfile](docker/pt04/Dockerfile) to see how to build opencv library.
@@ -69,6 +69,13 @@ If you want to also install caffe for Anaconda, you should re-build opencv suita
    cmake -DUSE_CUDNN=1 -DUSE_NCCL=1 -DUSE_OPENMP=1 -DCMAKE_INSTALL_PREFIX=/opt/caffe -DPYTHON_LIBRARY=/opt/conda2/lib/libpython2.7.so -DPYTHON_EXECUTABLE:FILEPATH=/opt/conda2/bin/python2.7 ..
    make -j$(nproc)
    sudo make install 
-   ```    
+   ```
+   Note: Use `-DUSE_CUDNN=0 -DUSE_NCCL=0` to build caffe without cuda support. 
+   If you only want caffe for PyTorch data layer this will be sufficient. 
  
    iii. Use `export PYTHONPATH=/opt/caffe/python/` to be able to import caffe.
+   iv. Use `export PATH=/opt/caffe/bin:/opt/caffe:$PATH` to be able to use `runcaffe` (to see caffe executable)
+
+Usage Wiki
+==========
+Refer to the project [wiki](https://github.com/leizhangcn/objectdetection/wiki) for more usage examples.

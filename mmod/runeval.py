@@ -268,6 +268,7 @@ def main():
     solvers = args['solver']
     if not solvers:
         raise RuntimeError("Train solver file(s) must be specified")
+    solvers = [abspath(solver, roots=['~', '#', '.']) for solver in solvers]
 
     # We want to monitor a previous run, so we do not care about current output directory
     eval_path = get_arg(args['path'])

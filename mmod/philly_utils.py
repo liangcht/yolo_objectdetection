@@ -71,6 +71,10 @@ def expand_vc_user(path):
         path = op.abspath(op.join(_VC_HOME, '.' + path[1:]))
     elif path.startswith('#'):
         path = op.abspath(op.join(_VC_HDFS_ROOT, '.' + path[1:]))
+    elif path.startswith('.'):
+        ocwd = os.environ.get('OCWD')
+        if ocwd:
+            return op.abspath(op.join(ocwd, '.' + path[1:]))
 
     return path
 
@@ -103,9 +107,6 @@ def mirror_paths(paths):
     :return: paths: absolute paths (resolved)
              relpaths: relative paths (relative to the vc root)
     """
-    # find absolute paths to input solvers (input solvers with relative path assuemd to be relative to VC sctarch home)
-    paths = [abspath(path, roots=['~', _VC_HDFS_ROOT]) for path in paths]
-
     relpaths = []
     for idx, path in enumerate(paths):
         if op.normpath(op.commonprefix([path, _VC_HOME])) == op.normpath(_VC_HOME):
@@ -212,6 +213,7 @@ def set_job_id(expid):
     logging.info("Experiment: {} Attempt: {}".format(jid, new_attempt))
     os.environ['OVERRIDE_ATTEMPT_ID'] = "{}".format(new_attempt)
     os.environ['OVERRIDE_MODEL_DIRECTORY'] = ""  # model/output directory will depend on each solver
+    os.environ['OCWD'] = os.getcwd()
     makedirs(last_log_dir(), exist_ok=True)
 
 
