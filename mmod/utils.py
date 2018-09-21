@@ -103,6 +103,14 @@ def cwd(path):
         os.chdir(oldpwd)
 
 
+def tail_path(path):
+    """Return the tail of a path
+    :type path: str
+    :rtype: str
+    """
+    return op.join(op.basename(op.dirname(path)), op.basename(path))
+
+
 def is_number(s, type_cast=float):
     try:
         type_cast(s)
@@ -341,17 +349,23 @@ def splitex_ver(path):
     return base, ext
 
 
-def splitfilename(path, splitname):
+def splitfilename(path, splitname, is_composite=False, keep_ext=True):
     """Get a versioned file name and return the file name for given split name, with the same version
     :param path: path to potentially versioned training file
     :type path: str
     :param splitname: label, labelmap, inverted.label
     :type splitname: str
+    :param is_composite: if this is a composite tsv (weird name)
+    :param keep_ext: if should preserve the extension
     :rtype: str
     """
     base, ext = splitex_ver(path)
     if not splitname.startswith("."):
         splitname = "." + splitname
+    if is_composite and base.endswith('X'):
+        base = base[:-1]
+    if not keep_ext:
+        ext = ''
     return base + splitname + ext
 
 
