@@ -362,17 +362,19 @@ def main():
     solvers = args['solver']
     if not solvers:
         raise RuntimeError("Train solver file(s) must be specified")
+    solvers = [abspath(solver, roots=['~', '#', '.']) for solver in solvers]
+
     skip_weights = args['skip_weights']
     skip_snapshot = args['skip_snapshot']
     use_lock = args["use_lock"]
     retries = args["retries"]
     init_snapshot = args['snapshot']
     if init_snapshot:
-        init_snapshot = abspath(init_snapshot, roots=['#', '~'])
+        init_snapshot = abspath(init_snapshot, roots=['#', '~', '.'])
         assert op.isfile(init_snapshot), "{} does not exist".format(init_snapshot)
     init_weights = args['weights']
     if init_weights:
-        init_weights = abspath(init_weights, roots=['#', '~'])
+        init_weights = abspath(init_weights, roots=['#', '~', '.'])
         assert op.isfile(init_weights), "{} does not exist".format(init_weights)
 
     prev_model_path = get_arg(args['prev']) or get_arg(args['prevmodelpath'])

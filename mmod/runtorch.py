@@ -491,6 +491,7 @@ def main():
     solvers = args['solver']
     if not solvers:
         raise RuntimeError("Train solver file(s) must be specified")
+    solvers = [abspath(solver, roots=['~', '#', '.']) for solver in solvers]
     skip_weights = args['skip_weights']
     skip_snapshot = args['skip_snapshot']
     snapshot_model = args['snapshot']
