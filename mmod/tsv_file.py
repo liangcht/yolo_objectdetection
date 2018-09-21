@@ -6,7 +6,7 @@ from contextlib import contextmanager
 from collections import OrderedDict
 
 from mmod.utils import is_in_sorted, search_in_sorted, search_both_sorted, tsv_read, splitfilename, tsv_multi_column, \
-    FileCache, file_cache
+    FileCache, file_cache, tail_path
 from mmod.simple_parser import load_labelmap_list, is_number
 from mmod.simple_tsv import SimpleTsv
 
@@ -85,14 +85,13 @@ class TsvFile(object):
         if len(self._sources) == 1:
             source = self._sources.keys()[0]
             stype = self.label_type(source)
-            source = op.join(op.basename(op.dirname(source)), op.basename(source))  # tail of the path
             return 'TsvFile(size: {}, source: {}, type: {})'.format(
-                len(self), source, stype
+                len(self), tail_path(source), stype
             )
         labeled = len(self._labels) == len(self._sources)
         return 'TsvFile(size: {}, {}: {}{})'.format(
             len(self), "labeled sources" if labeled else "sources", len(self._sources),
-            ", shuffle: {}".format(self._shuffle_file) if self._shuffle_file else ""
+            ", shuffle: {}".format(tail_path(self._shuffle_file)) if self._shuffle_file else ""
         )
 
     def __del__(self):
@@ -273,9 +272,8 @@ class TsvFile(object):
                 ]
             self._is_composite = True
             # composite sources also could have a single inverted file
-            base_source = source.replace('X.tsv', '.tsv')
-            inverted_file = splitfilename(base_source, 'inverted.label')
-            shuffle_file = base_source.replace('.tsv', '.shuffle.txt')
+            inverted_file = splitfilename(source, 'inverted.label', is_composite=True)
+            shuffle_file = splitfilename(source, 'shuffle.txt', is_composite=True, keep_ext=False)
             if op.isfile(inverted_file) and op.isfile(shuffle_file):
                 self._inverted_file = inverted_file
                 self._shuffle_file = shuffle_file

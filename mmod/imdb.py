@@ -8,7 +8,7 @@ from contextlib import contextmanager
 from mmod.simple_parser import tsv_data_sources, read_model_proto, softmax_tree_path, parse_key_value
 from mmod.tsv_file import TsvFile
 from mmod.im_utils import img_from_base64, img_from_file, recursive_files_list, VALID_IMAGE_TYPES
-from mmod.utils import tsv_read, file_cache, FileCache
+from mmod.utils import tsv_read, file_cache, FileCache, splitfilename
 
 
 class ImageDatabase(object):
@@ -26,6 +26,7 @@ class ImageDatabase(object):
         self._raise_error_invalid_image = raise_error
         self._name = name  # type: str
         self._tax_path = None  # type: str
+        self._cmapfile = None  # type: str
         self._cached_truth = None  # type: dict
         self._image_keys = {}
         if op.isdir(path):
@@ -50,11 +51,11 @@ class ImageDatabase(object):
             model = read_model_proto(path)
             self._tax_path = softmax_tree_path(model)
             sources, labels = tsv_data_sources(model)
-            cmapfile = parse_key_value(path, 'labelmap')
+            self._cmapfile = parse_key_value(path, 'labelmap')
 
             self._index = TsvFile(sources,
                                   labels=labels,
-                                  cmapfiles=cmapfile)
+                                  cmapfiles=self._cmapfile)
         elif self._type == self._DB_TYPE_TSV:
             self._index = TsvFile(path)
 
@@ -140,6 +141,45 @@ class ImageDatabase(object):
         :rtype: list
         """
         return list(self.iter_cmap())
+
+    @property
+    def cmapfile(self):
+        """Path to the *single* labelmap file (may or may not exist)
+        :rtype: str
+        """
+        if self._cmapfile:
+            return self._cmapfile
+        if self.is_directory:
+            return op.join(self.path, 'labelmap.txt')
+        return op.join(op.dirname(self.path), 'labelmap.txt')
+
+    @property
+    def inverted_path(self):
+        """Path to the *single* inverted index file (may or may not exist)
+        :rtype: str
+        """
+        if self.is_directory or self.is_image:
+            raise NotImplementedError("not implemented for db: '{}'".format(self.type))
+        return splitfilename(self.path, 'inverted.label', is_composite=self._index.is_composite)
+
+    @property
+    def shuffle_path(self):
+        """Path to the shuffle file (may or may not exist)
+        :rtype: str
+        """
+        if self.is_directory or self.is_image:
+            raise NotImplementedError("not implemented for db: '{}'".format(self.type))
+        return splitfilename(self.path, 'shuffle.txt', is_composite=self._index.is_composite, keep_ext=False)
+
+    @property
+    def is_inverted(self):
+        """If we have inverted file for label iteration
+        """
+        if self.is_directory or self.is_image:
+            raise NotImplementedError("not implemented for db: '{}'".format(self.type))
+        if self._index.composite_non_inverted:
+            return False
+        return self._index.has_inverted
 
     def source_index(self, source):
         """Find the source index

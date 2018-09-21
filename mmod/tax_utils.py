@@ -60,7 +60,8 @@ def sample_tax(tax, dbs, max_label):
                 break
 
 
-def create_inverted(db, path=None, shuffle=None, labelmap=None, only_inverted=False):
+def create_inverted(db, path=None, shuffle=None, labelmap=None,
+                    create_shuffle=True, create_labelmap=True):
     """Create single inverted file for a db
     :param db: the imdb to create
     :type db: ImageDatabase
@@ -70,20 +71,21 @@ def create_inverted(db, path=None, shuffle=None, labelmap=None, only_inverted=Fa
     :type shuffle: str
     :param labelmap: labelmap path to create
     :type labelmap: str
-    :param only_inverted: if should only create inverted file (using existing shuffle file)
+    :param create_shuffle: if should [re]create shuffle file
+    :param create_labelmap: if should [re]create labelmap file
     """
     if path is None:
-        path = splitfilename(db.path, 'inverted.label')
+        path = db.inverted_path
     if shuffle is None:
-        shuffle = op.splitext(db.path)[0] + '.shuffle.txt'
+        shuffle = db.shuffle_path
     if labelmap is None:
-        labelmap = op.join(op.dirname(db.path), 'labelmap.txt')
-    if only_inverted and op.isfile(shuffle):
+        labelmap = db.cmapfile
+    if not create_shuffle and op.isfile(shuffle):
         with open(shuffle) as fp:
             shuffles = [[int(l) for l in line.split()] for line in fp.readlines()]
     else:
         shuffles = []
-        with open_file(None) if only_inverted else open_with_lineidx(shuffle) as fps:
+        with open_file(None) if not create_shuffle else open_with_lineidx(shuffle) as fps:
             for source, lrng in db.iter_source_range():
                 source_idx = db.source_index(source)
                 for line in lrng:
@@ -100,7 +102,7 @@ def create_inverted(db, path=None, shuffle=None, labelmap=None, only_inverted=Fa
         source_lines[(source, line)] = shuffle_line
         shuffle_line += 1
     with open_with_lineidx(path) as fp, \
-            open_file(None) if only_inverted else open(labelmap, "w") as fpl:
+            open_file(None) if not create_labelmap else open(labelmap, "w") as fpl:
         prev_label = None
         label_shuffle_lines = []
         for label, source, lines in db.iterate_inverted():
