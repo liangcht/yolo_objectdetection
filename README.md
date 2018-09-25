@@ -23,9 +23,9 @@ Installation
     
     i. If you have Anaconda (even Anaconda3), you can set up Python2 virtual environment with:
         
-        ```
-        conda create --name py27 python=2.7 anaconda
-        ```
+    ```
+    conda create --name py27 python=2.7 anaconda
+    ```
 
 2. Use Anaconda Python
     ```
@@ -37,10 +37,10 @@ Installation
     ```
     
     i. If you are using a virtual environment (e.g. `py27`)
-        
-        ```
-        source activate py27
-        ```
+
+    ```
+    source activate py27
+    ```
   
 3. Install requirements
     ```
@@ -49,12 +49,20 @@ Installation
     ```
 
 4. Development
+    
+    To build the extensions and *install* the `mmod` and `mtorch` packages:
 
     ```
     python setup.py develop
     ```
     With `develop` you do not need to call the above again when changing `.py` 
-    files. But if you change an extension you will have to call this again to build.
+    files. But if you change a cpp extension you will have to call this again to build. 
+    If you do not want to develop the package and just want to install: 
+    ```
+    python setup.py install
+    ```
+    For philly, you can `install` only the cpp extensions inside your docker, and then call the scripts.
+    All scripts (that have `main`) append the parent directory to the `sys.path` and can be run without installation. 
 
 Caffe setup
 ===========
@@ -74,6 +82,7 @@ If you want to also install caffe for Anaconda, you should re-build opencv suita
    If you only want caffe for PyTorch data layer this will be sufficient. 
  
    iii. Use `export PYTHONPATH=/opt/caffe/python/` to be able to import caffe.
+   
    iv. Use `export PATH=/opt/caffe/bin:/opt/caffe:$PATH` to be able to use `runcaffe` (to see caffe executable)
 
 Usage Wiki

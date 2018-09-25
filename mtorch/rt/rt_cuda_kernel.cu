@@ -4,62 +4,10 @@
 #include <cuda_runtime.h>
 
 #include <vector>
-
-// CUDA: grid stride looping
-#define CUDA_KERNEL_LOOP(i, n) \
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; \
-       i < (n); \
-       i += blockDim.x * gridDim.x)
-
+#include "caffe_cuda.h"
+#include "region_common.hpp"
 
 namespace {
-
-// CUDA: use 1024 threads per block
-const int CUDA_NUM_THREADS = 1024;
-
-// CUDA: number of blocks for threads.
-inline int GET_BLOCKS(const int N) {
-  return (N + CUDA_NUM_THREADS - 1) / CUDA_NUM_THREADS;
-}
-
-template <typename scalar_t>
-struct TBox {
-    scalar_t x, y, w, h;
-};
-
-template <typename scalar_t>
-__device__ __forceinline__ scalar_t TOverlap(scalar_t x1, scalar_t w1, scalar_t x2, scalar_t w2)
-{
-    auto l1 = x1 - w1 / 2;
-    auto l2 = x2 - w2 / 2;
-    auto left = l1 > l2 ? l1 : l2;
-    auto r1 = x1 + w1 / 2;
-    auto r2 = x2 + w2 / 2;
-    auto right = r1 < r2 ? r1 : r2;
-    return right - left;
-}
-
-template <typename scalar_t>
-__device__ __forceinline__  scalar_t TBoxIntersection(scalar_t ax, scalar_t ay, scalar_t aw, scalar_t ah,
-        scalar_t bx, scalar_t by, scalar_t bw, scalar_t bh) {
-    auto w = TOverlap(ax, aw, bx, bw);
-    auto h = TOverlap(ay, ah, by, bh);
-    if (w < 0 || h < 0) {
-        return 0;
-    }
-    else {
-        return w * h;
-    }
-}
-
-template <typename scalar_t>
-__device__ __forceinline__  scalar_t TBoxIou(scalar_t ax, scalar_t ay, scalar_t aw, scalar_t ah,
-        scalar_t bx, scalar_t by, scalar_t bw, scalar_t bh) {
-    auto i = TBoxIntersection(ax, ay, aw, ah, bx, by, bw, bh);
-    auto u = aw * ah + bw * bh - i;
-    return i / u;
-}
-
 
 template <typename scalar_t>
 __global__ void ExtractBoundingBox(int total, int num_anchor, int height, int width, 

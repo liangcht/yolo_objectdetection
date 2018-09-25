@@ -17,6 +17,8 @@ if op.dirname(this_file):
     os.chdir(op.dirname(this_file))
 script_dir = os.getcwd()
 
+include_dirs = [op.abspath('./mtorch/common/')]
+
 
 def readme(fname):
     """Read text out of a file in the same directory as setup.py.
@@ -37,15 +39,15 @@ setup(
         CUDAExtension('region_target_cuda', [
             'mtorch/rt/rt_cuda.cpp',
             'mtorch/rt/rt_cuda_kernel.cu',
-        ]),
+        ], include_dirs=include_dirs),
         CUDAExtension('smt_cuda', [
             'mtorch/smt/smt_cuda.cpp',
             'mtorch/smt/smt_cuda_kernel.cu',
-        ]),
+        ], include_dirs=include_dirs),
         CUDAExtension('smtl_cuda', [
             'mtorch/smtl/smtl_cuda.cpp',
             'mtorch/smtl/smtl_cuda_kernel.cu',
-        ]),
+        ], include_dirs=include_dirs),
     ],
     cmdclass={
         'build_ext': BuildExtension
