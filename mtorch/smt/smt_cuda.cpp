@@ -2,6 +2,8 @@
 
 #include <vector>
 
+#include "mtorch_common.h"
+
 // CUDA forward declarations
 
 std::vector<at::Tensor> smt_cuda_forward(
@@ -15,16 +17,6 @@ std::vector<at::Tensor> smt_cuda_backward(
     int outer_num, int inner_num, int axis);
 
 // C++ interface
-
-// Work-around ATen regression
-#ifndef AT_ASSERTM
-#define AT_ASSERTM AT_ASSERT
-#endif
-
-#define CHECK_CUDA(x) AT_ASSERTM(x.type().is_cuda(), #x " must be a CUDA tensor")
-#define CHECK_CONTIGUOUS(x) AT_ASSERTM(x.is_contiguous(), #x " must be contiguous")
-#define CHECK_INPUT(x) CHECK_CUDA(x); CHECK_CONTIGUOUS(x)
-
 std::vector<at::Tensor> smt_forward(
     at::Tensor input,
     at::Tensor group_offset, at::Tensor group_size,
