@@ -10,6 +10,8 @@ import numpy as np
 import torch
 from torch.optim import Adam
 import torch.distributed as dist
+from torch.utils.data import DataLoader
+
 
 try:
     # indirect import of matplotlib (e.g. by caffe) may try to load non-existent X
@@ -42,6 +44,8 @@ from mmod.simple_parser import parse_prototxt, read_model
 from mtorch.caffenet import CaffeNet
 from mtorch.caffesgd import CaffeSGD
 from mtorch.multifixed_scheduler import MultiFixedScheduler
+from mtorch.imdbdata import ImdbData
+from mtorch.tbox_utils import Labeler, DarknetAugmentation
 
 
 class AverageMeter(object):
@@ -247,7 +251,8 @@ class TorchSession(object):
         end = time.time()
 
         # compute output
-        data, labels = inputs()
+        data, labels = inputs[0].cuda(), inputs[1].cuda().float()
+             
         loss = model(data, labels)
         crit = torch.sum(loss)
         assert crit == crit, "Iteration: {} Stop because of NaN loss!".format(
@@ -278,7 +283,7 @@ class TorchSession(object):
         :type solver_path: str
         :type batch_size: int
         :type max_iter: int
-        :param with_caffemodel: if shouls create intermediate caffemodel
+        :param with_caffemodel: if should create intermediate caffemodel
         """
         if not solver_path:
             solver_path = self.solver_path
@@ -286,6 +291,7 @@ class TorchSession(object):
             batch_size = self.batch_size
         if not max_iter:
             max_iter = self.max_iter
+
         self.max_iter = max_iter
         self.batch_size = batch_size
         self.solver_path = solver_path
@@ -328,18 +334,16 @@ class TorchSession(object):
         model = CaffeNet(protofile, verbose=self.verbose,
                          local_gpus_size=len(self.gpus),
                          world_size=self.world_size,
-                         batch_size=batch_size)
-        inputs = model.inputs
-        model.inputs = None  # remove it because we do not want to checkpoint it
+                         batch_size=batch_size,
+                         use_pytorch_data_layer=True)
 
         # Load from caffemodel, before cuda()
         if snapshot_model and (not isinstance(snapshot_model, basestring) or snapshot_model.endswith(".caffemodel")):
             logging.info("Finetuning from weights")
             model.load_weights(snapshot_model)
             snapshot_model = None
-
+        params = model.net_info['layers'][0]
         model = model.cuda()
-        inputs = inputs.cuda()
 
         if self.world_size > 1:
             logging.info("Distributed; gpus: {} devices: {}".format(self.gpus, torch.cuda.device_count()))
@@ -359,6 +363,10 @@ class TorchSession(object):
         # Load the checkpoint as a DDP/DP, like what it is saved
         snapshot_iterations = -1
         checkpoint = None
+        # TODO: remove inputs form model
+        model.inputs = dict()
+        model.inputs["data"] = None
+        model.inputs["label"] = None
         if snapshot_model:
             snapshot_iterations = self.iterations
             logging.info("Finetuning from snapshot: {}".format(snapshot_model))
@@ -410,17 +418,32 @@ class TorchSession(object):
 
         # switch to train mode
         model.train()
+        
+        augmenter = DarknetAugmentation()
+        labeler = Labeler()
+        augmented_dataset = ImdbData(path=params['tsv_data_param']['source'], 
+                                transform=augmenter(params), labeler=labeler)
 
-        while self.iterations < self.max_iter:
+        if self.batch_size is None:
+            self.batch_size = int(params['tsv_data_param']['batch_size'])
+
+        self.batch_size *= len(self.gpus)  # TODO: fix on philly
+
+        data_loader = DataLoader(augmented_dataset, batch_size=self.batch_size,
+                                 shuffle=True,
+                                 # TODO: find way to increase number of workers on 1 GPU
+                                 num_workers=8 if len(self.gpus) > 1 else 0,
+                                 pin_memory=True)  # TODO: should it be False?
+        
+        for self.iterations in range(self.max_iter):
             if scheduler:
                 scheduler.step()
+            for i, batch_inputs in enumerate(data_loader):
+                 self.train_batch(model, batch_inputs, optimizer)
 
-            self.train_batch(model, inputs, optimizer)
-            if self.iterations != snapshot_iterations and self.snapshot_interval and \
-                    self.iterations % self.snapshot_interval == 0:
+            if self.iterations % self.snapshot_interval == 0:
                 self.snapshot(model, optimizer=optimizer, with_caffemodel=self.iterations and with_caffemodel)
 
-            self.iterations += 1
 
         # last snapshot
         self.snapshot(model, optimizer=optimizer, with_caffemodel=True)

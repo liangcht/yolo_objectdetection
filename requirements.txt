@@ -6,3 +6,6 @@ easydict
 loky
 ete2
 mpi4py
+skimage==0.4.11
+torch==0.4.1
+torchvision==0.2.0
