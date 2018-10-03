@@ -33,7 +33,8 @@ from mmod.experiment import Experiment
 from mmod.filelock import FileLock
 
 
-def run_detect(gpus, caffenet=None, caffemodel=None,
+def run_detect(gpus=None, caffenet=None, caffemodel=None,
+               exp=None, thresh=None, class_thresh=None, obj_thresh=None,
                test_data=None,
                logger=None, interval=1, iterations=0, input_range=None, root=None, expid=None):
     """Run detection detection and evaluation
@@ -43,6 +44,11 @@ def run_detect(gpus, caffenet=None, caffemodel=None,
     :type caffenet: str
     :param caffemodel: The caffemodel weights file path
     :type caffemodel: str
+    :param exp: The experiment to initialize with
+    :type exp: Experiment
+    :param thresh: global class threshold
+    :param class_thresh: per-class threshold
+    :param obj_thresh: objectness threshold
     :param test_data: test_data for evaluation
             it can be a subdirectory name inside the 'data' folder
             it can be an constructed as ImageDatabase
@@ -56,37 +62,39 @@ def run_detect(gpus, caffenet=None, caffemodel=None,
     :param expid: Extra experiment ID
     :rtype: mmod.experiment.Experiment
     """
-    if logger is not None:
-        for arg in [caffenet, caffemodel, test_data]:
-            assert arg is not None
-        assert op.isfile(caffenet) and op.isfile(caffemodel)
-
+    if gpus is None:
+        gpus = list(gpu_indices())
     num_gpu = len(gpus)
     logging.info("Detecting {} for {} on {} GPUs".format(caffemodel, test_data, num_gpu))
 
-    name = None
-    if op.isabs(test_data) and (op.isdir(test_data) or op.isfile(test_data)):
-        imdb = ImageDatabase(test_data)
+    if exp is not None:
+        imdb = exp.imdb
     else:
-        # when test_data is a subdirectory inside 'data', quickdetection generated
-        for fname in ['testX.tsv', 'test.tsv']:
-            intsv_file = op.join('data', test_data, fname)
-            if op.isfile(intsv_file):
-                break
-        name = op.basename(caffemodel) + "." + test_data
-        imdb = ImageDatabase(intsv_file, name=test_data)
-        if expid:
-            name += ".{}".format(expid)
+        assert test_data
+        assert caffenet and caffemodel and op.isfile(caffenet) and op.isfile(caffemodel)
+        name = None
+        if op.isabs(test_data) and (op.isdir(test_data) or op.isfile(test_data)):
+            imdb = ImageDatabase(test_data)
+        else:
+            # when test_data is a subdirectory inside 'data', quickdetection generated
+            for fname in ['testX.tsv', 'test.tsv']:
+                intsv_file = op.join('data', test_data, fname)
+                if op.isfile(intsv_file):
+                    break
+            name = op.basename(caffemodel) + "." + test_data
+            imdb = ImageDatabase(intsv_file, name=test_data)
+            if expid:
+                name += ".{}".format(expid)
 
-    caffemodel_clone = None
-    if op.isdir("/tmp"):
-        caffemodel_clone = op.join("/tmp", "{}.caffemodel".format(ompi_rank()))
-        shutil.copy(caffemodel, caffemodel_clone)
-        if os.stat(caffemodel_clone).st_size < 1:
-            logging.error("caffemodel: {} is not ready yet".format(caffemodel))
-            return
-    exp = Experiment(imdb, caffenet, caffemodel, caffemodel_clone=caffemodel_clone,
-                     input_range=input_range, name=name, root=root, expid=expid)
+        caffemodel_clone = None
+        if op.isdir("/tmp"):
+            caffemodel_clone = op.join("/tmp", "{}.caffemodel".format(ompi_rank()))
+            shutil.copy(caffemodel, caffemodel_clone)
+            if os.stat(caffemodel_clone).st_size < 1:
+                logging.error("caffemodel: {} is not ready yet".format(caffemodel))
+                return
+        exp = Experiment(imdb, caffenet, caffemodel, caffemodel_clone=caffemodel_clone,
+                         input_range=input_range, name=name, root=root, expid=expid)
 
     outtsv_file = exp.predict_path
     if op.isfile(outtsv_file):
@@ -142,7 +150,10 @@ def run_detect(gpus, caffenet=None, caffemodel=None,
                 key, im = out
                 det_idx = idx % len(detectors)
                 detector = detectors[det_idx]
-                result = detector.detect_async(key, im=im)
+                result = detector.detect_async(
+                    key, im=im,
+                    thresh=thresh, class_thresh=class_thresh, obj_thresh=obj_thresh
+                )
                 result.add_done_callback(result_done)  # call when future is done to averlap
                 processed += 1
                 if logger and processed % 100 == 0:

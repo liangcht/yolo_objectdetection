@@ -70,17 +70,24 @@ def im_detect(caffe_net, im, pixel_mean=None, target_size=416, maintain_ratio=Tr
     return prob, bbox
 
 
-def result2bblist(im, probs, boxes, class_map, thresh=0):
+def result2bblist(im, probs, boxes, class_map, thresh=None, obj_thresh=None, class_thresh=None):
+    if thresh is None:
+        thresh = 0
+    if obj_thresh is None:
+        obj_thresh = 0
     class_num = probs.shape[1] - 1  # the last one is obj_score * max_prob
 
     det_results = []
     for i, box in enumerate(boxes):
-        if probs[i, -1] <= 0:
+        if probs[i, -1] <= obj_thresh:
             continue
         if probs[i, 0:-1].max() <= thresh:
             continue
         for j in range(class_num):
             if probs[i, j] <= thresh:
+                continue
+            label = class_map[j]
+            if class_thresh and probs[i, j] < class_thresh[label]:
                 continue
 
             x, y, w, h = box
@@ -101,7 +108,7 @@ def result2bblist(im, probs, boxes, class_map, thresh=0):
             assert j < len(class_map), "Invalid labelmap or network: predicted class index: {} >= count: {}".format(
                 j, len(class_map)
             )
-            crect['class'] = class_map[j]
+            crect['class'] = label
             crect['conf'] = max(round(probs[i, j], 4), 0.00001)
             crect['obj'] = max(round(probs[i, -1], 4), 0.00001)
             det_results.append(crect)

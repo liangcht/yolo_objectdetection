@@ -132,7 +132,7 @@ def detinit(exp, num_gpu=0, gpu=None):
     return _net, _exp
 
 
-def detect(exp, num_gpu, gpu, to_json, key, im=None, **kwargs):
+def detect(exp, num_gpu, gpu, to_json, key, im=None, thresh=None, class_thresh=None, obj_thresh=None, **kwargs):
     """Detect the key in the experiment
     :type exp: Experiment
     :param num_gpu: Number of GPUs
@@ -140,12 +140,16 @@ def detect(exp, num_gpu, gpu, to_json, key, im=None, **kwargs):
     :param to_json: if should covert the output to json
     :param key: the key to detect in the experiment
     :param im: image
+    :param thresh: global class threshold
+    :param class_thresh: per-class threshold
+    :param obj_thresh: objectness threshold
     """
     net, exp = detinit(exp, num_gpu, gpu)
     if im is None:
         im = exp.imdb.image(key)
     scores, boxes = im_detect(net, im, **kwargs)
-    result = result2bblist(im, scores, boxes, exp.cmap)
+    result = result2bblist(im, scores, boxes, exp.cmap,
+                           thresh=thresh, obj_thresh=obj_thresh, class_thresh=class_thresh)
     if to_json:
         result = json.dumps(result, separators=(',', ':'), sort_keys=True)
     uid = exp.imdb.uid(key)

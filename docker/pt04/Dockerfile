@@ -37,6 +37,8 @@ RUN echo 'export PATH=/opt/conda/bin:$PATH' > /etc/profile.d/conda.sh && \
     wget --quiet https://repo.anaconda.com/archive/Anaconda2-5.2.0-Linux-x86_64.sh -O ~/anaconda.sh && \
     /bin/bash ~/anaconda.sh -b -p /opt/conda && \
     rm ~/anaconda.sh
+# regular user to be able to install new package here
+RUN chmod 777 /opt/conda/lib/python2.7/site-packages
 
 # pip packages
 COPY requirements.txt /home/job
