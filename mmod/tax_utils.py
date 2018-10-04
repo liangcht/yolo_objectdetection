@@ -3,8 +3,9 @@ import numpy as np
 import os.path as op
 from mmod.imdb import ImageDatabase
 from mmod.taxonomy import Taxonomy
-from mmod.utils import open_with_lineidx, splitfilename, open_file, makedirs
+from mmod.utils import open_with_lineidx, open_file, makedirs, tsv_read
 from mmod.im_utils import int_rect, tile_rects
+from mmod.simple_tsv import SimpleTsv
 
 
 def iterate_tsv_imdb(path, valid_splits=None):
@@ -58,6 +59,21 @@ def sample_tax(tax, dbs, max_label):
                     break
             if label_count[label] >= max_label:
                 break
+
+
+def create_predict_keys(db, predict_file):
+    """Create .predict.keys for a prediction file
+    :param db: the imdb to get the keys from
+    :type db: ImageDatabase
+    :param predict_file: path to .predict file
+    :type predict_file: str
+    """
+    tsv = SimpleTsv(predict_file)
+    with open(predict_file) as fp, open(predict_file + ".keys", "w") as kfp:
+        for offset in tsv.offsets():
+            cols = tsv_read(fp, 1, seek_offset=offset)
+            uid = db.uid_of_image_key(cols[0])
+            kfp.write("{}\t{}\n".format(uid, offset))
 
 
 def create_inverted(db, path=None, shuffle=None, labelmap=None,

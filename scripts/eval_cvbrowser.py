@@ -23,6 +23,7 @@ from mmod.experiment import Experiment
 from mmod.api_utils import convert_api
 from mmod.runeval import run_eval, run_detect
 from mmod.simple_parser import parse_prototxt, parse_key_value
+from mmod.tax_utils import create_predict_keys
 
 
 def _conv_label(lb, cmap):
@@ -40,6 +41,7 @@ class Logger(object):
         sys.stdout.flush()
 
 
+# TODO: break this into functions
 if __name__ == '__main__':
     init_logging()
     parser = argparse.ArgumentParser(description='Downsample a db and use the downsampled db to evaluate cvbrowser.')
@@ -65,6 +67,8 @@ if __name__ == '__main__':
                         help='test caffenet prototxt (will use SOLVER to find if not given)')
     parser.add_argument('--cmap', '--labelmap',
                         help='labelmap file (will use SOLVER to find if not given)')
+    parser.add_argument('--predict',
+                        help='Prediction file to use (to avoid prediction step)')
     parser.add_argument('--auth',
                         help='Authentication file path',
                         default="~/auth/cvbrowser.txt")
@@ -85,11 +89,11 @@ if __name__ == '__main__':
     makedirs(out_path, exist_ok=True)
     assert op.isdir(out_path), "{} is not an accessable directory path".format(out_path)
 
-    path = args['dbpath']
-    assert op.isfile(path), "{} is not a valid file path".format(path)
-    imdb = ImageDatabase(path)
-    size = args['size']
-    assert len(imdb) >= size > 0, "Invalid sample size: {} for db: {}".format(size, imdb)
+    with_predict = False
+    outtsv_file = args['predict']
+    if outtsv_file:
+        assert op.isfile(outtsv_file), "Cannot access prediction file: {}".format(outtsv_file)
+        with_predict = True
 
     caffenet = args['net']
     caffemodel = args['weights']
@@ -105,7 +109,8 @@ if __name__ == '__main__':
             net = parse_prototxt(solverfile)
             if not caffemodel:
                 caffemodel = net["snapshot_prefix"] + "_iter_" + net["max_iter"] + ".caffemodel"
-                assert op.isfile(caffemodel), "caffemodel: {} in {} does not exist".format(caffemodel, solverfile)
+                if not outtsv_file:
+                    assert op.isfile(caffemodel), "caffemodel: {} in {} does not exist".format(caffemodel, solverfile)
             if not caffenet or not cmapfile:
                 train_protofile = net.get("train_net") or net.get("net")
             if not cmapfile:
@@ -113,9 +118,8 @@ if __name__ == '__main__':
                 assert op.isfile(cmapfile), "cmapfile: {} in {} does not exist".format(cmapfile, solverfile)
             if not caffenet:
                 caffenet = op.join(op.dirname(train_protofile), "test.prototxt")
-                assert op.isfile(caffenet), "caffenet: {} in {} does not exist".format(caffenet, solverfile)
-    assert caffemodel and caffemodel and op.isfile(caffemodel) and op.isfile(caffenet), \
-        "caffemodel: {} or caffenet: {} do not exist".format(caffenet, caffemodel)
+                if not outtsv_file:
+                    assert op.isfile(caffenet), "caffenet: {} in {} does not exist".format(caffenet, solverfile)
 
     if not cmapfile and caffenet:
         cmapfile = parse_key_value(caffenet, "labelmap")
@@ -123,11 +127,27 @@ if __name__ == '__main__':
             cmapfile = op.join(op.dirname(parse_key_value(caffenet, "tree")), "labelmap.txt")
     assert cmapfile and op.isfile(cmapfile), "cmapfile: {} does not exist".format(cmapfile)
 
-    name = op.basename(caffemodel) + "." + exp_id
-    exp = Experiment(imdb, caffenet, caffemodel, name=name, cmapfile=cmapfile)
-    logging.info("Input experiment: {}".format(exp))
-    outtsv_file = exp.predict_path
-    new_label_file = op.join(out_path, "test0.tsv")
+    path = args['dbpath']
+    assert op.isfile(path), "{} is not a valid file path".format(path)
+    imdb = ImageDatabase(path, cmapfile=cmapfile)
+    size = args['size']
+    assert len(imdb) >= size > 0, "Invalid sample size: {} for db: {}".format(size, imdb)
+
+    if not outtsv_file:
+        assert caffemodel and caffemodel and op.isfile(caffemodel) and op.isfile(caffenet), \
+            "caffemodel: {} or caffenet: {} do not exist".format(caffenet, caffemodel)
+        name = op.basename(caffemodel) + "." + exp_id
+        exp = Experiment(imdb, caffenet, caffemodel, name=name, cmapfile=cmapfile)
+        logging.info("Input experiment: {}".format(exp))
+        outtsv_file = exp.predict_path
+        keys_file = outtsv_file + ".keys"
+        cmap = exp.cmap
+    else:
+        cmap = imdb.cmap
+        keys_file = outtsv_file + ".keys"
+        if not op.isfile(keys_file):
+            logging.info("Creating keys: {} from db: {}".format(keys_file, imdb))
+            create_predict_keys(imdb, outtsv_file)
 
     obj_thresh = args['obj_thresh']
     assert obj_thresh >= 0, "obj_thresh: {} < 0".format(obj_thresh)
@@ -139,32 +159,52 @@ if __name__ == '__main__':
     else:
         assert op.isfile(thresh), 'threshold file: {} does not exist'.format(thresh)
         with open(thresh) as f:
-            class_thresh = {_conv_label(l[0], exp.cmap): float(l[1].rstrip()) for l in
+            class_thresh = {_conv_label(l[0], cmap): float(l[1].rstrip()) for l in
                             [line.split('\t') for line in f.readlines()]}
         thresh = None
 
     np.random.seed(args['seed'])
     input_range = np.random.choice(len(imdb) - 1, replace=False, size=(size,))
 
-    if not op.isfile(outtsv_file) or args['clean']:
+    if not with_predict and (not op.isfile(outtsv_file) or args['clean']):
         run_detect(exp=exp, logger=Logger(),
                    thresh=thresh, class_thresh=class_thresh, obj_thresh=obj_thresh, input_range=input_range)
-    else:
-        logging.info("Using previous prediction: {}, use --clean to re-do".format(outtsv_file))
+    elif not with_predict:
+        logging.info("Using previous prediction: {}, use --clean to re-do detection".format(outtsv_file))
 
+    assert op.isfile(outtsv_file), "no prediction file: {}".format(outtsv_file)
+    assert op.isfile(keys_file), "no keys file: {}".format(keys_file)
     all_det = {}
-    with open(outtsv_file) as fp, open(outtsv_file + ".keys") as fpk:
+    with open(outtsv_file) as fp, open(keys_file) as fpk:
         for line in fpk:
             uid, offset = line.split("\t")
+            if with_predict:
+                key = imdb.normkey(uid)
+                source, lidx, idx = key
+                if idx not in input_range:
+                    # if this detection is not in the down-sampled db
+                    continue
             offset = int(offset)
             cols = tsv_read(fp, 2, seek_offset=offset)
-            all_det[uid] = json.loads(cols[1])
+            result = json.loads(cols[1])
+            if with_predict:
+                # previous prediction files may have different thresholds
+                result = [
+                    crect for crect in result
+                    if crect['conf'] >= (class_thresh[crect['class']] if class_thresh else thresh)
+                ]
+            all_det[uid] = result
 
+    assert len(all_det) == size, \
+        "detections: {} != size: {}, some needed images have no detection in {}, run with --clean".format(
+        len(all_det), size, outtsv_file
+    )
+    new_label_file = op.join(out_path, "test0.tsv")
     with open_with_lineidx(new_label_file) as fp:
         with imdb.open():
             for idx in range(len(imdb)):
-                key = exp.imdb.normkey(idx)
-                uid = exp.imdb.uid(key)
+                key = imdb.normkey(idx)
+                uid = imdb.uid(key)
                 if uid not in all_det:
                     fp.write("d\td\n")
                     continue
@@ -186,32 +226,35 @@ if __name__ == '__main__':
     evalexp = Experiment(evaldb, caffenet, caffemodel, name=name, cmapfile=cmapfile)
     outtsv_file = evalexp.predict_path
 
-    session = requests.Session()
-    with open(op.expanduser(args['auth'])) as fp:
-        session.auth = ("Basic", fp.readline().strip())
-    session.headers.update({'Content-Type': 'application/octet-stream'})
+    if not op.isfile(outtsv_file) or args['clean']:
+        session = requests.Session()
+        with open(op.expanduser(args['auth'])) as fp:
+            session.auth = ("Basic", fp.readline().strip())
+        session.headers.update({'Content-Type': 'application/octet-stream'})
 
-    logging.info("cvapi detection for {}".format(evalexp))
-    processed = 0
-    total_count = len(evaldb)
-    with open_with_lineidx(outtsv_file, "w") as fp:
-        for key in evaldb:
-            uid = evaldb.uid(key)
-            data = evaldb.raw_image(uid)
-            res = session.post(args['api'], data=data)
-            assert res.status_code == 200, "cvapi post failed uid: {}".format(uid)
-            result = convert_api(json.loads(res.content)['objects'])
-            result = [
-                crect for crect in result
-                if crect['conf'] >= (class_thresh[crect['class']] if class_thresh else thresh)
-            ]
-            fp.write("{}\t{}\n".format(
-                uid,
-                json.dumps(result, separators=(',', ':'), sort_keys=True),
-            ))
-            processed += 1
-            print("{} of {}    ".format(processed, total_count), end='\r')
-            sys.stdout.flush()
+        logging.info("cvapi detection for {}".format(evalexp))
+        processed = 0
+        total_count = len(evaldb)
+        with open_with_lineidx(outtsv_file, "w") as fp:
+            for key in evaldb:
+                uid = evaldb.uid(key)
+                data = evaldb.raw_image(uid)
+                res = session.post(args['api'], data=data)
+                assert res.status_code == 200, "cvapi post failed uid: {}".format(uid)
+                result = convert_api(json.loads(res.content)['objects'])
+                result = [
+                    crect for crect in result
+                    if crect['conf'] >= (class_thresh[crect['class']] if class_thresh else thresh)
+                ]
+                fp.write("{}\t{}\n".format(
+                    uid,
+                    json.dumps(result, separators=(',', ':'), sort_keys=True),
+                ))
+                processed += 1
+                print("{} of {}    ".format(processed, total_count), end='\r')
+                sys.stdout.flush()
+    else:
+        logging.info("Using previous cvapi prediction: {}, use --clean to re-do detection".format(outtsv_file))
 
-    logging.info("Evaluating {}".format(exp))
+    logging.info("Evaluating {}".format(evalexp))
     run_eval(evalexp)

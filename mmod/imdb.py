@@ -5,7 +5,8 @@ import json
 import numpy as np
 from contextlib import contextmanager
 
-from mmod.simple_parser import tsv_data_sources, read_model_proto, softmax_tree_path, parse_key_value
+from mmod.simple_parser import tsv_data_sources, read_model_proto, softmax_tree_path, parse_key_value, \
+    load_labelmap_list
 from mmod.tsv_file import TsvFile
 from mmod.im_utils import img_from_base64, img_from_file, recursive_files_list, VALID_IMAGE_TYPES
 from mmod.utils import tsv_read, file_cache, FileCache, splitfilename
@@ -19,14 +20,14 @@ class ImageDatabase(object):
     _DB_TYPE_TSV = 3        # a TSV file
     _DB_TYPE_IMAGE = 4      # a single image file
 
-    def __init__(self, path, raise_error=False, name=None):
+    def __init__(self, path, raise_error=False, name=None, cmapfile=None):
         self._index = None  # type: TsvFile or list
         self._cache = None  # type: FileCache
         self._type = None
         self._raise_error_invalid_image = raise_error
         self._name = name  # type: str
         self._tax_path = None  # type: str
-        self._cmapfile = None  # type: str
+        self._cmapfile = cmapfile  # type: str
         self._cached_truth = None  # type: dict
         self._image_keys = {}
         if op.isdir(path):
@@ -51,7 +52,8 @@ class ImageDatabase(object):
             model = read_model_proto(path)
             self._tax_path = softmax_tree_path(model)
             sources, labels = tsv_data_sources(model)
-            self._cmapfile = parse_key_value(path, 'labelmap')
+            if not self._cmapfile:
+                self._cmapfile = parse_key_value(path, 'labelmap')
 
             self._index = TsvFile(sources,
                                   labels=labels,
@@ -124,6 +126,11 @@ class ImageDatabase(object):
         """
         if self.is_directory or self.is_image:
             raise NotImplementedError("truth not implemented for db: '{}'".format(self.type))
+
+        if self._cmapfile:
+            for label in load_labelmap_list(self._cmapfile):
+                yield label
+            return
 
         # if there is no cmapfile nor inverted file
         if not self._index.has_cmapfile and not self._index.has_inverted:
