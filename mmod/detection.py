@@ -87,7 +87,7 @@ def result2bblist(im, probs, boxes, class_map, thresh=None, obj_thresh=None, cla
             if probs[i, j] <= thresh:
                 continue
             label = class_map[j]
-            if class_thresh and probs[i, j] < class_thresh[label]:
+            if class_thresh and probs[i, j] <= class_thresh[label]:
                 continue
 
             x, y, w, h = box
@@ -98,16 +98,17 @@ def result2bblist(im, probs, boxes, class_map, thresh=None, obj_thresh=None, cla
             top = (y - h / 2.)
             bot = (y + h / 2.)
 
-            left = int(max(left, 0))
-            right = int(min(right, im_w - 1))
-            top = int(max(top, 0))
-            bot = int(min(bot, im_h - 1))
+            left = max(left, 0)
+            left = min(left, im_w - 1)
+            right = max(right, 0)
+            right = min(right, im_w - 1)
+            top = max(top, 0)
+            top = min(top, im_h - 1)
+            bot = max(bot, 0)
+            bot = min(bot, im_h - 1)
 
             crect = dict()
             crect['rect'] = map(float, [left, top, right, bot])
-            assert j < len(class_map), "Invalid labelmap or network: predicted class index: {} >= count: {}".format(
-                j, len(class_map)
-            )
             crect['class'] = label
             crect['conf'] = max(round(probs[i, j], 4), 0.00001)
             crect['obj'] = max(round(probs[i, -1], 4), 0.00001)
