@@ -74,7 +74,7 @@ if __name__ == '__main__':
                         default="~/auth/cvbrowser.txt")
     parser.add_argument('--api',
                         help='CV API endpoint url',
-                        default="http://tax1300v14x1.westus.azurecontainer.io/api/detect")
+                        default="http://tax1300v14x3.westus.azurecontainer.io/api/detect")
     parser.add_argument('-e', '--expid', '--jobid',
                         help='The full experiment ID',
                         required=True)
@@ -210,7 +210,7 @@ if __name__ == '__main__':
                     continue
                 result = all_det[uid]
                 fp.write("{}\t{}\n".format(
-                    uid,
+                    imdb.image_key(key),
                     json.dumps(result, separators=(',', ':'), sort_keys=True),
                 ))
 
@@ -235,7 +235,8 @@ if __name__ == '__main__':
         logging.info("cvapi detection for {}".format(evalexp))
         processed = 0
         total_count = len(evaldb)
-        with open_with_lineidx(outtsv_file, "w") as fp:
+        with open_with_lineidx(outtsv_file, "w") as fp, \
+                open_with_lineidx(outtsv_file + ".keys") as kfp:
             for key in evaldb:
                 uid = evaldb.uid(key)
                 data = evaldb.raw_image(uid)
@@ -246,9 +247,13 @@ if __name__ == '__main__':
                     crect for crect in result
                     if crect['conf'] >= (class_thresh[crect['class']] if class_thresh else thresh)
                 ]
+                tell = fp.tell()
                 fp.write("{}\t{}\n".format(
-                    uid,
+                    evaldb.image_key(key),
                     json.dumps(result, separators=(',', ':'), sort_keys=True),
+                ))
+                kfp.write("{}\t{}\n".format(
+                    uid, tell
                 ))
                 processed += 1
                 print("{} of {}    ".format(processed, total_count), end='\r')
