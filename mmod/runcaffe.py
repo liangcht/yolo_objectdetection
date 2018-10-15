@@ -24,7 +24,7 @@ from mmod.phillylogger import PhillyLogger
 from mmod.utils import makedirs, cwd, run_and_terminate_process, kill_after, init_logging, \
     ompi_rank, ompi_size, gpu_indices
 from mmod.philly_utils import expand_vc_user, abspath, mirror_paths, get_log_parent, get_arg, last_log_dir, \
-    get_model_path, set_job_id, job_id
+    get_model_path, set_job_id, job_id, is_local
 from mmod.checkpoint import last_checkpoint
 from mmod.simple_parser import parse_key_value, parse_prototxt, save_prototxt
 from mmod.io_utils import load_from_yaml_file
@@ -306,7 +306,7 @@ def main():
     parser = argparse.ArgumentParser(description='Run Caffe training with given config file.')
 
     parser.add_argument('-d', '--datadir', '--dataDir', help='Data directory where the dataset is located',
-                        required=True)
+                        default='data')
     parser.add_argument('-m',  '--outputdir', '--modeldir', '--modelDir',
                         help='Output directory for checkpoints and models',
                         required=False)
@@ -385,18 +385,21 @@ def main():
     if not gpus:
         gpus = list(gpu_indices())
 
-    work_path = '/tmp/work'
-    # Work-around to use current taxonomies with no change
-    with FileLock(work_path):
-        sym_data_path = op.join(work_path, 'data')
-        if not op.isdir(sym_data_path):
-            logging.info("Creating the sym path: {}".format(sym_data_path))
-            makedirs(work_path, exist_ok=True)
-            try:
-                os.symlink(data_path, sym_data_path)
-            except OSError as e:
-                if not op.isdir(sym_data_path):
-                    print('Symlink: {} Error: {}'.format(sym_data_path, e))
+    if is_local() and op.normpath('./data') == op.normpath(data_path):
+        work_path = '.'
+    else:
+        work_path = '/tmp/work'
+        # Work-around to use current taxonomies with no change
+        with FileLock(work_path):
+            sym_data_path = op.join(work_path, 'data')
+            if not op.isdir(sym_data_path):
+                logging.info("Creating the sym path: {}".format(sym_data_path))
+                makedirs(work_path, exist_ok=True)
+                try:
+                    os.symlink(data_path, sym_data_path)
+                except OSError as e:
+                    if not op.isdir(sym_data_path):
+                        print('Symlink: {} Error: {}'.format(sym_data_path, e))
 
     # Config files may assume paths relative to input data path
     with cwd(work_path):

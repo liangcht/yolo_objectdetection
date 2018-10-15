@@ -23,7 +23,7 @@ if __name__ == '__main__':
 from mmod.phillylogger import PhillyLogger
 from mmod.utils import makedirs, cwd, init_logging, gpu_indices, ompi_rank
 from mmod.runcaffe import moved_solvers
-from mmod.philly_utils import abspath, get_log_parent, get_arg, last_log_dir, set_job_id
+from mmod.philly_utils import abspath, get_log_parent, get_arg, last_log_dir, set_job_id, is_local
 from mmod.checkpoint import iterate_weights
 from mmod.io_utils import write_to_file, read_to_buffer
 from mmod.deteval import deteval
@@ -232,7 +232,7 @@ def main():
     parser = argparse.ArgumentParser(description='Evaluate a Caffe training (while it is running).')
 
     parser.add_argument('-d', '--datadir', '--dataDir', help='Data directory where the dataset is located',
-                        required=True)
+                        default='data')
     parser.add_argument('-m',  '--outputdir', '--modeldir', '--modelDir',
                         help='Ignored',
                         required=False)
@@ -299,18 +299,21 @@ def main():
     if not gpus:
         gpus = list(gpu_indices())
 
-    work_path = '/tmp/work'
-    # Work-around to use current taxonomies with no change
-    with FileLock(work_path):
-        sym_data_path = op.join(work_path, 'data')
-        if not op.isdir(sym_data_path):
-            logging.info("Creating the sym path: {}".format(sym_data_path))
-            makedirs(work_path, exist_ok=True)
-            try:
-                os.symlink(data_path, sym_data_path)
-            except OSError as e:
-                if not op.isdir(sym_data_path):
-                    print('Symlink: {} Error: {}'.format(sym_data_path, e))
+    if is_local() and op.normpath('./data') == op.normpath(data_path):
+        work_path = '.'
+    else:
+        work_path = '/tmp/work'
+        # Work-around to use current taxonomies with no change
+        with FileLock(work_path):
+            sym_data_path = op.join(work_path, 'data')
+            if not op.isdir(sym_data_path):
+                logging.info("Creating the sym path: {}".format(sym_data_path))
+                makedirs(work_path, exist_ok=True)
+                try:
+                    os.symlink(data_path, sym_data_path)
+                except OSError as e:
+                    if not op.isdir(sym_data_path):
+                        print('Symlink: {} Error: {}'.format(sym_data_path, e))
 
     with cwd(work_path):
         caffemodel_path = None

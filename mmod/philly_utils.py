@@ -217,6 +217,12 @@ def set_job_id(expid):
     makedirs(last_log_dir(), exist_ok=True)
 
 
+def is_local():
+    """If this is a local run (not on philly)
+    """
+    return os.environ.get('OCWD') is not None
+
+
 def get_log_parent(path=None):
     """Find the parent directory of the logs
     :param path: a path from the job
