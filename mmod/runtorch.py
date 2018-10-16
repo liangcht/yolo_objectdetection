@@ -31,7 +31,8 @@ if __name__ == '__main__':
 from mmod.phillylogger import PhillyLogger
 from mmod.utils import makedirs, cwd, init_logging, \
     ompi_rank, ompi_size, gpu_indices
-from mmod.philly_utils import get_log_parent, get_arg, abspath, get_master_ip, last_log_dir, get_model_path, set_job_id
+from mmod.philly_utils import get_log_parent, get_arg, abspath, get_master_ip, last_log_dir, get_model_path, \
+    set_job_id, is_local
 from mmod.checkpoint import last_checkpoint
 from mmod.filelock import FileLock
 from mmod.runcaffe import move_solvers
@@ -430,7 +431,7 @@ def main():
     parser = argparse.ArgumentParser(description='Run PyTorch training with given config file.')
 
     parser.add_argument('-d', '--datadir', '--dataDir', help='Data directory where the dataset is located',
-                        required=True)
+                        default='data')
     parser.add_argument('-m',  '--outputdir', '--modeldir', '--modelDir',
                         help='Output directory for checkpoints and models',
                         required=False)
@@ -525,18 +526,21 @@ def main():
     # Find previous log dir, to fill in the progress (used for cloning)
     prev_log_parent = get_log_parent(prev_model_path)
 
-    work_path = '/tmp/work'
-    # Work-around to use current taxonomies with no change
-    with FileLock(work_path):
-        sym_data_path = op.join(work_path, 'data')
-        if not op.isdir(sym_data_path):
-            logging.info("Creating the sym path: {}".format(sym_data_path))
-            makedirs(work_path, exist_ok=True)
-            try:
-                os.symlink(data_path, sym_data_path)
-            except OSError as e:
-                if not op.isdir(sym_data_path):
-                    print('Symlink: {} Error: {}'.format(sym_data_path, e))
+    if is_local() and op.normpath('./data') == op.normpath(data_path):
+        work_path = '.'
+    else:
+        work_path = '/tmp/work'
+        # Work-around to use current taxonomies with no change
+        with FileLock(work_path):
+            sym_data_path = op.join(work_path, 'data')
+            if not op.isdir(sym_data_path):
+                logging.info("Creating the sym path: {}".format(sym_data_path))
+                makedirs(work_path, exist_ok=True)
+                try:
+                    os.symlink(data_path, sym_data_path)
+                except OSError as e:
+                    if not op.isdir(sym_data_path):
+                        print('Symlink: {} Error: {}'.format(sym_data_path, e))
 
     # TODO: DistributedDataParallel is presumably better than DataParallel even on a single-node with (N > 1) GPUs
     # If world_size is 1 but we have (N > 1) GPUs, fake a world_size of N and spawn workers

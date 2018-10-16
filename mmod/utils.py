@@ -95,6 +95,9 @@ def init_logging():
 def cwd(path):
     """Change directory to the given path and back
     """
+    if path == '.':
+        yield
+        return
     oldpwd = os.getcwd()
     os.chdir(path)
     try:
@@ -531,7 +534,12 @@ def open_with_lineidx(path, with_temp=False):
     if with_temp:
         # TODO: fix for Windows
         tsv_file = "/tmp/to_move/" + path
-        makedirs(os.path.dirname(tsv_file), exist_ok=True)
+        try:
+            makedirs(os.path.dirname(tsv_file), exist_ok=True)
+        except OSError as e:
+            logging.error("Could not create temporary path: {} err: {}".format(tsv_file, e))
+            with_temp = False
+            tsv_file = path
     lineidx_file = op.splitext(tsv_file)[0] + ".lineidx"
     with open(tsv_file, 'wb') as fp, open(lineidx_file, 'wb') as fpidx:
         class _WithLineIdx(object):
