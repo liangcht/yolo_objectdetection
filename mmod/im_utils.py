@@ -96,10 +96,12 @@ def tile_rects(db, keys, key_rects, target_size, label, jpg_path):
     :param label: current label
     :param jpg_path: output jpg path
     """
+    
     rows = np.ceil(np.sqrt(len(keys)))
     cols = np.ceil(len(keys) / rows)
     collage = np.zeros((int(rows) * target_size, int(cols) * target_size, 3))
 
+    target_size = target_size - 8
     # try to pack them in one pass
     max_h = 0  # maximum height in the current row
     max_x = 0  # maximum x seen
@@ -117,7 +119,7 @@ def tile_rects(db, keys, key_rects, target_size, label, jpg_path):
         if x2 > collage.shape[1]:
             # next row
             x = 0
-            y += max_h
+            y += max_h + 4
             y2 = y + h
             x2 = x + w
             max_h = 0
@@ -125,9 +127,11 @@ def tile_rects(db, keys, key_rects, target_size, label, jpg_path):
             max_x = x2
         if h > max_h:
             max_h = h
+        
         collage[y:y2, x:x2] = roi
 
-        x = x2
+        x = x2 + 4
+        
 
     # clip the collage
     collage = collage[:y + max_h, :max_x, :]
