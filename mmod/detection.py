@@ -9,6 +9,7 @@ from mmod.im_utils import im_rescale
 
 
 def im_detect(caffe_net, im, pixel_mean=None, target_size=416, maintain_ratio=True, demean_after_pad=True):
+    assert im is not None, "Invalid image"
     if pixel_mean is None:
         pixel_mean = [104.0, 117.0, 123.0]
 
