@@ -79,6 +79,22 @@ def expand_vc_user(path):
     return path
 
 
+def fix_winpath(path):
+    """Fix Windows paths that are too long
+    :param path: the path to resolve
+    :type path: str
+    :rtype: str
+    """
+    if not path:
+        return path
+    if os.name == 'nt' and len(path) > 255:
+        if not op.isabs(path):
+            # if path is too long cannot use abspath either
+            path = op.join(op.abspath(expand_vc_user(".")), path)
+        return "\\\\?\\" + op.normpath(path)
+    return path
+
+
 def abspath(path, roots=None):
     """Expand ~ to VC's home and resolve relative paths to absolute paths
     :param path: the path to resolve
@@ -89,16 +105,16 @@ def abspath(path, roots=None):
     assert path, "{} is invalid path".format(path)
     path = expand_vc_user(path)
     if op.isabs(path):
-        return path.replace("\\", "/")
+        return fix_winpath(path).replace("\\", "/")
     if not roots:
-        roots = ["~"]
+        roots = [".", "~"]
     roots = [expand_vc_user(root) for root in roots]
     for root in roots:
-        resolved = op.abspath(op.join(root, path))
+        resolved = fix_winpath(op.abspath(op.join(root, path)))
         if op.isfile(resolved) or op.isdir(resolved):
             return resolved.replace("\\", "/")
     # return assuming the first root (even though it does not exist)
-    return op.abspath(op.join(roots[0], path)).replace("\\", "/")
+    return fix_winpath(op.abspath(op.join(roots[0], path)).replace("\\", "/")).replace("\\", "/")
 
 
 def mirror_paths(paths):
