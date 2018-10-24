@@ -51,6 +51,7 @@ def read_image(imdb, input_range, out_queue):
                 for idx in input_range:
                     key = imdb.normkey(idx)
                     im = imdb.image(key)
+                    assert im is not None, "Invalid image at key: {}".format(key)
                     out_queue.put((key, im))
         except Exception as e:
             logger.info("Exception {}".format(e))
@@ -119,7 +120,7 @@ def detinit(exp, num_gpu=0, gpu=None):
     if not exp.imdb.is_open():
         exp.imdb.open_db()
     if num_gpu:
-        assert num_gpu > gpu >= 0
+        assert num_gpu > 0 and gpu >= 0
         caffe.set_device(gpu)
         caffe.set_mode_gpu()
     else:
