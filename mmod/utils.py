@@ -216,14 +216,25 @@ def kill_after(process, timeout):
     Timer(timeout, _force_kill).start()
 
 
+def _try_get_gpus():
+    try:
+        import torch
+        return range(torch.cuda.device_count())
+    except ImportError:
+        return []
+
+
 def get_gpus_nocache():
     """List of NVIDIA GPUs
     """
     cmds = 'nvidia-smi --query-gpu=name --format=csv,noheader'.split(' ')
-    with run_and_terminate_process(cmds,
-                                   stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                                   bufsize=1) as process:
-        return [line.strip() for line in iter(process.stdout.readline, "")]
+    try:
+        with run_and_terminate_process(cmds,
+                                       stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                       bufsize=1) as process:
+            return [line.strip() for line in iter(process.stdout.readline, "")]
+    except RuntimeError:
+        return
 
 
 _GPUS = get_gpus_nocache()
@@ -232,6 +243,10 @@ _GPUS = get_gpus_nocache()
 def get_gpus():
     """List of NVIDIA GPUs
     """
+    global _GPUS
+    if _GPUS is None:
+        logging.error("nvidia-smi was not found")
+        _GPUS = _try_get_gpus()
     return _GPUS
 
 
