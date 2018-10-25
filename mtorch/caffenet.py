@@ -9,7 +9,6 @@ import torch
 import torch.nn as nn
 from torch.autograd import Variable
 from collections import OrderedDict
-
 from mmod.utils import init_logging, cwd
 from mmod.simple_parser import parse_prototxt, print_prototxt, read_model, read_blob
 
@@ -20,6 +19,8 @@ from mtorch.region_target import RegionTarget
 from mtorch.softmaxtree_loss import SoftmaxTreeWithLoss
 from mtorch.caffedata import CaffeData
 
+BOX_DIMS = 5  # TODO: should be defined by parameter
+NUM_CHANNELS = 3  # TODO: should be defined by parameter
 
 def _reshape(orig_dims, reshape_dims, axis=0, num_axes=-1):
     if num_axes == -1:
@@ -48,7 +49,8 @@ class CaffeNet(nn.Module):
                  local_gpus_size=1,
                  world_size=1,
                  seen_images=0, batch_size=None,
-                 phase='TRAIN'):
+                 phase='TRAIN',
+                 use_pytorch_data_layer=False):
         super(CaffeNet, self).__init__()
         self.phase = phase
         self.blobs = None
@@ -65,6 +67,8 @@ class CaffeNet(nn.Module):
 
         self.protofile = protofile
         self.net_info = parse_prototxt(protofile)
+
+        self.use_pytorch = use_pytorch_data_layer
 
         # if should have separate data layer (useful for distributed)
         # noinspection PyCallingNonCallable
@@ -496,7 +500,24 @@ class CaffeNet(nn.Module):
                     logging.info("Ignore {}({})".format(ltype, lname))
                 continue
             tname = layer['top']
-            if ltype in ['Data', 'AnnotatedData', 'TsvBoxData', 'HDF5Data']:
+            if ltype == 'TsvBoxData' and self.use_pytorch:  # backwards compatibility  to Caffe
+                self.height = int(layer['box_data_param']['random_min'])
+                self.width = int(layer['box_data_param']['random_min'])
+                data_name = tname[0]
+                label_name = tname[1]                
+                if not batch_size:
+                    batch_size = int(layer['tsv_data_param']['batch_size'])
+                    assert batch_size > 0, "Invalid batch_size: {} in prototxt".format(batch_size)
+                self.blob_dims[label_name] = (batch_size, BOX_DIMS * int(layer['box_data_param']['max_boxes']))
+                self.blob_dims[data_name] = (batch_size, NUM_CHANNELS, self.width, self.height)
+                i += 1
+                if self.network_verbose:
+                    logging.info('create %-20s %s' % (
+                        lname,
+                        self._blob_shape(tname)
+                    ))
+                continue
+            if ltype in ['Data', 'AnnotatedData', 'HDF5Data', 'TsvBoxData']: # includes backwards compatibility  to Caffe
                 if self.forward_net_only.item() and inputs is not None:
                     raise NotImplementedError("Compund data layers with forward_net_only not implemented yet")
                 inputs = CaffeData(layer.copy(), self.phase, self.local_gpus_size,

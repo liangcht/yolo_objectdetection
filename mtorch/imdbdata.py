@@ -6,31 +6,67 @@ except ImportError:
     from StringIO import StringIO
 
 from mmod.imdb import ImageDatabase
+from torchvision import transforms
+import threading
+
+# Dictionary key
+IMAGE = "image" # TODO: change to get that as parameter from prototxt
+LABEL = "bbox"   # TODO: change to get that as parameter from prototxt
+
+cur_data = threading.local()
 
 
 class ImdbData(data.Dataset):
+    """ This class encapsulates access to the database,
+    retrieves of a sample that corresponds to an input index from the database,
+    applies necessary transforms
+    and returns the sample
+    """
+
     def __init__(self, path,
-                 transform=None, target_transform=None):
+                 transform=None, labeler=None):
+        """Constructor of ImdbData
+        :param path: string - path to the dataset with images and labels
+        :param transform: see Transforms.py - transform to be applied on sample
+        :param labeler: see tbox_utils.py - object responsible for creating labels for sample
+        """
         self._path = path
         self.transform = transform
-        self.target_transform = target_transform
-        self.imdb = ImageDatabase(path)
-        self.imdb.open_db()  # open the db to keep the file objects open once
+        self.labeler = labeler
+        self.path = path
         assert len(self), "No images found in: {}".format(self.imdb)
 
     def __repr__(self):
         return 'ImdbData({}, size={})'.format(self._path, len(self))
 
     def __getitem__(self, index):
-        key = self.imdb.normkey(index)
-        raw = self.imdb.raw_image(index)
-        target = self.imdb.truth_list(key)
-        sample = Image.open(StringIO(raw)).convert('RGB')
+        imdb = self.imdb
+        key = imdb.normkey(index)
+        raw = imdb.raw_image(index)
+        img = Image.open(StringIO(raw)).convert('RGB')
+        if self.labeler is not None:
+            label = self.labeler(imdb.truth_list(key), imdb.cmap)
+            sample = {}
+            sample[IMAGE] = img
+            sample[LABEL] = label
+            self.img = img
+            self.label = label
+        else:
+            sample = img
         if self.transform is not None:
             sample = self.transform(sample)
-        if self.target_transform is not None:
-            target = self.target_transform(target)
-        return sample, target
+        if isinstance(sample, dict): 
+            return sample[IMAGE], sample[LABEL]
+        return sample
 
     def __len__(self):
         return len(self.imdb)
+    
+    @property
+    def imdb(self):
+        global cur_data
+        imdb = getattr(cur_data, 'imdb', None)
+        if imdb is None:
+            imdb = cur_data.imdb = ImageDatabase(self.path)
+            print(threading.current_thread().name)
+        return imdb
