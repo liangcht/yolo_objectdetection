@@ -22,6 +22,7 @@ from mtorch.caffedata import CaffeData
 BOX_DIMS = 5  # TODO: should be defined by parameter
 NUM_CHANNELS = 3  # TODO: should be defined by parameter
 
+
 def _reshape(orig_dims, reshape_dims, axis=0, num_axes=-1):
     if num_axes == -1:
         num_axes = len(orig_dims[axis:])
@@ -50,7 +51,7 @@ class CaffeNet(nn.Module):
                  world_size=1,
                  seen_images=0, batch_size=None,
                  phase='TRAIN',
-                 use_pytorch_data_layer=False):
+                 use_pytorch_data_layer=True):
         super(CaffeNet, self).__init__()
         self.phase = phase
         self.blobs = None
@@ -60,10 +61,12 @@ class CaffeNet(nn.Module):
         self.local_gpus_size = local_gpus_size  # local number of GPUs
         self.world_size = world_size
         self.gpus_size = local_gpus_size * world_size
+        self.batch_size = batch_size
         self.verbose = verbose
         self.network_verbose = network_verbose or self.verbose  # higher verbosity creating the network
         self.keep_diffs = keep_diffs or self.verbose
         self.blob_dims = dict()
+        self.input_index = None
 
         self.protofile = protofile
         self.net_info = parse_prototxt(protofile)
@@ -75,7 +78,7 @@ class CaffeNet(nn.Module):
         self.register_buffer('forward_net_only', torch.tensor(1 if forward_net_only else 0, dtype=torch.uint8))
         # noinspection PyCallingNonCallable
         self.register_buffer('seen_images', torch.tensor(seen_images, dtype=torch.long))
-        self.inputs, self.models = self.create_network(self.net_info, batch_size, width, height, channels)
+        self.models = self.create_network(width, height, channels)
         self.diffs = {}
         for name, model in self.models.items():
             assert isinstance(model, nn.Module)
@@ -435,19 +438,16 @@ class CaffeNet(nn.Module):
                     logging.error('unknown type %s' % ltype)
                 i = i + 1
 
-    def create_network(self, net_info,
-                       batch_size=None, input_width=None, input_height=None, input_channels=None,
+    def create_network(self,
+                       input_width=None, input_height=None, input_channels=None,
                        raise_unknown=True):
         models = OrderedDict()
-        inputs = None
 
-        layers = net_info['layers']
-        props = net_info['props']
+        layers = self.net_info['layers']
+        props = self.net_info['props']
         layer_num = len(layers)
 
-        n, c, h, w = self.local_gpus_size, 3, 1, 1
-        if batch_size is not None:
-            n *= batch_size
+        n, c, h, w = (self.batch_size or 1) * self.local_gpus_size, 3, 1, 1
         if input_channels is not None:
             c = input_channels
         if input_height is not None:
@@ -500,16 +500,20 @@ class CaffeNet(nn.Module):
                     logging.info("Ignore {}({})".format(ltype, lname))
                 continue
             tname = layer['top']
-            if ltype == 'TsvBoxData' and self.use_pytorch:  # backwards compatibility  to Caffe
+            if ltype == 'TsvBoxData' and self.use_pytorch:
+                if self.input_index is not None:
+                    raise NotImplementedError("Compound data layers not implemented yet for PyTorch data")
+                self.input_index = i
                 self.height = int(layer['box_data_param']['random_min'])
                 self.width = int(layer['box_data_param']['random_min'])
                 data_name = tname[0]
                 label_name = tname[1]                
-                if not batch_size:
-                    batch_size = int(layer['tsv_data_param']['batch_size'])
-                    assert batch_size > 0, "Invalid batch_size: {} in prototxt".format(batch_size)
-                self.blob_dims[label_name] = (batch_size, BOX_DIMS * int(layer['box_data_param']['max_boxes']))
-                self.blob_dims[data_name] = (batch_size, NUM_CHANNELS, self.width, self.height)
+                if not self.batch_size:
+                    self.batch_size = int(layer['tsv_data_param']['batch_size'])
+                    assert self.batch_size > 0, "Invalid batch_size: {} in prototxt".format(self.batch_size)
+                n = (self.batch_size or 1) * self.local_gpus_size
+                self.blob_dims[label_name] = (n, BOX_DIMS * int(layer['box_data_param']['max_boxes']))
+                self.blob_dims[data_name] = (n, NUM_CHANNELS, self.width, self.height)
                 i += 1
                 if self.network_verbose:
                     logging.info('create %-20s %s' % (
@@ -517,11 +521,13 @@ class CaffeNet(nn.Module):
                         self._blob_shape(tname)
                     ))
                 continue
-            if ltype in ['Data', 'AnnotatedData', 'HDF5Data', 'TsvBoxData']: # includes backwards compatibility  to Caffe
-                if self.forward_net_only.item() and inputs is not None:
-                    raise NotImplementedError("Compund data layers with forward_net_only not implemented yet")
+            if ltype in ['Data', 'AnnotatedData', 'HDF5Data', 'TsvBoxData']:
+                self.input_index = i
+                # rely on caffe to give us dimenstions
+                if self.forward_net_only.item() and self.input_index is not None:
+                    raise NotImplementedError("Compound data layers with forward_net_only not implemented yet")
                 inputs = CaffeData(layer.copy(), self.phase, self.local_gpus_size,
-                                   batch_size=batch_size)
+                                   batch_size=self.batch_size)
                 if not self.forward_net_only.item():
                     # keep this as a module, so that foward would call it
                     models[lname] = inputs
@@ -532,7 +538,6 @@ class CaffeNet(nn.Module):
                         label_name = tname[1]
                 else:
                     data_name = tname
-                # TODO: remove the need for initial forward for known data layers
                 data, label = inputs.forward()  # forward once just to get the size
                 dims = [data.size(ii) for ii in range(data.dim())]
                 self.height = dims[2]
@@ -814,7 +819,19 @@ class CaffeNet(nn.Module):
                     self._blob_shape(tname)
                 ))
 
-        return inputs, models
+        return models
+
+    @property
+    def inputs(self):
+        """CaffeData inputs (for compatibility)
+        :rtype: CaffeData
+        """
+        assert self.input_index is not None, "Network is not created yet"
+        layers = self.net_info['layers']
+        layer = layers[self.input_index]
+        inputs = CaffeData(layer.copy(), self.phase, self.local_gpus_size,
+                           batch_size=self.batch_size)
+        return inputs
 
 
 def main():
