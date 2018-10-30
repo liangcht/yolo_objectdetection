@@ -11,6 +11,8 @@ import torch
 from torch.optim import Adam
 import torch.distributed as dist
 from torch.utils.data import DataLoader
+from torch.utils.data.sampler import RandomSampler
+from torch.utils.data.distributed import DistributedSampler
 
 
 try:
@@ -43,6 +45,7 @@ from mmod.simple_parser import parse_prototxt, read_model
 
 from mtorch.caffenet import CaffeNet
 from mtorch.caffesgd import CaffeSGD
+from mtorch.caffeloader import CaffeLoader
 from mtorch.multifixed_scheduler import MultiFixedScheduler
 from mtorch.imdbdata import ImdbData
 from mtorch.tbox_utils import Labeler, DarknetAugmentation
@@ -75,6 +78,7 @@ class TorchSession(object):
                  snapshot_model=None, solver_path=None, 
                  batch_size=None, max_iter=None,
                  opt=None,
+                 use_pytorch_data_layer=True,
                  verbose=False):
         """Reusable PyTorch training session
         :type logger: PhillyLogger
@@ -90,11 +94,13 @@ class TorchSession(object):
         :type max_iter: int
         :param opt: optimizer method (default is caffesgd)
         :type opt: str
+        :param use_pytorch_data_layer: if should use PyTorch data layer when possible
         :param verbose: Verbose output
         """
         self.batch_size = batch_size
         self.max_iter = max_iter
         self.opt = opt
+        self.use_pytorch = use_pytorch_data_layer
         self.verbose = verbose
         self.logger = logger  # type: PhillyLogger
         self.restore = restore
@@ -245,7 +251,7 @@ class TorchSession(object):
     def train_batch(self, model, inputs, optimizer):
         """Train one batch
         :type model: mtorch.caffenet.CaffeNet
-        :type inputs: torch.nn.Module
+        :type inputs: list[torch.Tensor, torch.Tensor]
         :type optimizer: torch.optim.SGD
         """
         end = time.time()
@@ -334,15 +340,44 @@ class TorchSession(object):
         model = CaffeNet(protofile, verbose=self.verbose,
                          local_gpus_size=len(self.gpus),
                          world_size=self.world_size,
-                         batch_size=batch_size,
-                         use_pytorch_data_layer=True)
+                         batch_size=self.batch_size,
+                         use_pytorch_data_layer=self.use_pytorch)
 
         # Load from caffemodel, before cuda()
         if snapshot_model and (not isinstance(snapshot_model, basestring) or snapshot_model.endswith(".caffemodel")):
             logging.info("Finetuning from weights")
             model.load_weights(snapshot_model)
             snapshot_model = None
-        params = model.net_info['layers'][0]
+
+        # TODO: wrap data_loader creation in a function
+        layer = model.net_info['layers'][model.input_index]
+        ltype = layer['type']
+        if ltype != 'TsvBoxData' or not self.use_pytorch:
+            data_loader = CaffeLoader(model.inputs)
+        else:
+            augmenter = DarknetAugmentation()
+            labeler = Labeler()
+            augmented_dataset = ImdbData(path=protofile,
+                                         transform=augmenter(layer), labeler=labeler)
+
+            if self.batch_size is None:
+                self.batch_size = model.batch_size
+            assert self.batch_size > 0
+
+            sampler = RandomSampler(
+                augmented_dataset
+            )
+            if self.world_size > 1:
+                sampler = DistributedSampler(
+                    sampler,
+                    num_replicas=self.world_size, rank=self.rank
+                )
+            # TODO: find a better huristics for num_workers (e.g. cpu_count / 2)
+            data_loader = DataLoader(augmented_dataset, batch_size=self.batch_size * len(self.gpus),
+                                     sampler=sampler,
+                                     num_workers=len(self.gpus) * 2,
+                                     pin_memory=True)
+
         model = model.cuda()
 
         if self.world_size > 1:
@@ -361,14 +396,8 @@ class TorchSession(object):
             logging.info("Single-Node Single-GPU; devices: {}".format(torch.cuda.device_count()))
 
         # Load the checkpoint as a DDP/DP, like what it is saved
-        snapshot_iterations = -1
         checkpoint = None
-        # TODO: remove inputs form model
-        model.inputs = dict()
-        model.inputs["data"] = None
-        model.inputs["label"] = None
         if snapshot_model:
-            snapshot_iterations = self.iterations
             logging.info("Finetuning from snapshot: {}".format(snapshot_model))
             checkpoint = torch.load(snapshot_model, map_location=lambda storage, loc: storage)
             assert isinstance(checkpoint, dict) and 'iterations' in checkpoint, "Invalid snapshot: {}".format(
@@ -419,31 +448,14 @@ class TorchSession(object):
         # switch to train mode
         model.train()
         
-        augmenter = DarknetAugmentation()
-        labeler = Labeler()
-        augmented_dataset = ImdbData(path=params['tsv_data_param']['source'], 
-                                transform=augmenter(params), labeler=labeler)
-
-        if self.batch_size is None:
-            self.batch_size = int(params['tsv_data_param']['batch_size'])
-
-        self.batch_size *= len(self.gpus)  # TODO: fix on philly
-
-        data_loader = DataLoader(augmented_dataset, batch_size=self.batch_size,
-                                 shuffle=True,
-                                 # TODO: find way to increase number of workers on 1 GPU
-                                 num_workers=8 if len(self.gpus) > 1 else 0,
-                                 pin_memory=True)  # TODO: should it be False?
-        
         for self.iterations in range(self.max_iter):
             if scheduler:
                 scheduler.step()
             for i, batch_inputs in enumerate(data_loader):
-                 self.train_batch(model, batch_inputs, optimizer)
+                self.train_batch(model, batch_inputs, optimizer)
 
             if self.iterations % self.snapshot_interval == 0:
                 self.snapshot(model, optimizer=optimizer, with_caffemodel=self.iterations and with_caffemodel)
-
 
         # last snapshot
         self.snapshot(model, optimizer=optimizer, with_caffemodel=True)

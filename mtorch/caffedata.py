@@ -11,7 +11,7 @@ from mmod.utils import ompi_size, ompi_rank
 
 
 class CaffeData(nn.Module):
-    def __init__(self, layer, phase, local_gpus_size,
+    def __init__(self, layer, phase, local_gpus_size=1,
                  batch_size=None):
         super(CaffeData, self).__init__()
         self.ltype = layer['type']
