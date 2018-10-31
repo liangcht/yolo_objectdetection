@@ -522,10 +522,10 @@ class CaffeNet(nn.Module):
                     ))
                 continue
             if ltype in ['Data', 'AnnotatedData', 'HDF5Data', 'TsvBoxData']:
-                self.input_index = i
                 # rely on caffe to give us dimenstions
                 if self.forward_net_only.item() and self.input_index is not None:
                     raise NotImplementedError("Compound data layers with forward_net_only not implemented yet")
+                self.input_index = i
                 inputs = CaffeData(layer.copy(), self.phase, self.local_gpus_size,
                                    batch_size=self.batch_size)
                 if not self.forward_net_only.item():
