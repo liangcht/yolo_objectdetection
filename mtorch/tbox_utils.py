@@ -69,7 +69,7 @@ class DarknetAugmentation(object):
                       int(float(params['transform_param']['mean_value'][1])),  #G
                       int(float(params['transform_param']['mean_value'][2]))]  #R
         random_distorter = Transforms.RandomDistort(self.hue, self.saturation, self.exposure)
-        random_resizer = Transforms.RandomResizeDarknet(self.jitter)
+        random_resizer = Transforms.RandomResizeDarknet(self.jitter, library=Transforms.TORCHVISION)
         horizontal_flipper = Transforms.RandomHorizontalFlip()
         place_on_canvas = Transforms.PlaceOnCanvas()  
         minus_dc = Transforms.SubtractMeans(self.means)
