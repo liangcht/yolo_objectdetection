@@ -8,7 +8,7 @@ import numpy as np
 from mmod.im_utils import im_rescale
 
 
-def im_detect(caffe_net, im, pixel_mean=None, target_size=416, maintain_ratio=True, demean_after_pad=True):
+def im_detect(caffe_net, im, pixel_mean=None, target_size=416, maintain_ratio=True):
     assert im is not None, "Invalid image"
     if pixel_mean is None:
         pixel_mean = [104.0, 117.0, 123.0]
@@ -32,11 +32,8 @@ def im_detect(caffe_net, im, pixel_mean=None, target_size=416, maintain_ratio=Tr
         network_input_width = target_size
         network_input_height = target_size
 
-    # first scale and then subtract the mean
-    im_resized = im_rescale(im, target_size)
-    if not demean_after_pad:
-        im_resized = im_resized.astype(np.float32, copy=True)
-        im_resized -= pixel_mean
+    im = im.astype(np.float32, copy=True)
+    im_resized = im_rescale(im - pixel_mean, target_size)
 
     new_h, new_w = im_resized.shape[0:2]
     left = (network_input_width - new_w) / 2
@@ -45,12 +42,9 @@ def im_detect(caffe_net, im, pixel_mean=None, target_size=416, maintain_ratio=Tr
     bottom = network_input_height - new_h - top
     im_squared = cv2.copyMakeBorder(im_resized, top=top, bottom=bottom, left=left, right=right,
                                     borderType=cv2.BORDER_CONSTANT, value=[0, 0, 0])
-    blob = im_squared.astype(np.float32, copy=True)
-    if demean_after_pad:
-        blob -= np.float32(pixel_mean)
     # change blob dim order from h.w.c to c.h.w
     channel_swap = (2, 0, 1)
-    blob = blob.transpose(channel_swap)
+    blob = im_squared.transpose(channel_swap)
     if pixel_mean[0] == 0:
         blob /= 255.
 
