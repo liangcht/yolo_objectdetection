@@ -7,12 +7,12 @@ import torch.nn as nn
 from torch.autograd import Variable
 
 from mmod.simple_parser import save_prototxt
-from mmod.utils import ompi_size, ompi_rank
+from mmod.utils import ompi_size, ompi_rank, window_stack
 
 
 class CaffeData(nn.Module):
     def __init__(self, layer, phase, local_gpus_size=1,
-                 batch_size=None):
+                 batch_size=None, overlap=True):
         super(CaffeData, self).__init__()
         self.ltype = layer['type']
         net_info = OrderedDict()
@@ -36,11 +36,16 @@ class CaffeData(nn.Module):
             batch_size = int(layer[data_param]['batch_size'])
             assert batch_size > 0, "Invalid batch_size: {} in prototxt".format(batch_size)
         self.batch_size = batch_size  # per-GPU batch size
+        self.overlap = overlap if local_gpus_size > 1 else False
 
         # batch-size is per-GPU, make it total local effective batch size
         # so that DataParallel would distribute each to a GPU
-        batch_size *= local_gpus_size
-        layer[data_param]['batch_size'] = batch_size
+        if self.overlap:
+            batch_size += local_gpus_size - 1
+            layer[data_param]['batch_size'] = batch_size
+        else:
+            batch_size *= local_gpus_size
+            layer[data_param]['batch_size'] = batch_size
 
         self.data_target = None
         self.label_target = None
@@ -77,10 +82,14 @@ class CaffeData(nn.Module):
     def forward(self):
         self.net.forward()
         data = self.net.blobs[self.data_target].data
+        if self.overlap:
+            data = window_stack(data, self.batch_size)
         data = torch.from_numpy(data)
         self.data.resize_(data.size()).copy_(data)
         if self.label_target:
             label = self.net.blobs[self.label_target].data
+            if self.overlap:
+                label = window_stack(label, self.batch_size)
             label = torch.from_numpy(label)
             self.label.resize_(label.size()).copy_(label)
             return Variable(self.data), Variable(self.label)
