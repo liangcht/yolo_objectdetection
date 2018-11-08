@@ -483,6 +483,17 @@ def search_both_sorted(a, vs):
         right_v_idx -= 1
 
 
+def window_stack(a, width):
+    """Sliding window over first dimension of a
+    :type a: numpy.ndarray or list
+    :type width: int
+    :rtype: numpy.ndarray
+    """
+    n = len(a)
+    assert width <= n
+    return np.vstack(a[i:i+width] for i in range(0, n - width + 1))
+
+
 class FileCache(object):
     def __init__(self):
         self._is_closed = False
