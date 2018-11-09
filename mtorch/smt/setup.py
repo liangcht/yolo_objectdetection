@@ -2,7 +2,7 @@ import sys
 import os
 import os.path as op
 from setuptools import setup
-from torch.utils.cpp_extension import BuildExtension, CUDAExtension
+from torch.utils.cpp_extension import BuildExtension, CUDAExtension, CppExtension
 
 # change directory to this module path
 try:
@@ -16,11 +16,14 @@ if op.dirname(this_file):
 include_dirs = [op.abspath('../common/')]
 
 setup(
-    name='smt_cuda',
+    name='smt',
     ext_modules=[
         CUDAExtension('smt_cuda', [
             'smt_cuda.cpp',
             'smt_cuda_kernel.cu',
+        ], include_dirs=include_dirs),
+        CppExtension('smt_cpu', [
+            'smt_cpu.cpp',
         ], include_dirs=include_dirs),
     ],
     cmdclass={

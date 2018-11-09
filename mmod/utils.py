@@ -122,64 +122,6 @@ def is_number(s, type_cast=float):
         return False
 
 
-def ignore_arg(cmds, filter_cmds):
-    """Filter out a given command
-    :param cmds: all the comamnds
-    :param filter_cmds: the commands to filter out
-    :return:
-    """
-    if not isinstance(filter_cmds, list):
-        filter_cmds = [filter_cmds]
-    ignore = 0
-    clean_args = []
-    # Remove initial snapshots (and weights)
-    for cmd in cmds:
-        if ignore:
-            ignore -= 1
-            continue
-        for filt_cmd in filter_cmds:
-            if cmd.endswith(filt_cmd):
-                ignore = 1
-                break
-        if ignore:
-            continue
-        clean_args.append(cmd)
-
-    return clean_args
-
-
-def valid_args(cmds, valid_pairs=None, valid_singles=None, fix_value_func=None):
-    """Filter args and only keep valid caffe arguments
-    :param cmds: list of args to filter
-    :param valid_pairs: valid paired "key value" args
-    :param valid_singles: valid sigle switches
-    :param fix_value_func: a function that will be called with to fix the value for a key
-    :rtype: list
-    """
-    if not valid_pairs:
-        valid_pairs = []
-    if not valid_singles:
-        valid_singles = []
-    keep = 0
-    filtered_args = []
-    prev_cmd = None
-    for cmd in cmds:
-        if keep:
-            keep -= 1
-            if prev_cmd and fix_value_func:
-                cmd = fix_value_func(prev_cmd, cmd)
-            filtered_args.append(cmd)
-        elif cmd in valid_pairs:
-            prev_cmd = cmd
-            keep = 1
-            filtered_args.append(cmd)
-        elif cmd in valid_singles:
-            prev_cmd = None
-            filtered_args.append(cmd)
-    assert not keep, "{} parameter must have a value".format(prev_cmd)
-    return filtered_args
-
-
 @contextmanager
 def run_and_terminate_process(*args, **kwargs):
     """Run a process and terminate it at the end
