@@ -5,7 +5,7 @@ import os
 import sys
 import os.path as op
 from setuptools import find_packages, setup
-from torch.utils.cpp_extension import BuildExtension, CUDAExtension
+from torch.utils.cpp_extension import BuildExtension, CUDAExtension, CppExtension
 
 # change directory to this module path
 try:
@@ -47,6 +47,9 @@ setup(
         CUDAExtension('smtl_cuda', [
             'mtorch/smtl/smtl_cuda.cpp',
             'mtorch/smtl/smtl_cuda_kernel.cu',
+        ], include_dirs=include_dirs),
+        CppExtension('smt_cpu', [
+            'mtorch/smt/smt_cpu.cpp',
         ], include_dirs=include_dirs),
     ],
     cmdclass={

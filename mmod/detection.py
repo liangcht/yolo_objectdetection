@@ -8,8 +8,16 @@ import numpy as np
 from mmod.im_utils import im_rescale
 
 
-def im_detect(caffe_net, im, pixel_mean=None, target_size=416, maintain_ratio=True):
+def resize_for_od(im, pixel_mean=None, target_size=416, maintain_ratio=True):
+    """Resize image (pre-processing for object detection)
+    :param im: Image to resize
+    :param pixel_mean: bgr mean values to subtract
+    :param target_size: returned size
+    :param maintain_ratio: if True, returned size will have roughly target_size*target_size pixels
+    :return: Resized and padded image
+    """
     assert im is not None, "Invalid image"
+
     if pixel_mean is None:
         pixel_mean = [104.0, 117.0, 123.0]
 
@@ -42,11 +50,19 @@ def im_detect(caffe_net, im, pixel_mean=None, target_size=416, maintain_ratio=Tr
     bottom = network_input_height - new_h - top
     im_squared = cv2.copyMakeBorder(im_resized, top=top, bottom=bottom, left=left, right=right,
                                     borderType=cv2.BORDER_CONSTANT, value=[0, 0, 0])
+    if pixel_mean[0] == 0:
+        im_squared /= 255.
+
+    return im_squared
+
+
+def im_detect(caffe_net, im, pixel_mean=None, target_size=416, maintain_ratio=True):
+    assert im is not None, "Invalid image"
+
+    im_squared = resize_for_od(im, pixel_mean=pixel_mean, target_size=target_size, maintain_ratio=maintain_ratio)
     # change blob dim order from h.w.c to c.h.w
     channel_swap = (2, 0, 1)
     blob = im_squared.transpose(channel_swap)
-    if pixel_mean[0] == 0:
-        blob /= 255.
 
     caffe_net.blobs['data'].reshape(1, *blob.shape)
     caffe_net.blobs['data'].data[...] = blob.reshape(1, *blob.shape)

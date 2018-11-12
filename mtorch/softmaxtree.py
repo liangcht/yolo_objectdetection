@@ -6,6 +6,7 @@ from torch.autograd import Function
 from mmod.simple_parser import read_softmax_tree
 
 import smt_cuda
+import smt_cpu
 
 
 class SoftmaxTreeFunction(Function):
@@ -16,7 +17,12 @@ class SoftmaxTreeFunction(Function):
         assert x.size(axis) == node_count, "Channel count: {} must match tree node count: {}".format(
             x.size(axis), node_count
         )
-        prob = smt_cuda.forward(x, group_offsets, group_sizes, axis)[0]
+        if x.is_cuda:
+            smt_ = smt_cuda
+        else:
+            smt_ = smt_cpu
+        prob = smt_.forward(x, group_offsets, group_sizes, axis)[0]
+
         ctx.save_for_backward(prob, group_offsets, group_sizes, axis)
         return prob
 
@@ -25,7 +31,11 @@ class SoftmaxTreeFunction(Function):
         grad_x = grad_group_offsets = grad_group_sizes = grad_axis = None
         if ctx.needs_input_grad[0]:
             prob, group_offsets, group_sizes, axis = ctx.saved_tensors
-            grad_x = smt_cuda.backward(
+            if prob.is_cuda:
+                smt_ = smt_cuda
+            else:
+                smt_ = smt_cpu
+            grad_x = smt_.backward(
                 prob, grad_output,
                 group_offsets, group_sizes,
                 axis
@@ -63,10 +73,21 @@ class SoftmaxTree(nn.Module):
         )
 
 
+# TODO: make these a proper unit test
 if __name__ == '__main__':
     from StringIO import StringIO
 
-    net = SoftmaxTree(StringIO("boz -1\nbozak -1\ngoat -1\n")).cuda()
-    a = torch.rand(4, 3, 8).cuda()
+    # Create a flat softmax
+    net = SoftmaxTree(StringIO("boz -1\nbozak -1\ngoat -1\n"))
+
+    # create a matrix 4x3x8 so that softmax will be applied to the second dimension
+    a = torch.rand(4, 3, 8)
+    b = net(a)
+    # total should be 1.0
+    print(b[0, :, 0].sum())
+
+    # now test with cuda
+    net = net.cuda()
+    a = a.cuda()
     b = net(a)
     print(b[0, :, 0].sum())
