@@ -202,7 +202,7 @@ def _parse_block(fp):
             key = _line.split('{')[0].strip()
             value = _parse_block(fp)
         else:
-            raise NotImplementedError()
+            raise NotImplementedError(ltype)
         if key in block:
             if isinstance(block[key], list):
                 block[key].append(value)

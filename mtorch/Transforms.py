@@ -11,6 +11,7 @@ from torchvision import transforms
 from PIL import Image
 import random
 from skimage import transform 
+import logging
 
 # Dictionary key
 IMAGE = "image"  # TODO: change to get that as parameter from prototxt
@@ -36,9 +37,10 @@ INTERP_METHOD = Image.BILINEAR  # TODO: this should be just "bilinear" and based
 DEF_RESIZE_LIB = "skimage"
 TORCHVISION = "torchvision"
 OPENCV = "opencv"
-# Number of tries for random augmentation to be left with at least one box
+# Number of tries for random augmentation to be left with at least one bounding box
 DEF_NUM_TRIES = 5
 MIN_NUM_BBOXES = 1
+REQ_VALID_TRANS = True# if to search for transform with at least one bounding box
 # Crop related constants
 ORIGIN = (0, 0)
 # Flip related constants
@@ -172,7 +174,8 @@ class ImageBoxAugmentation(object):
         of bounding boxes is below the valid minimum
         """
         if num_bboxes < self.valid_num_bboxes:
-            raise InsufficientNumOfBBoxes()
+            raise InsufficientNumOfBBoxes(
+                "Number {} of bouding boxes is insufficient, {} expected".format(num_bboxes, self.valid_num_bboxes))
         return
 
     def __str__(self):
@@ -262,7 +265,7 @@ class Resize(ImageBoxAugmentation):
         if output_size is None and scale_factor is None:
             raise ValueError("Please provide output_size or scale_factor")
         if output_size is not None and scale_factor is not None:
-            raise Warning(" output_size is ignored since scale_factor is provided")
+            logging.warning("Output_size is ignored since scale_factor is provided")
         self.set_output_size(output_size)
         self.set_scale_factor(scale_factor)
 
@@ -280,9 +283,10 @@ class Resize(ImageBoxAugmentation):
 
         resized_bboxes = tbox.resize(self.bboxs, (self.w, self.h), (self.__new_w, self.__new_h))
 
-        self.is_valid_transform(resized_bboxes.shape[0])
+        if REQ_VALID_TRANS:
+            self.is_valid_transform(resized_bboxes.shape[0])
 
-        # NOTE: expect size format:
+        # NOTE: expected size format:
         # Torchvision - (height, width)
         # OPENCV - (width, height)
         # SKIMAGE - (height, width)
@@ -291,10 +295,10 @@ class Resize(ImageBoxAugmentation):
                                                          size=(int(self.__new_h), int(self.__new_w)),
                                                          interpolation=self.interp_method)
         elif self.library == OPENCV:
-            resized_image = cv2.resize(np.asarray(self.image),
+            resized_image = cv2.resize(np.asarray(self.image) / MAX_PIXEL_VAL,
                                        (int(self.__new_w), int(self.__new_h)),
                                        interpolation=cv2.INTER_LINEAR)
-            resized_image = Image.fromarray(np.uint8(resized_image))
+            resized_image = Image.fromarray(np.uint8(resized_image * int(MAX_PIXEL_VAL)))
         else:  # SKIMAGE
             resized_image = transform.resize(np.asarray(self.image),
                                              output_shape=(int(self.__new_h), int(self.__new_w)),
@@ -306,7 +310,7 @@ class Resize(ImageBoxAugmentation):
         return result
 
     def __get_output_size(self):
-        """ Sets the output height and width output size is provided"""
+        """ Gets the output height and width from the output size is provided"""
         if isinstance(self.output_size, int):
             if self.h > self.w:
                 self.__new_h, self.__new_w = self.output_size * self.h / self.w, self.output_size
@@ -391,7 +395,8 @@ class RandomResizeDarknet(ImageBoxAugmentation):
     """
 
     def __init__(self, jitter=0, scale=DEF_SCALE_RANGE, output_size_limit=DEF_CANVAS_SIZE,
-                 interp_method=INTERP_METHOD, library=DEF_RESIZE_LIB, tries=DEF_NUM_TRIES, valid_num_bboxes=MIN_NUM_BBOXES):
+                 interp_method=INTERP_METHOD, library=DEF_RESIZE_LIB, tries=DEF_NUM_TRIES,
+                 valid_num_bboxes=MIN_NUM_BBOXES):
         """Constructor of RandomResizeDarknet object
         :param interp_method: name of interpolation to use upon resizing
         :param scale: scale range to randomly resize the output size
@@ -426,8 +431,6 @@ class RandomResizeDarknet(ImageBoxAugmentation):
                 self.resizer.set_output_size(self.__get_rand_output_size())
             else:
                 return result
-        if i == self.tries:
-            raise Warning("Incomplete resizing, number of tries insufficient, returning the original sample")
         return sample
 
     def __get_random_scale(self):
@@ -518,8 +521,10 @@ class Crop(ImageBoxAugmentation):
         left = int(self.crop_box[0])
         height = int(self.crop_box[3])
         width = int(self.crop_box[2])
+        cropped_bboxes = tbox.crop(self.bboxs, self.crop_box, 
+                                   allow_outside_center=self.allow_outside_bb_center)
+       
         cropped_image = transforms.functional.crop(self.image, i=upper, j=left, h=height, w=width)
-        cropped_bboxes = tbox.crop(self.bboxs, self.crop_box, allow_outside_center=self.allow_outside_bb_center)
 
         result = {IMAGE: cropped_image, LABEL: cropped_bboxes}
         ImageBoxAugmentation.check_correctness(result)
@@ -963,13 +968,14 @@ class CanvasAdapter(ImageBoxAugmentation):
         :return: sample adapted to the canvas
         """
         super(CanvasAdapter, self).__call__(sample)
+        
         new_left = max(-self.dx, 0.0)
         new_top = max(-self.dy, 0.0)
         left = max(self.dx, 0.0)
         top = max(self.dy, 0.0)
         
-        cropper1 = Crop([new_left, new_top, self.w - new_left, self.h - new_top], allow_outside_bb_center=False)
-        cropper2 = Crop([0, 0, self.cw, self.ch], allow_outside_bb_center=False)
+        cropper1 = Crop([new_left, new_top, self.w - new_left, self.h - new_top], allow_outside_bb_center=True)
+        cropper2 = Crop([0, 0, self.cw, self.ch], allow_outside_bb_center=True)
 
         cropped1 = cropper1(sample)
         cropped = cropper2(cropped1)
@@ -1029,17 +1035,18 @@ class PlaceOnCanvas(ImageBoxAugmentation):
     """
 
     def __init__(self, fixed_offset=False, canvas_size=DEF_CANVAS_SIZE,
-                 default_pixel_value=(int(MAX_PIXEL_VAL / 2.0),) * 3):
+                 default_pixel_value=(int(MAX_PIXEL_VAL / 2.0),) * 3,
+                 valid_num_bboxes=MIN_NUM_BBOXES):
         """Constructs PlaceOnCavas object
         :param fixed_offset: true if the image should be centered on Canvas,
                     false if the image should be randomly placed on Canvas
         :param canvas_size: the size of the output image
         :param default_pixel_value: default padding value for padding the cropped region on Canvas
         """
-        super(PlaceOnCanvas, self).__init__()
+        super(PlaceOnCanvas, self).__init__(valid_num_bboxes)
         self.fixed_offset = fixed_offset
         self.canvas_size = canvas_size
-        self.default_pixel_value = default_pixel_value
+        self.default_pixel_value = default_pixel_value        
 
     def __call__(self, sample):
         """Places the sample within the limits of Canvas (NO resizing, just cropping)
@@ -1058,6 +1065,53 @@ class PlaceOnCanvas(ImageBoxAugmentation):
             return float(canvas_w - self.w) / 2.0, float(canvas_h - self.h) / 2.0
         return random.uniform(0, canvas_w - self.w), random.uniform(0, canvas_h - self.h)
             
+
+class RandomizeBBoxes(ImageBoxAugmentation):
+    """Randomizes bounding boxes if the number of valid bounding boxes exceeds the maximum number
+
+     Parameters
+    ----------
+        max_num_bboxes: integer number of maximum boxes to allow
+
+    Output
+    -----------
+        sample placed on Canvas - dictionary with two fields defined by IMAGE and LABEL, 
+        with LABEL altered according (IMAGE remains unchanged)
+    """
+
+    def __init__(self, max_num_bboxes=None):
+        """Constructor of RandomizeBBoxes object"""
+        super(RandomizeBBoxes, self).__init__()
+        self.max_num_bboxes = max_num_bboxes
+
+    def __call__(self, sample):
+        """ Exceutes the randomization of boxes on sample
+        :param sample:  dictionary with two fields defined by IMAGE and LABEL
+        :return: the sample with bounding boxes randomized
+        """
+        super(RandomizeBBoxes, self).__call__(sample)
+        self.__keep_only_valid_boxs()
+        if self.max_num_bboxes is not None and self.bboxs.shape[0] > self.max_num_bboxes:
+            self.bboxs = np.random.permutation(self.bboxs)
+        return {IMAGE: self.image, LABEL: self.bboxs}
+ 
+    def __keep_only_valid_boxs(self):
+        """ helper - validation of bbounding boxes, taken from caffe"""
+        x_cent = ((self.bboxs[:, 0] + self.bboxs[:, 2]) / 2) / self.w
+        y_cent = ((self.bboxs[:, 1] + self.bboxs[:, 3]) / 2) / self.h
+        box_w = (self.bboxs[:, 2] - self.bboxs[:, 0]) / self.w
+        box_h = (self.bboxs[:, 3] - self.bboxs[:, 1]) / self.h
+        
+        mask = np.ones(self.bboxs.shape[0], dtype=bool)
+        mask = np.logical_and(mask, x_cent <= 0.999)
+        mask = np.logical_and(mask, x_cent > 0)
+        mask = np.logical_and(mask, y_cent <= 0.999)
+        mask = np.logical_and(mask, y_cent > 0)
+        mask = np.logical_and(mask, box_w > -0.001)
+        mask = np.logical_and(mask, box_h > -0.001)
+        
+        self.bboxs = self.bboxs[mask]
+
 
 class InsufficientNumOfBBoxes(Exception):
     """Abstraction of Exception to signal Insufficient Number of Boxes in Sample"""
@@ -1144,6 +1198,7 @@ class ToDarknetTensor(object):  # TODO: this class should be decoupled into two 
         bboxes[:, 2] = bboxes_old[:, 2] - bboxes_old[:, 0]
         bboxes[:, 3] = bboxes_old[:, 3] - bboxes_old[:, 1]
         bboxes[:, 4] = bboxes_old[:, 4]
+        
         return bboxes
 
     @staticmethod
@@ -1156,9 +1211,9 @@ class ToDarknetTensor(object):  # TODO: this class should be decoupled into two 
         return img[(2, 1, 0), :, :]
 
     def __boxes_to_labels(self, bboxes):
-        """Helper to create a 1D label of 1 x MAX_BOX_NUM * BOX_DIM
+        """Helper to create a 1D label of 1 x num_bboxes * BOX_DIM
         out of N X BOX_DIM boxes
-        Note that boxes beyond MAX_BOX_NUM are discarded
+        Note that boxes beyond num_bboxes are discarded
         """
         if self.num_bboxes is not None:
             cur_num = bboxes.shape[0]
@@ -1169,4 +1224,3 @@ class ToDarknetTensor(object):  # TODO: this class should be decoupled into two 
             elif diff_to_max < 0:
                 bboxes = bboxes[:self.num_bboxes, :]
         return bboxes.flatten()
-

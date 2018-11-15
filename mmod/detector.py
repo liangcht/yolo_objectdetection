@@ -172,8 +172,6 @@ class Detector(object):
         self.exp = exp  # type: Experiment
         self.num_gpu = num_gpu
         self.gpu = gpu
-        if gpu:
-            assert 0 <= gpu < num_gpu
         self.max_workers = max_workers or num_gpu or cpu_count()
         self.executor = None  # type: loky.process_executor.ProcessPoolExecutor
 
