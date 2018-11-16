@@ -6,8 +6,14 @@ struct TBox {
     scalar_t x, y, w, h;
 };
 
+#ifdef __CUDACC__
+#define CUDA_HOSTDEV __host__ __device__ __forceinline__
+#else
+#define CUDA_HOSTDEV
+#endif
+
 template <typename scalar_t>
-__device__ __forceinline__ scalar_t TOverlap(scalar_t x1, scalar_t w1, scalar_t x2, scalar_t w2)
+CUDA_HOSTDEV scalar_t TOverlap(scalar_t x1, scalar_t w1, scalar_t x2, scalar_t w2)
 {
     auto l1 = x1 - w1 / 2;
     auto l2 = x2 - w2 / 2;
@@ -19,7 +25,7 @@ __device__ __forceinline__ scalar_t TOverlap(scalar_t x1, scalar_t w1, scalar_t 
 }
 
 template <typename scalar_t>
-__device__ __forceinline__  scalar_t TBoxIntersection(scalar_t ax, scalar_t ay, scalar_t aw, scalar_t ah,
+CUDA_HOSTDEV scalar_t TBoxIntersection(scalar_t ax, scalar_t ay, scalar_t aw, scalar_t ah,
         scalar_t bx, scalar_t by, scalar_t bw, scalar_t bh) {
     auto w = TOverlap(ax, aw, bx, bw);
     auto h = TOverlap(ay, ah, by, bh);
@@ -32,7 +38,7 @@ __device__ __forceinline__  scalar_t TBoxIntersection(scalar_t ax, scalar_t ay, 
 }
 
 template <typename scalar_t>
-__device__ __forceinline__  scalar_t TBoxIou(scalar_t ax, scalar_t ay, scalar_t aw, scalar_t ah,
+CUDA_HOSTDEV scalar_t TBoxIou(scalar_t ax, scalar_t ay, scalar_t aw, scalar_t ah,
         scalar_t bx, scalar_t by, scalar_t bw, scalar_t bh) {
     auto i = TBoxIntersection(ax, ay, aw, ah, bx, by, bw, bh);
     auto u = aw * ah + bw * bh - i;

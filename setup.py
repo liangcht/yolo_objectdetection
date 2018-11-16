@@ -51,6 +51,13 @@ setup(
         CppExtension('smt_cpu', [
             'mtorch/smt/smt_cpu.cpp',
         ], include_dirs=include_dirs),
+        CUDAExtension('nmsfilt_cuda', [
+            'mtorch/nmsfilt/nmsfilt_cuda.cpp',
+            'mtorch/nmsfilt/nmsfilt_cuda_kernel.cu',
+        ], include_dirs=include_dirs),
+        CppExtension('nmsfilt_cpu', [
+            'mtorch/nmsfilt/nmsfilt_cpu.cpp',
+        ], include_dirs=include_dirs),
     ],
     cmdclass={
         'build_ext': BuildExtension
