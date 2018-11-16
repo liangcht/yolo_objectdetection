@@ -14,7 +14,7 @@ from mmod.simple_parser import parse_prototxt, print_prototxt, read_model, read_
 
 from mtorch.converter import SUPPORTED_LAYERS, save_caffemodel
 from mtorch.caffetorch import FCView, Eltwise, Scale, Crop, Slice, Concat, Permute, SoftmaxWithLoss, \
-    Normalize, Flatten, Reshape, Accuracy, EuclideanLoss
+    Normalize, Flatten, Reshape, Accuracy, EuclideanLoss, Reorg
 from mtorch.region_target import RegionTarget
 from mtorch.softmaxtree_loss import SoftmaxTreeWithLoss
 from mtorch.caffedata import CaffeData
@@ -814,6 +814,18 @@ class CaffeNet(nn.Module):
                     ignore_label = int(ignore_label)
                 models[lname] = SoftmaxTreeWithLoss(tree, ignore_label=ignore_label, loss_weight=loss_weight)
                 self.blob_dims[tname] = self.blob_dims[bname[0]]
+                i = i + 1
+            elif ltype == 'Reorg':
+                stride = int(layer.get('reorg_param', {}).get('stride', 2))
+                reverse = layer.get('reorg_param', {}).get('reverse', 'false') == 'true'
+                if reverse:
+                    raise NotImplementedError('Reorg with reverse not implemented')
+                flatten = layer.get('reorg_param', {}).get('flatten', 'false') == 'true'
+                if flatten:
+                    raise NotImplementedError('Reorg with flatten not implemented')
+                n, c, h, w = self.blob_dims[bname]
+                models[lname] = Reorg(stride)
+                self.blob_dims[tname] = n, c * stride * stride, h / stride, w / stride
                 i = i + 1
             else:
                 if raise_unknown:

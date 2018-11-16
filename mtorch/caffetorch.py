@@ -244,3 +244,31 @@ class Accuracy(nn.Module):
         print('accuracy = %f', accuracy)
         accuracy = output.data.new().resize_(1).fill_(accuracy)
         return Variable(accuracy)
+
+
+class Reorg(nn.Module):
+    """Reorganize data blob to reduce spatial resolution by increasing channels, or vice versa
+    """
+    def __init__(self, stride=2):
+        super(Reorg, self).__init__()
+        self.stride = stride
+
+    def __repr__(self):
+        return 'Reorg(stride={})'.format(self.stride)
+
+    def forward(self, x):
+        stride = self.stride
+        assert (x.data.dim() == 4)
+        n = x.data.size(0)
+        c = x.data.size(1)
+        h = x.data.size(2)
+        w = x.data.size(3)
+        assert (h % stride == 0)
+        assert (w % stride == 0)
+        ws = stride
+        hs = stride
+        x = x.view(n, c, h // hs, hs, w // ws, ws).transpose(3, 4).contiguous()
+        x = x.view(n, c, h // hs * w // ws, hs * ws).transpose(2, 3).contiguous()
+        x = x.view(n, c, hs * ws, h // hs, w // ws).transpose(1, 2).contiguous()
+        x = x.view(n, hs * ws * c, h // hs, w // ws)
+        return x
