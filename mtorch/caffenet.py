@@ -346,6 +346,7 @@ class CaffeNet(nn.Module):
             if lname not in lmap:
                 i = i + 1
                 continue
+            
             if ltype in ['Convolution', 'Deconvolution']:
                 if self.verbose:
                     logging.info('load weights %s' % lname)
@@ -370,10 +371,18 @@ class CaffeNet(nn.Module):
             elif ltype == 'BatchNorm':
                 if self.verbose:
                     logging.info('load weights %s' % lname)
-                self.models[lname].running_mean.copy_(
-                    torch.from_numpy(np.array(lmap[lname].blobs[0].data) / lmap[lname].blobs[2].data[0]))
-                self.models[lname].running_var.copy_(
-                    torch.from_numpy(np.array(lmap[lname].blobs[1].data) / lmap[lname].blobs[2].data[0]))
+                try:
+                    self.models[lname].running_mean.copy_(
+                        torch.from_numpy(np.array(lmap[lname].blobs[0].data) / lmap[lname].blobs[2].data[0]))
+                except FloatingPointError:
+                    self.models[lname].running_mean.copy_(
+                        torch.from_numpy(np.array(lmap[lname].blobs[0].data)))
+                try:
+                    self.models[lname].running_var.copy_(
+                        torch.from_numpy(np.array(lmap[lname].blobs[1].data) / lmap[lname].blobs[2].data[0]))
+                except FloatingPointError:
+                    self.models[lname].running_var.copy_(
+                        torch.from_numpy(np.array(lmap[lname].blobs[1].data)))
                 i = i + 1
             elif ltype == 'Scale':
                 if self.verbose:
@@ -391,6 +400,7 @@ class CaffeNet(nn.Module):
                     ignore_shape_mismatch
                 )
                 i = i + 1
+
             elif ltype == 'Normalize':
                 if self.verbose:
                     logging.info('load weights %s' % lname)
@@ -500,7 +510,7 @@ class CaffeNet(nn.Module):
                     logging.info("Ignore {}({})".format(ltype, lname))
                 continue
             tname = layer['top']
-            if ltype == 'TsvBoxData' and self.use_pytorch:
+            if ltype == 'TsvBoxData':
                 if self.input_index is not None:
                     raise NotImplementedError("Compound data layers not implemented yet for PyTorch data")
                 self.input_index = i
@@ -521,8 +531,8 @@ class CaffeNet(nn.Module):
                         self._blob_shape(tname)
                     ))
                 continue
-            if ltype in ['Data', 'AnnotatedData', 'HDF5Data', 'TsvBoxData']:
-                # rely on caffe to give us dimenstions
+            if ltype in ['Data', 'AnnotatedData', 'HDF5Data']:
+                # rely on caffe to give us dimensions
                 if self.forward_net_only.item() and self.input_index is not None:
                     raise NotImplementedError("Compound data layers with forward_net_only not implemented yet")
                 self.input_index = i

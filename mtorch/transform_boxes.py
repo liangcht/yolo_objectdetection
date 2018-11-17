@@ -18,13 +18,12 @@ def __check_dim(value, dim, error_msg):
 def check_crop_box_dim(crop_box):
     """helper to check crop region dimension validity """
     __check_dim(crop_box, CROP_BOX_DIM, "crop_box")
-    if not len(crop_box) == CROP_BOX_DIM:
-        raise ValueError(
-            "Invalid crop_box parameter, requires length {}, given {}".format(CROP_BOX_DIM, len(crop_box)))
-
+    
 
 def check_size_dim(size, error_msg):
     """helper to check dimension validity """
+    __check_dim(size, IMAGE_SPATIAL_DIM, error_msg)
+
 
 def crop(bbox, crop_box=None, allow_outside_center=True):
     """Crop bounding boxes according to slice area.
@@ -46,6 +45,8 @@ def crop(bbox, crop_box=None, allow_outside_center=True):
     -------
     numpy.ndarray
         Cropped bounding boxes with shape (M, 4+) where M <= N.
+    int
+        Number of 
     """
     
     if crop_box is None:
@@ -55,7 +56,6 @@ def crop(bbox, crop_box=None, allow_outside_center=True):
     if sum([int(c is None) for c in crop_box]) == CROP_BOX_DIM:
         return bbox
     
-    area_old = (bbox[:, 2] - bbox[:, 0]) * (bbox[:, 3] - bbox[:, 1])
     bbox = bbox.copy()
 
     l, t, w, h = crop_box
@@ -77,12 +77,9 @@ def crop(bbox, crop_box=None, allow_outside_center=True):
     bbox[:, :2] -= crop_bbox[:2]
     bbox[:, 2:4] -= crop_bbox[:2]
    
-    area_new = (bbox[:, 2] - bbox[:, 0]) * (bbox[:, 3] - bbox[:, 1])
-    mask = np.logical_and(mask, area_old * 0.5 <= area_new)
-    mask = np.logical_and(mask, (bbox[:, :2] < bbox[:, 2:4]).all(axis=1))
+    mask = np.logical_and(mask, (bbox[:, :2] + 1 < bbox[:, 2:4]).all(axis=1))
     bbox = bbox[mask]
     return bbox
-
 
 def flip(bbox, size, flip_x=False, flip_y=False):
     """Flip bounding boxes according to image flipping directions.

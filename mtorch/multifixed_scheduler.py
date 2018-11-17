@@ -34,5 +34,5 @@ class MultiFixedScheduler(MultiStepLR):
             return
         logging.info("Iteration {}, lr = {}".format(iterations, new_lr))
         self.last_lr = new_lr
-        for param_group in self.optimizer.param_groups:
-            param_group['lr'] = new_lr
+        for i, param_group in enumerate(self.optimizer.param_groups):
+            param_group['lr'] = param_group['lr_mult'] * new_lr

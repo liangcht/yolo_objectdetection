@@ -114,6 +114,8 @@ class TorchSession(object):
         self.world_size = ompi_size()
         self.batch_time = AverageMeter()
         self.iterations = 0  # current number of iterations
+        self.all_losses = list()
+
 
         if len(self.gpus) > 1:
             logging.warning("Ran with 1 process/container on {} process(es), performance may degrade".format(
@@ -216,6 +218,7 @@ class TorchSession(object):
             return
         snapshot_file = self.snapshot_prefix + "_iter_{}".format(self.iterations)
         snapshot_pt = snapshot_file + '.pt'
+        snapshot_losses = snapshot_file + '_losses.pt'
         state_dict = model.state_dict()
         state = {
             'iterations': self.iterations,
@@ -231,7 +234,7 @@ class TorchSession(object):
             })
         logging.info("Snapshotting to: {}".format(snapshot_pt))
         torch.save(state, snapshot_pt)
-
+        torch.save(self.all_losses, snapshot_losses)
         if not with_caffemodel:
             return
 
@@ -258,15 +261,16 @@ class TorchSession(object):
 
         # compute output
         data, labels = inputs[0].cuda(), inputs[1].cuda().float()
-             
+        
+        optimizer.zero_grad()
+
         loss = model(data, labels)
-        crit = torch.sum(loss)
-        assert crit == crit, "Iteration: {} Stop because of NaN loss!".format(
-            self.iterations
-        )
+        crit = torch.sum(loss) / len(self.gpus)
+        
+        self.all_losses.append(crit)
+        assert crit == crit, "Iteration: {} Stop because of NaN loss!".format(self.iterations)
 
         # compute gradient and do SGD step
-        optimizer.zero_grad()
         crit.backward()
         optimizer.step()
 
@@ -374,7 +378,7 @@ class TorchSession(object):
                 )
             # TODO: find a better huristics for num_workers (e.g. cpu_count / 2)
             data_loader = DataLoader(augmented_dataset, batch_size=self.batch_size * len(self.gpus),
-                                     sampler=sampler,
+                                     shuffle=False, # TODO: fix sampler for Philly
                                      num_workers=len(self.gpus) * 2,
                                      pin_memory=True)
 
@@ -410,33 +414,30 @@ class TorchSession(object):
             model.load_state_dict(checkpoint['state_dict'])
 
         # TODO: use lr_mult and decay_mult for optimization groups
-        decay, no_decay = [], []
+        decay, no_decay, lr2 = [], [], []
         for name, param in model.named_parameters():
             if not param.requires_grad:
                 continue
-            if len(param.shape) == 1 or name.endswith(".bias"):
+            if "last_conv" in name and name.endswith(".bias"):
+                lr2.append(param)
+            elif "scale" in name:
+                decay.append(param)
+            elif len(param.shape) == 1 or name.endswith(".bias"):
                 no_decay.append(param)
             else:
                 decay.append(param)
 
         scheduler = None
+        initial_lr = np.max(lrs) if self.opt == 'adam' else lrs[0]
+        #  TODO: param_groups should be fully inferred from prototxt in a helper method
+        param_groups = [{'params': no_decay, 'weight_decay': 0., 'initial_lr': initial_lr, 'lr_mult': 1.},
+                 {'params': decay, 'weight_decay': self.weight_decay, 'initial_lr': initial_lr, 'lr_mult': 1.},
+                 {'params': lr2, 'weight_decay': 0., 'initial_lr': initial_lr * 2., 'lr_mult': 2.}]
         if self.opt == 'adam':
-            initial_lr = np.max(lrs)
-            optimizer = Adam(
-                [{'params': no_decay, 'weight_decay': 0., 'initial_lr': initial_lr},
-                 {'params': decay, 'initial_lr': initial_lr}],
-                lr=initial_lr,
-                weight_decay=self.weight_decay
-            )
+            optimizer = Adam(param_groups, lr=initial_lr, weight_decay=self.weight_decay)
         else:
-            initial_lr = lrs[0]
-            optimizer = CaffeSGD(
-                [{'params': no_decay, 'weight_decay': 0., 'initial_lr': initial_lr},
-                 {'params': decay, 'initial_lr': initial_lr}],
-                lr=initial_lr,
-                momentum=self.momentum,
-                weight_decay=self.weight_decay
-            )
+            optimizer = CaffeSGD(param_groups, lr=initial_lr,
+                                 momentum=self.momentum, weight_decay=self.weight_decay)
             if lr_policy == "multifixed":
                 scheduler = MultiFixedScheduler(optimizer, steps, lrs, last_iter=self.iterations)
 
@@ -447,16 +448,18 @@ class TorchSession(object):
 
         # switch to train mode
         model.train()
-        
-        for self.iterations in range(self.max_iter):
-            if scheduler:
-                scheduler.step()
+        while self.iterations < self.max_iter:
             for i, batch_inputs in enumerate(data_loader):
+                if self.iterations > self.max_iter:
+                    break
+                if scheduler:
+                    scheduler.step()
                 self.train_batch(model, batch_inputs, optimizer)
 
-            if self.iterations % self.snapshot_interval == 0:
-                self.snapshot(model, optimizer=optimizer, with_caffemodel=self.iterations and with_caffemodel)
+                if self.iterations % self.snapshot_interval == 0:
+                    self.snapshot(model, optimizer=optimizer, with_caffemodel=self.iterations and with_caffemodel)
 
+                self.iterations += 1
         # last snapshot
         self.snapshot(model, optimizer=optimizer, with_caffemodel=True)
 
@@ -602,7 +605,8 @@ def main():
                                    restore=not skip_snapshot, transfer_weights=not skip_weights,
                                    snapshot_model=snapshot_model,
                                    opt=args['opt'],
-                                   verbose=verbose)
+                                   verbose=verbose,
+                                   use_pytorch_data_layer=True)
             for idx, solver_path in enumerate(new_solvers):
                 logger.new_command(idx)
                 session.solve(
