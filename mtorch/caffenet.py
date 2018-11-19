@@ -14,7 +14,7 @@ from mmod.simple_parser import parse_prototxt, print_prototxt, read_model, read_
 
 from mtorch.converter import SUPPORTED_LAYERS, save_caffemodel
 from mtorch.caffetorch import FCView, Eltwise, Scale, Crop, Slice, Concat, Permute, SoftmaxWithLoss, \
-    Normalize, Flatten, Reshape, Accuracy, EuclideanLoss, Reorg
+    Normalize, Flatten, Reshape, Accuracy, EuclideanLoss, Reorg, YoloEvalCompat
 from mtorch.region_target import RegionTarget
 from mtorch.softmaxtree_loss import SoftmaxTreeWithLoss
 from mtorch.caffedata import CaffeData
@@ -826,6 +826,12 @@ class CaffeNet(nn.Module):
                 n, c, h, w = self.blob_dims[bname]
                 models[lname] = Reorg(stride)
                 self.blob_dims[tname] = n, c * stride * stride, h / stride, w / stride
+                i = i + 1
+            elif ltype == 'YoloEvalCompat':
+                assert len(self.blob_dims[bname]) >= 4, "The input to the layer should have at least 4 dims." 
+                models[lname] = YoloEvalCompat()
+                self.blob_dims[tname] = tuple([self.blob_dims[bname][0]] + self.blob_dims[bname][2:] \ 
+                                     + [self.blob_dims[bname][1]])   
                 i = i + 1
             else:
                 if raise_unknown:
