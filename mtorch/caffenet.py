@@ -14,7 +14,9 @@ from mmod.simple_parser import parse_prototxt, print_prototxt, read_model, read_
 
 from mtorch.converter import SUPPORTED_LAYERS, save_caffemodel
 from mtorch.caffetorch import FCView, Eltwise, Scale, Crop, Slice, Concat, Permute, SoftmaxWithLoss, \
-    Normalize, Flatten, Reshape, Accuracy, EuclideanLoss, Reorg, YoloEvalCompat
+    Normalize, Flatten, Reshape, Accuracy, EuclideanLoss, Reorg
+from mtorch.yoloevalcompat import YoloEvalCompat
+from mtorch.yolobbs import YoloBBs
 from mtorch.region_target import RegionTarget
 from mtorch.softmaxtree_loss import SoftmaxTreeWithLoss
 from mtorch.caffedata import CaffeData
@@ -838,11 +840,16 @@ class CaffeNet(nn.Module):
                     if len(bname) > 1:
                         raise NotImplementedError('YoloEvalCompat with multi-head not implemented')
                     bname = bname[0]
-                assert len(self.blob_dims[bname]) >= 4, "The input to the layer should have at least 4 dims."
                 models[lname] = YoloEvalCompat()
                 self.blob_dims[tname] = tuple(
                     [self.blob_dims[bname][0]] + self.blob_dims[bname][2:] + [self.blob_dims[bname][1]]
                 )
+                i = i + 1
+            elif ltype == 'YoloBBS':
+                biases = [float(b) for b in layer['yolobbs_param']['biases']]
+                feat_stride = int(layer.get('yolobbs_param', {}).get('feat_stride', 32))
+                models[lname] = YoloBBs(biases=biases, feat_stride=feat_stride)
+                self.blob_dims[tname] = tuple(list(self.blob_dims[bname[0]]) + [4])
                 i = i + 1
             else:
                 if raise_unknown:
