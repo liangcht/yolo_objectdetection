@@ -62,7 +62,7 @@ class SoftmaxTreeWithLoss(nn.Module):
         if ignore_label is not None:
             assert ignore_label < 0, "Ignore label must be negative"
 
-        group_offsets, group_sizes, cid_groups, parents = read_softmax_tree(self.tree)
+        group_offsets, group_sizes, cid_groups, parents, _, _, _ = read_softmax_tree(self.tree)
         self.register_buffer('group_offsets', torch.from_numpy(np.array(group_offsets, dtype=np.int32)))
         self.register_buffer('group_sizes', torch.from_numpy(np.array(group_sizes, dtype=np.int32)))
         self.register_buffer('cid_groups', torch.from_numpy(np.array(cid_groups, dtype=np.int32)))

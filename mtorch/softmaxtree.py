@@ -50,7 +50,7 @@ class SoftmaxTree(nn.Module):
         self.tree = tree  # type: str
         self.axis = axis
 
-        group_offsets, group_sizes, cid_groups, parents = read_softmax_tree(self.tree)
+        group_offsets, group_sizes, cid_groups, parents, _, _, _ = read_softmax_tree(self.tree)
         self.register_buffer('group_offsets', torch.from_numpy(np.array(group_offsets, dtype=np.int32)))
         self.register_buffer('group_sizes', torch.from_numpy(np.array(group_sizes, dtype=np.int32)))
         self.node_count = len(cid_groups)
