@@ -1,7 +1,5 @@
-import numpy as np
 import torch
 import torch.nn as nn
-from torch.autograd import Function
 
     
 class YoloEvalCompat(nn.Module):
@@ -20,7 +18,6 @@ class YoloEvalCompat(nn.Module):
         new_order  = [orig_order[0]] + orig_order[2:] + [orig_order[1]]
         return x.permute(new_order)
 
-    
 
 # TODO: make these a proper unit test
 if __name__ == '__main__':

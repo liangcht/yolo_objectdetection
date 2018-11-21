@@ -828,10 +828,21 @@ class CaffeNet(nn.Module):
                 self.blob_dims[tname] = n, c * stride * stride, h / stride, w / stride
                 i = i + 1
             elif ltype == 'YoloEvalCompat':
-                assert len(self.blob_dims[bname]) >= 4, "The input to the layer should have at least 4 dims." 
+                append_max = layer.get('yoloevalcompat_param', {}).get('append_max', 'false') == 'true'
+                if append_max:
+                    raise NotImplementedError('YoloEvalCompat with append_max not implemented')
+                move_axis = layer.get('yoloevalcompat_param', {}).get('move_axis', 'true') == 'true'
+                if not move_axis:
+                    raise NotImplementedError('YoloEvalCompat without move_axis not implemented')
+                if isinstance(bname, list):
+                    if len(bname) > 1:
+                        raise NotImplementedError('YoloEvalCompat with multi-head not implemented')
+                    bname = bname[0]
+                assert len(self.blob_dims[bname]) >= 4, "The input to the layer should have at least 4 dims."
                 models[lname] = YoloEvalCompat()
-                self.blob_dims[tname] = tuple([self.blob_dims[bname][0]] + self.blob_dims[bname][2:] \ 
-                                     + [self.blob_dims[bname][1]])   
+                self.blob_dims[tname] = tuple(
+                    [self.blob_dims[bname][0]] + self.blob_dims[bname][2:] + [self.blob_dims[bname][1]]
+                )
                 i = i + 1
             else:
                 if raise_unknown:
