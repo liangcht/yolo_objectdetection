@@ -162,19 +162,35 @@ class EuclideanLoss(nn.Module):
 
 
 class SoftmaxWithLoss(nn.CrossEntropyLoss):
-    def __init__(self, loss_weight=1.0):
-        super(SoftmaxWithLoss, self).__init__()
+    def __init__(self, loss_weight=1.0, ignore_label=None, valid_normalization=False):
+        """SoftmaxWithLoss
+        :param loss_weight: loss weight to multiply to
+        :param ignore_label: the label to ignore when calculating
+        :param valid_normalization: if should normalzie by total non-ignored labels
+        """
+        super(SoftmaxWithLoss, self).__init__(
+            ignore_index=ignore_label if ignore_label is not None else -100,
+            size_average=valid_normalization
+        )
+        self.ignore_label = ignore_label
         self.loss_weight = loss_weight
+        self.valid_normalization = valid_normalization
 
     def forward(self, x, targets):
         targets = targets.long()
-        return nn.CrossEntropyLoss.forward(self, x, targets) * self.loss_weight
+        loss = nn.CrossEntropyLoss.forward(self, x, targets) * self.loss_weight
+        if self.valid_normalization:
+            return loss
+        # loss is sum, normalize by BATCH
+        return loss / x.size(0)
 
     def extra_repr(self):
         """Extra information
         """
-        return '{}'.format(
-            "loss_weight={}".format(self.loss_weight) if self.loss_weight != 1.0 else ""
+        return 'normalization={}{}{}'.format(
+            "VALID" if self.valid_normalization else "BATCH_SIZE",
+            ", loss_weight={}".format(self.loss_weight) if self.loss_weight != 1.0 else "",
+            ", ignore_label={}".format(self.ignore_label) if self.ignore_label is not None else "",
         )
 
 

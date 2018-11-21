@@ -52,8 +52,7 @@ class CaffeNet(nn.Module):
                  local_gpus_size=1,
                  world_size=1,
                  seen_images=0, batch_size=None,
-                 phase='TRAIN',
-                 use_pytorch_data_layer=True):
+                 phase='TRAIN'):
         super(CaffeNet, self).__init__()
         self.phase = phase
         self.blobs = None
@@ -72,8 +71,6 @@ class CaffeNet(nn.Module):
 
         self.protofile = protofile
         self.net_info = parse_prototxt(protofile)
-
-        self.use_pytorch = use_pytorch_data_layer
 
         # if should have separate data layer (useful for distributed)
         # noinspection PyCallingNonCallable
@@ -776,7 +773,17 @@ class CaffeNet(nn.Module):
                 i = i + 1
             elif ltype == 'SoftmaxWithLoss':
                 loss_weight = float(layer.get('loss_weight', 1))
-                models[lname] = SoftmaxWithLoss(loss_weight=loss_weight)
+                normalization = layer.get('loss_param', {}).get('normalization', 'BATCH_SIZE')
+                assert normalization in ['VALID', 'BATCH_SIZE'], "Unsupported normalixation: {}".format(
+                    normalization
+                )
+                ignore_label = layer.get('loss_param', {}).get('ignore_label')
+                if ignore_label is not None:
+                    ignore_label = int(ignore_label)
+                models[lname] = SoftmaxWithLoss(
+                    loss_weight=loss_weight, ignore_label=ignore_label,
+                    valid_normalization=(normalization == 'VALID')
+                )
                 self.blob_dims[tname] = 1, 1, 1
                 i = i + 1
             elif ltype == 'EuclideanLoss':
@@ -814,7 +821,14 @@ class CaffeNet(nn.Module):
                 ignore_label = layer.get('loss_param', {}).get('ignore_label')
                 if ignore_label is not None:
                     ignore_label = int(ignore_label)
-                models[lname] = SoftmaxTreeWithLoss(tree, ignore_label=ignore_label, loss_weight=loss_weight)
+                normalization = layer.get('loss_param', {}).get('normalization', 'BATCH_SIZE')
+                assert normalization in ['VALID', 'BATCH_SIZE'], "Unsupported normalixation: {}".format(
+                    normalization
+                )
+                models[lname] = SoftmaxTreeWithLoss(
+                    tree, ignore_label=ignore_label, loss_weight=loss_weight,
+                    valid_normalization=(normalization == 'VALID')
+                )
                 self.blob_dims[tname] = self.blob_dims[bname[0]]
                 i = i + 1
             elif ltype == 'Reorg':

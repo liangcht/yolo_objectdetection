@@ -69,14 +69,21 @@ std::vector<at::Tensor> smtl_cuda_forward(
     at::Tensor prob, at::Tensor label,
     at::Tensor parent,
     int outer_num, int inner_num, int dim,
-    bool has_ignore_label, int ignore_label) {
+    bool has_ignore_label, int ignore_label, bool valid_normalization) {
 
   int nthreads = outer_num * inner_num;
+  auto normalization = at::tensor(outer_num, prob.options());
 
   // Intermediate variables
-  auto loss = at::zeros_like(label);
+  auto loss = at::empty_like(label);
 
+  at::Tensor counts;
   AT_DISPATCH_FLOATING_TYPES(prob.type(), "smtl_cuda_forward", ([&] {
+    scalar_t* counts_data = nullptr;
+    if (valid_normalization) {
+      counts = at::empty_like(label);
+      counts_data = counts.data<scalar_t>();
+    }
     smtl_cuda_forward_kernel<scalar_t><<<GET_BLOCKS(nthreads), CUDA_NUM_THREADS>>>(
         nthreads,
         parent.data<int>(),
@@ -86,12 +93,12 @@ std::vector<at::Tensor> smtl_cuda_forward(
         inner_num,
         has_ignore_label, ignore_label,
         loss.data<scalar_t>(),
-        nullptr);
+        counts_data);
+    if (valid_normalization)
+      normalization = counts.sum();
   }));
 
-  // TODO: implement VALID normalization
-  // batch normalization
-  return {loss.sum() / outer_num};
+  return {loss.sum() / normalization, normalization};
 }
 
 std::vector<at::Tensor> smtl_cuda_backward(
@@ -119,7 +126,6 @@ std::vector<at::Tensor> smtl_cuda_backward(
         has_ignore_label, ignore_label);
   }));
 
-  // TODO: implement VALID normalization
-  // batch normalization
-  return {diff / outer_num};
+  // Return un-normalzied
+  return {diff};
 }
