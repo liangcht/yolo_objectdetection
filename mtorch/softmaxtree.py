@@ -23,14 +23,16 @@ class SoftmaxTreeFunction(Function):
             smt_ = smt_cpu
         prob = smt_.forward(x, group_offsets, group_sizes, axis)[0]
 
-        ctx.save_for_backward(prob, group_offsets, group_sizes, axis)
+        ctx.softmax_axis = axis
+        ctx.save_for_backward(prob, group_offsets, group_sizes)
         return prob
 
     @staticmethod
     def backward(ctx, grad_output):
         grad_x = grad_group_offsets = grad_group_sizes = grad_axis = None
         if ctx.needs_input_grad[0]:
-            prob, group_offsets, group_sizes, axis = ctx.saved_tensors
+            axis = ctx.softmax_axis
+            prob, group_offsets, group_sizes = ctx.saved_tensors
             if prob.is_cuda:
                 smt_ = smt_cuda
             else:

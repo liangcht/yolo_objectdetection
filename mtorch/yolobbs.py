@@ -38,21 +38,18 @@ class YoloBBs(nn.Module):
         y = xy[:, anchors:, :, :]
         w = wh[:, :anchors, :, :]
         h = wh[:, anchors:, :, :]
-        # tensor views into the output bbs
-        tx = bbs[:, :, :, :, 0]
-        ty = bbs[:, :, :, :, 1]
-        tw = bbs[:, :, :, :, 2]
-        th = bbs[:, :, :, :, 3]
 
-        # Use broadcasting to convert to Yolo boundign box in-place
+        # Note: avoid aliasing the output tensors, for AutoGrad (if we ever wanted to compute backward)
+
+        # Use broadcasting to convert to Yolo bounding box in-place
         i = torch.arange(width, dtype=xy.dtype, device=xy.device)
-        tx[:] = (x + i) / width
+        bbs[:, :, :, :, 0] = (x + i) / width
         del i
         j = torch.arange(height, dtype=xy.dtype, device=xy.device).view(-1, 1)
-        ty[:] = (y + j) / height
+        bbs[:, :, :, :, 1] = (y + j) / height
         del j
-        tw[:] = w.exp() * self.biases[:, 0].view(anchors, 1, 1) / width
-        th[:] = h.exp() * self.biases[:, 1].view(anchors, 1, 1) / height
+        bbs[:, :, :, :, 2] = w.exp() * self.biases[:, 0].view(anchors, 1, 1) / width
+        bbs[:, :, :, :, 3] = h.exp() * self.biases[:, 1].view(anchors, 1, 1) / height
 
         # Correct bounding boxes
         if im_info is None:
@@ -71,14 +68,14 @@ class YoloBBs(nn.Module):
             new_w = (im_w * net_h) // im_h
 
         # Convert from network height and width to image height and width
-        tx[:] = (tx - (net_w - new_w) / 2. / net_w) / (float(new_w) / net_w)
-        ty[:] = (ty - (net_h - new_h) / 2. / net_h) / (float(new_h) / net_h)
-        tw *= float(net_w) / new_w
-        th *= float(net_h) / new_h
-        tx *= im_w
-        tw *= im_w
-        ty *= im_h
-        th *= im_h
+        bbs[:, :, :, :, 0] = (bbs[:, :, :, :, 0] - (net_w - new_w) / 2. / net_w) / (float(new_w) / net_w)
+        bbs[:, :, :, :, 1] = (bbs[:, :, :, :, 1] - (net_h - new_h) / 2. / net_h) / (float(new_h) / net_h)
+        bbs[:, :, :, :, 2] *= float(net_w) / new_w
+        bbs[:, :, :, :, 3] *= float(net_h) / new_h
+        bbs[:, :, :, :, 0] *= im_w
+        bbs[:, :, :, :, 2] *= im_w
+        bbs[:, :, :, :, 1] *= im_h
+        bbs[:, :, :, :, 3] *= im_h
 
         return bbs
 

@@ -228,21 +228,6 @@ class Flatten(nn.Module):
         return x.view(left_size, -1).contiguous()
 
 
-class Reshape(nn.Module):
-    def __init__(self, dims):
-        super(Reshape, self).__init__()
-        self.dims = dims
-
-    def __repr__(self):
-        return 'Reshape(dims={})'.format(self.dims)
-
-    def forward(self, x):
-        new_dims = [d for d in self.dims]
-        # TODO: fix reshape of batch axis, with DataParallel
-        new_dims[0] = x.size(0)
-        return x.view(*new_dims).contiguous()
-
-
 class Accuracy(nn.Module):
     def __init__(self):
         super(Accuracy, self).__init__()

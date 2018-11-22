@@ -1,9 +1,5 @@
 import cv2
 import json
-try:
-    import caffe
-except ImportError:
-    caffe = None
 import numpy as np
 from mmod.im_utils import im_rescale
 
@@ -41,7 +37,7 @@ def resize_for_od(im, pixel_mean=None, target_size=416, maintain_ratio=True):
         network_input_height = target_size
 
     im = im.astype(np.float32, copy=True)
-    im_resized = im_rescale(im - pixel_mean, target_size)
+    im_resized = im_rescale(im - np.float32(pixel_mean), target_size)
 
     new_h, new_w = im_resized.shape[0:2]
     left = (network_input_width - new_w) / 2

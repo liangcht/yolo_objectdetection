@@ -12,7 +12,7 @@ from mmod.simple_parser import read_model_proto, array_to_blobproto, parse_proto
 SUPPORTED_LAYERS = ['Data', 'TsvBoxData', 'AnnotatedData', 'HDF5Data', 'Pooling', 'Eltwise', 'ReLU',
                     'Permute', 'Flatten', 'Slice', 'Concat', 'Softmax', 'SoftmaxWithLoss',
                     'Dropout', 'Reshape', 'Sigmoid', 'EuclideanLoss', 'RegionTarget', 'SoftmaxTreeWithLoss',
-                    'Reorg', 'YoloEvalCompat', 'YoloBBs']
+                    'Reorg', 'YoloEvalCompat', 'YoloBBs', 'SoftmaxTreePrediction', 'SoftmaxTree', 'NMSFilter']
 
 
 try:

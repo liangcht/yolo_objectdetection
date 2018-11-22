@@ -263,7 +263,14 @@ def parse_prototxt(protofile):
                     layer = _parse_block(fp)
                     layers.append(layer)
                 else:
-                    props[key] = _parse_block(fp)
+                    value = _parse_block(fp)
+                    if key in props:
+                        if type(props[key]) == list:
+                            props[key].append(value)
+                        else:
+                            props[key] = [props[key], value]
+                    else:
+                        props[key] = value
             line = fp.readline()
 
     if len(layers) > 0:
