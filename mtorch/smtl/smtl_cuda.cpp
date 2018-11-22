@@ -9,7 +9,7 @@ std::vector<at::Tensor> smtl_cuda_forward(
     at::Tensor prob, at::Tensor label,
     at::Tensor parent,
     int outer_num, int inner_num, int dim,
-    bool has_ignore_label, int ignore_label);
+    bool has_ignore_label, int ignore_label, bool valid_normalization);
 
 std::vector<at::Tensor> smtl_cuda_backward(
     at::Tensor prob, at::Tensor label,
@@ -22,7 +22,7 @@ std::vector<at::Tensor> smtl_forward(
     at::Tensor prob, at::Tensor label,
     at::Tensor parent,
     bool has_ignore_label, int ignore_label,
-    int axis) {
+    int axis, bool valid_normalization) {
   CHECK_INPUT(prob);
   CHECK_INPUT(label);
   CHECK_INPUT(parent);
@@ -42,7 +42,7 @@ std::vector<at::Tensor> smtl_forward(
       prob, label,
       parent,
       outer_num, inner_num, dim,
-      has_ignore_label, ignore_label);
+      has_ignore_label, ignore_label, valid_normalization);
 }
 
 std::vector<at::Tensor> smtl_backward(
