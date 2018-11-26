@@ -33,7 +33,7 @@ def _find_max_stack_size(group_offsets, group_sizes, child, child_sizes, root_si
     return max_stack_size
 
 
-class SoftmaxTreeFunction(Function):
+class SoftmaxTreePredictionFunction(Function):
     @staticmethod
     def forward(ctx,
                 conf, obj,
@@ -80,6 +80,7 @@ class SoftmaxTreePrediction(nn.Module):
             self.tree
         )
         self.stack_size = _find_max_stack_size(group_offsets, group_sizes, child, child_sizes, self.root_size)
+        # TODO: share buffers with SoftmaxTree
         self.register_buffer('group_offsets', torch.from_numpy(np.array(group_offsets, dtype=np.int32)))
         self.register_buffer('group_sizes', torch.from_numpy(np.array(group_sizes, dtype=np.int32)))
         self.register_buffer('child', torch.from_numpy(np.array(child, dtype=np.int32)))
@@ -93,7 +94,7 @@ class SoftmaxTreePrediction(nn.Module):
     def forward(self, conf, obj=None):
         if self.output_tree_path:
             assert obj is not None, "output_tree_path requires objectness bottom"
-        return SoftmaxTreePrediction.apply(
+        return SoftmaxTreePredictionFunction.apply(
             conf, obj,
             self.group_offsets, self.group_sizes, self.child, self.child_sizes,
             self.threshold, self.output_tree_path, self.append_max,

@@ -14,35 +14,19 @@ from mmod.simple_parser import parse_prototxt, print_prototxt, read_model, read_
 
 from mtorch.converter import SUPPORTED_LAYERS, save_caffemodel
 from mtorch.caffetorch import FCView, Eltwise, Scale, Crop, Slice, Concat, Permute, SoftmaxWithLoss, \
-    Normalize, Flatten, Reshape, Accuracy, EuclideanLoss, Reorg
+    Normalize, Flatten, Accuracy, EuclideanLoss, Reorg
+from mtorch.reshape import reshape_helper, Reshape
 from mtorch.yoloevalcompat import YoloEvalCompat
 from mtorch.yolobbs import YoloBBs
 from mtorch.region_target import RegionTarget
 from mtorch.softmaxtree_loss import SoftmaxTreeWithLoss
+from mtorch.softmaxtree import SoftmaxTree
+from mtorch.softmaxtree_prediction import SoftmaxTreePrediction
+from mtorch.nmsfilter import NMSFilter
 from mtorch.caffedata import CaffeData
 
 BOX_DIMS = 5  # TODO: should be defined by parameter
 NUM_CHANNELS = 3  # TODO: should be defined by parameter
-
-
-def _reshape(orig_dims, reshape_dims, axis=0, num_axes=-1):
-    if num_axes == -1:
-        num_axes = len(orig_dims[axis:])
-    end_axis = axis + num_axes
-    new_dims = list(orig_dims[:axis])
-    count = np.prod(orig_dims[axis:end_axis])
-    cur = 1
-    for idx, d in enumerate(reshape_dims):
-        if d == 0:
-            d = orig_dims[axis + idx]
-        elif d < 0:
-            d = int(count / cur)
-        new_dims.append(d)
-        cur *= d
-    new_dims += list(orig_dims[end_axis:])
-    assert np.prod(orig_dims) == np.prod(new_dims), "Reshape: shape count: {} != {}".format(orig_dims, new_dims)
-
-    return new_dims
 
 
 class CaffeNet(nn.Module):
@@ -68,6 +52,7 @@ class CaffeNet(nn.Module):
         self.keep_diffs = keep_diffs or self.verbose
         self.blob_dims = dict()
         self.input_index = None
+        self.input_blobs = ['data', 'label']  # This is the default input blob names, overwritten by protofile
 
         self.protofile = protofile
         self.net_info = parse_prototxt(protofile)
@@ -77,7 +62,9 @@ class CaffeNet(nn.Module):
         self.register_buffer('forward_net_only', torch.tensor(1 if forward_net_only else 0, dtype=torch.uint8))
         # noinspection PyCallingNonCallable
         self.register_buffer('seen_images', torch.tensor(seen_images, dtype=torch.long))
-        self.models = self.create_network(width, height, channels)
+        self.models = self.create_network(
+            input_batch_size=self.batch_size, input_width=width, input_height=height, input_channels=channels
+        )
         self.diffs = {}
         for name, model in self.models.items():
             assert isinstance(model, nn.Module)
@@ -147,10 +134,8 @@ class CaffeNet(nn.Module):
         # TODO: have an option to delete blobs as soon as they are not needed (not used as bottom), to save memory
         self.blobs = OrderedDict()
 
-        if len(inputs) >= 2:
-            self.blobs['data'], self.blobs['label'] = inputs
-        elif len(inputs) == 1:
-            self.blobs['data'], = inputs
+        for input_blob, blob in zip(self.input_blobs, inputs):
+            self.blobs[input_blob] = blob
 
         if len(inputs):
             if self.has_mean:
@@ -448,7 +433,7 @@ class CaffeNet(nn.Module):
                 i = i + 1
 
     def create_network(self,
-                       input_width=None, input_height=None, input_channels=None,
+                       input_batch_size=None, input_width=None, input_height=None, input_channels=None,
                        raise_unknown=True):
         models = OrderedDict()
 
@@ -456,36 +441,34 @@ class CaffeNet(nn.Module):
         props = self.net_info['props']
         layer_num = len(layers)
 
-        n, c, h, w = (self.batch_size or 1) * self.local_gpus_size, 3, 1, 1
-        if input_channels is not None:
-            c = input_channels
-        if input_height is not None:
-            h = input_height
-        if input_width is not None:
-            w = input_width
+        test_inputs = []
+        test_input_shapes = []
         if 'input_shape' in props:
-            n = int(props['input_shape']['dim'][0])
-            c = int(props['input_shape']['dim'][1])
-            h = int(props['input_shape']['dim'][2])
-            w = int(props['input_shape']['dim'][3])
+            test_input_shapes = props['input_shape']
+            if not isinstance(test_input_shapes, list):
+                test_input_shapes = [test_input_shapes]
+            if 'input' not in props:
+                test_inputs = ['data']
+        if 'input' in props:
+            test_inputs = props['input']
+            if not isinstance(test_inputs, list):
+                test_inputs = [test_inputs]
 
-            self.width = int(props['input_shape']['dim'][3])
-            self.height = int(props['input_shape']['dim'][2])
-        elif 'input_dim' in props:
-            n = int(props['input_dim'][0])
-            c = int(props['input_dim'][1])
-            h = int(props['input_dim'][2])
-            w = int(props['input_dim'][3])
+        assert len(test_inputs) == len(test_input_shapes), "input_shape and input were not of the same size"
+        if test_inputs:
+            self.input_blobs = test_inputs
+        for input_blob, shape in zip(test_inputs, test_input_shapes):
+            shape = [int(d) for d in shape['dim']]
 
-            self.width = int(props['input_dim'][3])
-            self.height = int(props['input_dim'][2])
-
-        if input_width is not None and input_height is not None:
-            w = input_width
-            h = input_height
-            self.width = input_width
-            self.height = input_height
-        self.blob_dims['data'] = (n, c, h, w)
+            shape[0] = input_batch_size or shape[0]
+            self.batch_size = self.batch_size or shape[0]
+            if len(shape) == 4:
+                shape[1] = input_channels or shape[1]
+                shape[2] = input_width or shape[2]
+                shape[3] = input_height or shape[3]
+                self.width = self.width or shape[2]
+                self.height = self.height or shape[3]
+            self.blob_dims[input_blob] = tuple(shape)
 
         i = 0
         while i < layer_num:
@@ -753,9 +736,9 @@ class CaffeNet(nn.Module):
                 reshape_axis = int(layer['reshape_param'].get('axis', 0))
                 reshape_num_axes = int(layer['reshape_param'].get('num_axes', -1))
                 assert bname in self.blob_dims, "{}({}) must know the dimensions of {}".format(ltype, lname, bname)
-                reshape_dims = _reshape(self.blob_dims[bname], reshape_dims,
-                                        axis=reshape_axis, num_axes=reshape_num_axes)
-                models[lname] = Reshape(reshape_dims)
+                models[lname] = Reshape(reshape_dims, reshape_axis, reshape_num_axes)
+                reshape_dims = reshape_helper(self.blob_dims[bname], reshape_dims,
+                                              axis=reshape_axis, num_axes=reshape_num_axes)
                 self.blob_dims[tname] = tuple(reshape_dims)
                 i = i + 1
             elif ltype == 'Softmax':
@@ -814,6 +797,12 @@ class CaffeNet(nn.Module):
                 for ii in range(3, 6):
                     self.blob_dims[tname[ii]] = self.blob_dims[bname[2]]
                 i = i + 1
+            elif ltype == 'SoftmaxTree':
+                tree = layer['softmaxtree_param']['tree']
+                axis = int(layer.get('softmaxtree_param', {}).get('axis', 1))
+                models[lname] = SoftmaxTree(tree, axis=axis)
+                self.blob_dims[tname] = self.blob_dims[bname]
+                i = i + 1
             elif ltype == 'SoftmaxTreeWithLoss':
                 assert isinstance(bname, list) and len(bname) == 2
                 tree = layer['softmaxtree_param']['tree']
@@ -830,6 +819,24 @@ class CaffeNet(nn.Module):
                     valid_normalization=(normalization == 'VALID')
                 )
                 self.blob_dims[tname] = self.blob_dims[bname[0]]
+                i = i + 1
+            elif ltype == 'SoftmaxTreePrediction':
+                assert not isinstance(bname, list) or len(bname) == 2
+                tree = layer['softmaxtreeprediction_param']['tree']
+                threshold = float(layer.get('softmaxtreeprediction_param', {}).get('threshold', 0.5))
+                append_max = layer.get('softmaxtreeprediction_param', {}).get('append_max', 'true') == 'true'
+                output_tree_path = layer.get(
+                    'softmaxtreeprediction_param', {}
+                ).get('output_tree_path', 'false') == 'true'
+                models[lname] = SoftmaxTreePrediction(
+                    tree, threshold=threshold, append_max=append_max, output_tree_path=output_tree_path
+                )
+                if isinstance(bname, list):
+                    bname = bname[0]
+                dims = list(self.blob_dims[bname])
+                if append_max:
+                    dims[1] += 1
+                self.blob_dims[tname] = dims
                 i = i + 1
             elif ltype == 'Reorg':
                 stride = int(layer.get('reorg_param', {}).get('stride', 2))
@@ -856,14 +863,29 @@ class CaffeNet(nn.Module):
                     bname = bname[0]
                 models[lname] = YoloEvalCompat()
                 self.blob_dims[tname] = tuple(
-                    [self.blob_dims[bname][0]] + self.blob_dims[bname][2:] + [self.blob_dims[bname][1]]
+                    [self.blob_dims[bname][0]] + list(self.blob_dims[bname][2:]) + [self.blob_dims[bname][1]]
                 )
                 i = i + 1
-            elif ltype == 'YoloBBS':
+            elif ltype == 'YoloBBs':
                 biases = [float(b) for b in layer['yolobbs_param']['biases']]
                 feat_stride = int(layer.get('yolobbs_param', {}).get('feat_stride', 32))
                 models[lname] = YoloBBs(biases=biases, feat_stride=feat_stride)
                 self.blob_dims[tname] = tuple(list(self.blob_dims[bname[0]]) + [4])
+                i = i + 1
+            elif ltype == 'NMSFilter':
+                assert isinstance(bname, list) and len(bname) == 2
+                threshold = float(layer.get('nmsfilter_param', {}).get('threshold', 0.45))
+                classes = int(layer.get('nmsfilter_param', {}).get('classes', 1))
+                pre_threshold = float(layer.get('nmsfilter_param', {}).get('pre_threshold', -1.0))
+                first_class = int(layer.get('nmsfilter_param', {}).get('first_class', 0))
+
+                models[lname] = NMSFilter(
+                    nms_threshold=threshold,
+                    pre_threshold=pre_threshold,
+                    classes=classes,
+                    first_class=first_class
+                )
+                self.blob_dims[tname] = self.blob_dims[bname[1]]
                 i = i + 1
             else:
                 if raise_unknown:
@@ -886,7 +908,7 @@ class CaffeNet(nn.Module):
         """CaffeData inputs (for compatibility)
         :rtype: CaffeData
         """
-        assert self.input_index is not None, "Network is not created yet"
+        assert self.input_index is not None, "Data layer does not exist or is not created yet"
         layers = self.net_info['layers']
         layer = layers[self.input_index]
         inputs = CaffeData(layer.copy(), self.phase, self.local_gpus_size,
