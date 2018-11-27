@@ -218,8 +218,16 @@ class CaffeNet(nn.Module):
                 ))
 
         if self.targets:
-            odatas = [self.blobs.get(tname) for tname in self.targets]
-            return torch.stack([d for d in odatas if d is not None]).squeeze()
+            tdatas = [[tname, self.blobs.get(tname)] for tname in self.targets]
+            odatas = [d[1] for d in tdatas if d[1] is not None]
+            # stack the outputs if all are loss values, otherwise return a dict
+            if len(odatas) > 1:
+                for d in odatas:
+                    if d.numel() != 1:
+                        return {
+                            d[0]: d[1] for d in tdatas if d[1] is not None
+                        }
+            return torch.stack(odatas).squeeze()
 
     def get_targets(self):
         """Automaticlly get the set of network outputs
@@ -443,18 +451,26 @@ class CaffeNet(nn.Module):
 
         test_inputs = []
         test_input_shapes = []
-        if 'input_shape' in props:
-            test_input_shapes = props['input_shape']
-            if not isinstance(test_input_shapes, list):
-                test_input_shapes = [test_input_shapes]
-            if 'input' not in props:
-                test_inputs = ['data']
         if 'input' in props:
             test_inputs = props['input']
             if not isinstance(test_inputs, list):
                 test_inputs = [test_inputs]
+        if 'input_shape' in props:
+            test_input_shapes = props['input_shape']
+            if not isinstance(test_input_shapes, list):
+                test_input_shapes = [test_input_shapes]
+            if not test_inputs:
+                test_inputs = ['data']
+        elif 'input_dim' in props:
+            # Support old prototxt format
+            test_input_shapes = [
+                {'dim': dims} for dims in [
+                    props['input_dim'][d * 4:d * 4 + 4] for d in range(len(props['input_dim']) / 4)
+                ]
+            ]
 
-        assert len(test_inputs) == len(test_input_shapes), "input_shape and input were not of the same size"
+        assert len(test_inputs) == len(test_input_shapes), \
+            "input_shape {} and input {} were not of the same size".format(len(test_inputs), len(test_input_shapes))
         if test_inputs:
             self.input_blobs = test_inputs
         for input_blob, shape in zip(test_inputs, test_input_shapes):
