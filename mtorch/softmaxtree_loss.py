@@ -6,7 +6,9 @@ from torch.autograd import Function
 from mmod.simple_parser import read_softmax_tree
 
 import smtl_cuda
+import smtl_cpu
 import smt_cuda
+import smt_cpu
 
 
 class SoftmaxTreeWithLossFunction(Function):
@@ -24,8 +26,14 @@ class SoftmaxTreeWithLossFunction(Function):
         )
 
         has_ignore_label = ignore_label is not None
-        prob = smt_cuda.forward(x, group_offsets, group_sizes, axis)[0]
-        loss, norm = smtl_cuda.forward(prob, label, parents, has_ignore_label, ignore_label, axis, valid_normalization)
+        if x.is_cuda:
+            smt_ = smt_cuda
+            smtl_ = smtl_cuda
+        else:
+            smt_ = smt_cpu
+            smtl_ = smtl_cpu
+        prob = smt_.forward(x, group_offsets, group_sizes, axis)[0]
+        loss, norm = smtl_.forward(prob, label, parents, has_ignore_label, ignore_label, axis, valid_normalization)
         ctx.ignore_label = ignore_label
         ctx.softmax_axis = axis
         ctx.save_for_backward(prob, label, norm, group_offsets, group_sizes, cid_groups, parents)
