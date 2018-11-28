@@ -9,7 +9,7 @@ except ImportError:
 
 from mmod.imdb import ImageDatabase
 
-READ_WITH_OPENCV = False
+READ_WITH_OPENCV = True
 if READ_WITH_OPENCV:
     import numpy as np
     import cv2
@@ -47,8 +47,8 @@ class ImdbData(data.Dataset):
         key = imdb.normkey(index)
         if READ_WITH_OPENCV:
             img = imdb.image(key)
-            correct_img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-            img = Image.fromarray(correct_img)  # save in PIL format
+            correct_img = img[:, :, (2, 1, 0)] # BGR to RGB 
+            img = Image.fromarray(correct_img, mode='RGB')  # save in PIL format
         else:
             raw = imdb.raw_image(index)
             img = Image.open(StringIO(raw)).convert('RGB')

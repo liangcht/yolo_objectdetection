@@ -65,6 +65,10 @@ setup(
         CppExtension('smtpred_cpu', [
             'mtorch/smtpred/smtpred_cpu.cpp',
         ], include_dirs=include_dirs),
+        CppExtension('darkresize', [
+            'mtorch/darkresize/dark_resize.cpp',
+        ], include_dirs=include_dirs),
+
     ],
     cmdclass={
         'build_ext': BuildExtension

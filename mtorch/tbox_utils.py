@@ -6,7 +6,7 @@ BBOX_DIM = 4
 MEANS = (104.0, 117.0, 123.0)
 CANVAS_SIZE = (416, 416)
 MAX_BOXES = 30
-
+USE_DARKNET_LIB = True
 
 class Labeler(object):
     """
@@ -79,16 +79,22 @@ class DarknetAugmentation(object):
                       int(float(params['transform_param']['mean_value'][2]))]  # R
         self.max_boxes = int(params['box_data_param']['max_boxes'])
         box_randomizer = Transforms.RandomizeBBoxes(self.max_boxes)
-        random_distorter = Transforms.RandomDistort(self.hue, self.saturation, self.exposure)
+        random_distorter = Transforms.RandomDistort(hue=self.hue, saturation=self.saturation, exposure=self.exposure)
         random_resizer = Transforms.RandomResizeDarknet(self.jitter, library=Transforms.OPENCV)
+        darknet_random_resize_place = Transforms.DarknetRandomResizeAndPlaceOnCanvas(jitter=self.jitter)
         horizontal_flipper = Transforms.RandomHorizontalFlip()
-        place_on_canvas = Transforms.PlaceOnCanvas()  
+        place_on_canvas = Transforms.PlaceOnCanvas()
         minus_dc = Transforms.SubtractMeans(self.means)
         to_tensor = Transforms.ToDarknetTensor(self.max_boxes)
 
-        self.composed_transforms = Transforms.Compose(
-            [box_randomizer, random_resizer, place_on_canvas, random_distorter,
-             horizontal_flipper, to_tensor, minus_dc])
+        if USE_DARKNET_LIB:
+            self.composed_transforms = Transforms.Compose(
+                [box_randomizer, darknet_random_resize_place, random_distorter,
+                 horizontal_flipper, to_tensor, minus_dc])
+        else:
+            self.composed_transforms = Transforms.Compose(
+                [box_randomizer, random_resizer, place_on_canvas, random_distorter,
+                 horizontal_flipper, to_tensor, minus_dc])
         return self.composed_transforms
 
 
