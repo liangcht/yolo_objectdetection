@@ -29,7 +29,7 @@ class SoftmaxTreeWithLossFunction(Function):
         ctx.ignore_label = ignore_label
         ctx.softmax_axis = axis
         ctx.save_for_backward(prob, label, norm, group_offsets, group_sizes, cid_groups, parents)
-        return loss
+        return loss.squeeze()
 
     @staticmethod
     def backward(ctx, grad_output):

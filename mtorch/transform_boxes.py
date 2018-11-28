@@ -183,4 +183,40 @@ def translate(bbox, x_offset=0, y_offset=0, size=None):
     if size is not None:
         bbox[:, :2] = np.maximum(np.minimum(bbox[:, :2], np.array(size)), 0)
         bbox[:, 2:4] = np.maximum(np.minimum(bbox[:, 2:4], np.array(size)), 0)
+    
+    mask = np.ones(bbox.shape[0], dtype=bool)
+    mask = np.logical_and(mask, (bbox[:, :2] + 1 < bbox[:, 2:4]).all(axis=1))
+    bbox = bbox[mask]
+
     return bbox
+
+
+def to_xy_wh(bbox, w=1.0, h=1.0):
+    """Translate bounding boxes by offsets.
+    Parameters
+    ----------
+    bbox : numpy.ndarray
+        Numpy.ndarray with shape (N, 4+) where N is the number of bounding boxes.
+        The second axis represents attributes of the bounding box.
+        Specifically, these are :math:`(x_{min}, y_{min}, x_{max}, y_{max})`,
+        we allow additional attributes other than coordinates, which stay intact
+        during bounding box transformations.
+    w : int or float
+        width normalization (default is 1 - no normalization)
+    h : int or float
+        height normalization (default is 1 - no normalization)
+    Returns
+    -------
+    numpy.ndarray
+        Bounding boxes in: math: (x_{cent},y_{cent}, w_{box}, h_{box}) representation
+        normalized by w and h
+    """
+    w = float(w)
+    h = float(h)
+    bbox_xywh = bbox.copy()
+    bbox_xywh[:, 0] = ((bbox[:, 0] + bbox[:, 2]) / 2.0) / w
+    bbox_xywh[:, 1] = ((bbox[:, 1] + bbox[:, 3]) / 2.0) / h
+    bbox_xywh[:, 2] = (bbox[:, 2] - bbox[:, 0]) / w
+    bbox_xywh[:, 3] = (bbox[:, 3] - bbox[:, 1]) / h
+
+    return bbox_xywh

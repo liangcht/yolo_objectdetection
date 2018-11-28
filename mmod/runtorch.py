@@ -14,7 +14,6 @@ from torch.utils.data import DataLoader
 from torch.utils.data.sampler import RandomSampler
 from torch.utils.data.distributed import DistributedSampler
 
-
 try:
     # indirect import of matplotlib (e.g. by caffe) may try to load non-existent X
     import matplotlib
@@ -49,6 +48,7 @@ from mtorch.caffeloader import CaffeLoader
 from mtorch.multifixed_scheduler import MultiFixedScheduler
 from mtorch.imdbdata import ImdbData
 from mtorch.tbox_utils import Labeler, DarknetAugmentation
+from mtorch.samplers import SequentialWrappingSampler
 
 
 class AverageMeter(object):
@@ -115,7 +115,6 @@ class TorchSession(object):
         self.batch_time = AverageMeter()
         self.iterations = 0  # current number of iterations
         self.all_losses = list()
-
 
         if len(self.gpus) > 1:
             logging.warning("Ran with 1 process/container on {} process(es), performance may degrade".format(
@@ -261,7 +260,7 @@ class TorchSession(object):
 
         # compute output
         data, labels = inputs[0].cuda(), inputs[1].cuda().float()
-        
+
         optimizer.zero_grad()
 
         loss = model(data, labels)
@@ -344,8 +343,7 @@ class TorchSession(object):
         model = CaffeNet(protofile, verbose=self.verbose,
                          local_gpus_size=len(self.gpus),
                          world_size=self.world_size,
-                         batch_size=self.batch_size,
-                         use_pytorch_data_layer=self.use_pytorch)
+                         batch_size=self.batch_size)
 
         # Load from caffemodel, before cuda()
         if snapshot_model and (not isinstance(snapshot_model, basestring) or snapshot_model.endswith(".caffemodel")):
@@ -368,8 +366,10 @@ class TorchSession(object):
                 self.batch_size = model.batch_size
             assert self.batch_size > 0
 
-            sampler = RandomSampler(
-                augmented_dataset
+            total_batch_size = self.batch_size * len(self.gpus) 
+            sampler = SequentialWrappingSampler(
+                augmented_dataset, 
+                int(np.ceil(float(len(augmented_dataset)) / float(total_batch_size)) * total_batch_size)
             )
             if self.world_size > 1:
                 sampler = DistributedSampler(
@@ -377,8 +377,8 @@ class TorchSession(object):
                     num_replicas=self.world_size, rank=self.rank
                 )
             # TODO: find a better huristics for num_workers (e.g. cpu_count / 2)
-            data_loader = DataLoader(augmented_dataset, batch_size=self.batch_size * len(self.gpus),
-                                     shuffle=False, # TODO: fix sampler for Philly
+            data_loader = DataLoader(augmented_dataset, batch_size=total_batch_size,
+                                     sampler=sampler,
                                      num_workers=len(self.gpus) * 2,
                                      pin_memory=True)
 
