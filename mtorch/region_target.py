@@ -4,6 +4,7 @@ import torch.nn as nn
 from torch.autograd import Function
 
 import region_target_cuda
+import region_target_cpu
 
 
 class RegionTargetFunction(Function):
@@ -12,7 +13,11 @@ class RegionTargetFunction(Function):
                 biases,
                 coord_scale, positive_thresh,
                 warmup, rescore):
-        return tuple(region_target_cuda.forward(
+        if xy.is_cuda:
+            rt_ = region_target_cuda
+        else:
+            rt_ = region_target_cpu
+        return tuple(rt_.forward(
             xy, wh, obj, truth,
             biases,
             coord_scale, positive_thresh,

@@ -28,7 +28,7 @@ def readme(fname):
 
 setup(
     name="Microsoft Massive Object Detection",
-    version="0.0.1",
+    version="0.0.2",
     author="ehazar",
     author_email="ehazar@microsoft.com",
     url='',
@@ -40,6 +40,9 @@ setup(
             'mtorch/rt/rt_cuda.cpp',
             'mtorch/rt/rt_cuda_kernel.cu',
         ], include_dirs=include_dirs),
+        CppExtension('region_target_cpu', [
+            'mtorch/rt/rt_cpu.cpp',
+        ], include_dirs=include_dirs),
         CUDAExtension('smt_cuda', [
             'mtorch/smt/smt_cuda.cpp',
             'mtorch/smt/smt_cuda_kernel.cu',
@@ -47,6 +50,9 @@ setup(
         CUDAExtension('smtl_cuda', [
             'mtorch/smtl/smtl_cuda.cpp',
             'mtorch/smtl/smtl_cuda_kernel.cu',
+        ], include_dirs=include_dirs),
+        CppExtension('smtl_cpu', [
+            'mtorch/smtl/smtl_cpu.cpp',
         ], include_dirs=include_dirs),
         CppExtension('smt_cpu', [
             'mtorch/smt/smt_cpu.cpp',

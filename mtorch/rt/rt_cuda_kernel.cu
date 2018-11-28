@@ -25,13 +25,16 @@ __global__ void ExtractBoundingBox(int total, int num_anchor, int height, int wi
       int offset_double_bnji_next = offset_double_bnji + num_anchor * height * width;
       *(curr_bbs_data + 0) = (*(blob_xy_data + offset_double_bnji) + i) / width;
       *(curr_bbs_data + 1) = (*(blob_xy_data + offset_double_bnji_next) + j) / height;
-      *(curr_bbs_data + 2) = exp(*(blob_wh_data + offset_double_bnji)) * biases[2 * n] / width;
-      *(curr_bbs_data + 3) = exp(*(blob_wh_data + offset_double_bnji_next)) * biases[2 * n + 1] / height;
+      double w = *(blob_wh_data + offset_double_bnji);
+      double h = *(blob_wh_data + offset_double_bnji_next);
+      *(curr_bbs_data + 2) = exp(w) * biases[2 * n] / width;
+      *(curr_bbs_data + 3) = exp(h) * biases[2 * n + 1] / height;
   }
 }
 
 template <typename scalar_t>
-__global__ void CalculateIOU(int total, scalar_t* __restrict__ iou_data, const scalar_t* __restrict__ bbs_data, const scalar_t* __restrict__ truth_data, int num_anchor, int height, int width, int max_gt) {
+__global__ void CalculateIOU(int total, scalar_t* __restrict__ iou_data, const scalar_t* __restrict__ bbs_data, const scalar_t* __restrict__ truth_data, int num_anchor, int height, int width, int max_gt,
+                             scalar_t positive_thresh, const scalar_t* __restrict__ blob_obj_data, scalar_t* __restrict__ target_obj_noobj_data) {
   CUDA_KERNEL_LOOP(index, total) {
       int b = index / (num_anchor * height * width * max_gt);
       int left = index % (num_anchor * height * width * max_gt);
@@ -54,25 +57,17 @@ __global__ void CalculateIOU(int total, scalar_t* __restrict__ iou_data, const s
           scalar_t ph = *(bbs_data + curr_index + 3);
           curr_iou = TBoxIou(px, py, pw, ph,
                   tx, ty, tw, th);
+          // if the iou is large enough, let's not penalize the objectiveness
+          if (curr_iou > positive_thresh) {
+              // multiple threads might write this address at the same time, but
+              // at least one will succeeds. It is safe to do this.
+              *(target_obj_noobj_data + index / max_gt) =
+                  *(blob_obj_data + index / max_gt);
+          }
       }
       *(iou_data + index) = curr_iou;
   }
 }
-
-template <typename scalar_t>
-__global__ void NoPenaltyIfIouLargeEnough(int total, scalar_t positive_thresh,
-        const scalar_t* __restrict__ iou_data, const scalar_t* __restrict__ blob_obj_data, scalar_t* __restrict__ target_obj_noobj_data, int max_gt) {
-    CUDA_KERNEL_LOOP(index, total) {
-        auto curr_iou = *(iou_data + index);
-        if (curr_iou > positive_thresh) {
-            // multiple threads might write this address at the same time, but
-            // at least one will succeeds. It is safe to do this.
-            *(target_obj_noobj_data + index / max_gt) =
-                *(blob_obj_data + index / max_gt);
-        }
-    }
-}
-
 
 template <typename scalar_t>
 __global__ void GroundTruthTarget(int total, int max_gt,
@@ -190,7 +185,6 @@ __global__ void AlignGroudTruth(int total, const int* __restrict__ gt_target_dat
 
         *(target_xy_data + offset_double_bnji) = tx * width - target_i;
         *(target_xy_data + offset_double_bnji_next) = ty * height - target_j;
-        assert(tw > 0 && th > 0);
         *(target_wh_data + offset_double_bnji) = log(tw * width / biases[2 * target_n]);
         *(target_wh_data + offset_double_bnji_next) = log(th * height / biases[2 * target_n + 1]);
         *(target_xywh_weight_data + offset_double_bnji) = coord_scale * (2 - tw * th);
@@ -235,9 +229,9 @@ std::vector<at::Tensor> rt_cuda_forward(
   auto target_class = at::full_like(obj, -1);
 
   // intermediate variables
-  auto ious = at::zeros(xy.type(), {batches, num_anchor, height, width, max_gt});
-  auto bbs  = at::empty(xy.type(), {batches, num_anchor, height, width, 4});
-  auto gt_target = at::empty(at::CUDA(at::kInt), {batches, max_gt, 3, 1});
+  auto ious = at::zeros({batches, num_anchor, height, width, max_gt}, xy.type());
+  auto bbs  = at::empty({batches, num_anchor, height, width, 4}, xy.type());
+  auto gt_target = at::empty({batches, max_gt, 3, 1}, at::CUDA(at::kInt));
 
   int total = batches * num_anchor * height * width;
   AT_DISPATCH_FLOATING_TYPES(xy.type(), "ExtractBoundingBox", ([&] {
@@ -250,13 +244,8 @@ std::vector<at::Tensor> rt_cuda_forward(
   AT_DISPATCH_FLOATING_TYPES(xy.type(), "CalculateIOU", ([&] {
     CalculateIOU<scalar_t><<<GET_BLOCKS(total), CUDA_NUM_THREADS>>>(
         total, ious.data<scalar_t>(),
-        bbs.data<scalar_t>(), truth.data<scalar_t>(), num_anchor, height, width, max_gt);
-  }));
-
-
-  AT_DISPATCH_FLOATING_TYPES(xy.type(), "NoPenaltyIfIouLargeEnough", ([&] {
-    NoPenaltyIfIouLargeEnough<scalar_t><<<GET_BLOCKS(total), CUDA_NUM_THREADS>>>(total, positive_thresh,
-        ious.data<scalar_t>(), obj.data<scalar_t>(), target_obj_noobj.data<scalar_t>(), max_gt);
+        bbs.data<scalar_t>(), truth.data<scalar_t>(), num_anchor, height, width, max_gt,
+        positive_thresh, obj.data<scalar_t>(), target_obj_noobj.data<scalar_t>());
   }));
 
   total = batches * max_gt;
