@@ -7,15 +7,22 @@ def reshape_helper(orig_dims, reshape_dims, axis=0, num_axes=-1):
         num_axes = len(orig_dims[axis:])
     end_axis = axis + num_axes
     new_dims = list(orig_dims[:axis])
-    count = np.prod(orig_dims[axis:end_axis])
     cur = 1
+    infer_axis = -1
     for idx, d in enumerate(reshape_dims):
         if d == 0:
             d = orig_dims[axis + idx]
         elif d < 0:
-            d = int(count / cur)
+            assert infer_axis < 0, "Cannot infer both axis: {} and axis: {}".format(infer_axis, idx)
+            infer_axis = idx
         new_dims.append(d)
-        cur *= d
+        if d > 0:
+            cur *= d
+    if infer_axis >= 0:
+        count = np.prod(orig_dims[axis:end_axis])
+        d = int(count / cur)
+        new_dims[infer_axis] = d
+
     new_dims += list(orig_dims[end_axis:])
     assert np.prod(orig_dims) == np.prod(new_dims), "Reshape: shape count: {} != {}".format(orig_dims, new_dims)
 
