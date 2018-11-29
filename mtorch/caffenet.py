@@ -600,7 +600,7 @@ class CaffeNet(nn.Module):
                 self.blob_dims[tname] = n, c, h, w
                 i = i + 1
             elif ltype == 'BatchNorm':
-                momentum = 1 - float(layer.get('batch_norm_param', {}).get('moving_average_fraction', 0.999))
+                momentum = 0.1
                 n, c, h, w = self.blob_dims[bname]
                 models[lname] = nn.BatchNorm2d(c, momentum=momentum, affine=False)
                 self.blob_dims[tname] = self.blob_dims[bname]

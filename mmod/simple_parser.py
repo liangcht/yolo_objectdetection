@@ -94,7 +94,6 @@ def softmax_tree_path(model):
         tree_file = layer.softmaxtree_param.tree
         if tree_file:
             return tree_file
-    raise Exception('Could not find the tree file')
 
 
 def tsv_data_sources(model):

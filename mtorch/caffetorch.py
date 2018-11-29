@@ -178,11 +178,12 @@ class SoftmaxWithLoss(nn.CrossEntropyLoss):
 
     def forward(self, x, targets):
         targets = targets.long()
+        x = x.permute(0, 2, 1, 3, 4)  # --> Batch Size X Number of Classes X Num of Anchors X Spatial Dims
         loss = nn.CrossEntropyLoss.forward(self, x, targets) * self.loss_weight
         if self.valid_normalization:
             return loss
-        # loss is sum, normalize by BATCH
-        return loss / x.size(0)
+        # loss is sum, normalize by BATCH SIZE X Num of Anchors
+        return loss / x.size(0) / targets.size(1)
 
     def extra_repr(self):
         """Extra information
