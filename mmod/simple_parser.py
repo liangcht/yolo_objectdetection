@@ -85,24 +85,38 @@ def array_to_blobproto(arr, diff=None):
 
 def softmax_tree_path(model):
     """Find the tree path in a Yolov2 model
-    :param model: caffe prototxt model
+    :param model: caffe prototxt model or net info dict
     :rtype: str
     """
+    if isinstance(model, dict):
+        pnames = ['softmaxtree_param', 'softmaxtreeprediction_param']
+        for layer in model['layers']:
+            for pname in pnames:
+                if pname not in layer:
+                    continue
+                param = layer[pname]
+                return param['tree']
+        return
     n_layer = len(model.layer)
     for i in reversed(range(n_layer)):
         layer = model.layer[i]
         tree_file = layer.softmaxtree_param.tree
         if tree_file:
             return tree_file
-    raise Exception('Could not find the tree file')
 
 
 def tsv_data_sources(model):
     """Find TSV data sources
-    :param model: caffe prototxt model
+    :param model: caffe prototxt model or net info dict
     :return: list of paths to sources, and optionally list of paths to labels for those sources
     :rtype: (list, list)
     """
+    if isinstance(model, dict):
+        for layer in model['layers']:
+            if layer['type'] == 'TsvBoxData':
+                param = layer['tsv_data_param']
+                return param['source'], param['source_label']
+        return [], None
     labels = []
     sources = []
     n_layer = len(model.layer)
