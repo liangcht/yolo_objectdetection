@@ -5,7 +5,7 @@ import json
 import numpy as np
 from contextlib import contextmanager
 
-from mmod.simple_parser import tsv_data_sources, read_model_proto, softmax_tree_path, parse_key_value, \
+from mmod.simple_parser import tsv_data_sources, parse_prototxt, softmax_tree_path, parse_key_value, \
     load_labelmap_list
 from mmod.tsv_file import TsvFile
 from mmod.im_utils import img_from_base64, img_from_file, recursive_files_list, VALID_IMAGE_TYPES
@@ -49,7 +49,7 @@ class ImageDatabase(object):
         elif self._type == self._DB_TYPE_DIRECTORY:
             self._index = recursive_files_list(path, ignore_prefixes=["vis"])
         elif self._type == self._DB_TYPE_PROTOTXT:
-            model = read_model_proto(path)
+            model = parse_prototxt(path)
             self._tax_path = softmax_tree_path(model)
             sources, labels = tsv_data_sources(model)
             if not self._cmapfile:
