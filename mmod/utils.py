@@ -118,7 +118,7 @@ def is_number(s, type_cast=float):
     try:
         type_cast(s)
         return True
-    except ValueError:
+    except (ValueError, TypeError):
         return False
 
 

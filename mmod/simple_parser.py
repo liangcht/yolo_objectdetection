@@ -204,6 +204,8 @@ def _line_type(_line):
 
 
 def _parse_block(fp):
+    """Parse a dict block
+    """
     block = OrderedDict()
     _line = fp.readline().strip()
     while _line != '}':
@@ -294,72 +296,64 @@ def format_value(value):
     return '\"%s\"' % value
 
 
-def print_prototxt(net_info):
+def _print_item(key, value, indent=0, fp=None):
+    """Parse an item (that could be list,dict or value)
+    """
+    blanks = ''.join([' '] * indent)
+    if isinstance(value, OrderedDict):
+        _print_block(value, key, indent=indent, fp=fp)
+    elif isinstance(value, list):
+        for v in value:
+            if isinstance(v, OrderedDict):
+                _print_block(v, key, indent=indent, fp=fp)
+            else:
+                print('%s%s: %s' % (blanks, key, format_value(v)), file=fp)
+    else:
+        print('%s%s: %s' % (blanks, key, format_value(value)), file=fp)
+
+
+def _print_block(block_info, prefix, indent=0, fp=None):
+    blanks = ''.join([' '] * indent)
+    print('%s%s {' % (blanks, prefix), file=fp)
+    for key, value in block_info.items():
+        _print_item(key, value, indent=indent + 4, fp=fp)
+    print('%s}' % blanks, file=fp)
+
+
+def print_prototxt(net_info, fp=None):
     """Print parsed prototxt
     """
-    def print_block(block_info, prefix, indent):
-        blanks = ''.join([' '] * indent)
-        print('%s%s {' % (blanks, prefix))
-        for key, value in block_info.items():
-            if type(value) == OrderedDict:
-                print_block(value, key, indent + 4)
-            elif type(value) == list:
-                for v in value:
-                    print('%s    %s: %s' % (blanks, key, format_value(v)))
-            else:
-                print('%s    %s: %s' % (blanks, key, format_value(value)))
-        print('%s}' % blanks)
+    if 'props' in net_info:
+        props = net_info['props']
+        if 'name' in props:
+            print('name: \"%s\"' % props['name'])
+        if 'input' in props:
+            values = props['input']
+            if not isinstance(values, list):
+                values = [values]
+            for v in values:
+                print('input: \"%s\"' % v)
+        if 'input_dim' in props:
+            values = props['input_dim']
+            if not isinstance(values, list):
+                values = [values]
+            for v in values:
+                print('input_dim: %s' % v)
+        if 'input_shape' in props:
+            _print_item('input_shape', props['input_shape'], indent=0, fp=fp)
+        print('', file=fp)
 
-    props = net_info['props']
-    layers = net_info['layers']
-    print('name: \"%s\"' % props['name'])
-    if 'input' in props:
-        print('input: \"%s\"' % props['input'])
-    if 'input_dim' in props:
-        print('input_dim: %s' % props['input_dim'][0])
-        print('input_dim: %s' % props['input_dim'][1])
-        print('input_dim: %s' % props['input_dim'][2])
-        print('input_dim: %s' % props['input_dim'][3])
-    print('')
-    for layer in layers:
-        print_block(layer, 'layer', 0)
+    if 'layers' in net_info:
+        layers = net_info['layers']
+        for layer in layers:
+            _print_block(layer, 'layer', indent=0, fp=fp)
 
 
-def save_prototxt(net_info, protofile, region=True):
+def save_prototxt(net_info, protofile):
     """Save parsed prototxt to a file
     """
     with open(protofile, 'w') as fp:
-        def print_block(block_info, prefix, indent):
-            blanks = ''.join([' '] * indent)
-            print('%s%s {' % (blanks, prefix), file=fp)
-            for key, value in block_info.items():
-                if isinstance(value, OrderedDict):
-                    print_block(value, key, indent + 4)
-                elif isinstance(value, list):
-                    for _v in value:
-                        print('%s    %s: %s' % (blanks, key, format_value(_v)), file=fp)
-                else:
-                    print('%s    %s: %s' % (blanks, key, format_value(value)), file=fp)
-            print('%s}' % blanks, file=fp)
-
-        if 'props' in net_info:
-            props = net_info['props']
-            print('name: \"%s\"' % props['name'], file=fp)
-            if 'input' in props:
-                print('input: \"%s\"' % props['input'], file=fp)
-            if 'input_dim' in props:
-                print('input_dim: %s' % props['input_dim'][0], file=fp)
-                print('input_dim: %s' % props['input_dim'][1], file=fp)
-                print('input_dim: %s' % props['input_dim'][2], file=fp)
-                print('input_dim: %s' % props['input_dim'][3], file=fp)
-            print('', file=fp)
-
-        if 'layers' in net_info:
-            layers = net_info['layers']
-            for layer in layers:
-                if layer['type'] != 'Region' or region:
-                    print_block(layer, 'layer', 0)
-
+        print_prototxt(net_info, fp=fp)
         for k, vals in net_info.iteritems():
             if k in ['layers', 'props']:
                 continue

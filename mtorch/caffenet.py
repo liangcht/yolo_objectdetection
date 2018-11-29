@@ -600,9 +600,7 @@ class CaffeNet(nn.Module):
                 self.blob_dims[tname] = n, c, h, w
                 i = i + 1
             elif ltype == 'BatchNorm':
-                momentum = 1 - 0.9
-                if 'batch_norm_param' in layer and 'moving_average_fraction' in layer['batch_norm_param']:
-                    momentum = 1 - float(layer['batch_norm_param']['moving_average_fraction'])
+                momentum = 1 - float(layer.get('batch_norm_param', {}).get('moving_average_fraction', 0.999))
                 n, c, h, w = self.blob_dims[bname]
                 models[lname] = nn.BatchNorm2d(c, momentum=momentum, affine=False)
                 self.blob_dims[tname] = self.blob_dims[bname]
@@ -796,10 +794,10 @@ class CaffeNet(nn.Module):
                 assert isinstance(bname, list) and len(bname) == 4
                 assert isinstance(tname, list) and len(tname) == 6
                 biases = [float(b) for b in layer['region_target_param']['biases']]
-                rescore = bool(layer['region_target_param'].get('rescore', 'true') == 'true')
-                anchor_aligned_images = layer['region_target_param'].get('anchor_aligned_images', 12800)
-                coord_scale = layer['region_target_param'].get('coord_scale', 1.0)
-                positive_thresh = layer['region_target_param'].get('positive_thresh', 0.6)
+                rescore = layer['region_target_param'].get('rescore', 'true') == 'true'
+                anchor_aligned_images = int(layer['region_target_param'].get('anchor_aligned_images', 12800))
+                coord_scale = float(layer['region_target_param'].get('coord_scale', 1.0))
+                positive_thresh = float(layer['region_target_param'].get('positive_thresh', 0.6))
                 models[lname] = RegionTarget(
                     biases,
                     rescore=rescore, anchor_aligned_images=anchor_aligned_images, coord_scale=coord_scale,
