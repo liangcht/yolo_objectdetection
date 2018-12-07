@@ -1,10 +1,9 @@
 import logging
 import os.path as op
 import re
-import json
 
 from mmod.utils import makedirs, open_file
-from mmod.simple_parser import parse_key_value, load_labelmap_list
+from mmod.simple_parser import parse_key_value, load_labelmap_list, parse_truth
 
 
 class Experiment(object):
@@ -323,14 +322,14 @@ class Experiment(object):
                     if not uid_as_key:
                         # key is image_key, convert to uid
                         key = self.imdb.uid_of_image_key(image_key=key)
-                rects = json.loads(cols[1])
+                rects = parse_truth(cols[1])
                 for rect in rects:
                     conf = rect['conf']
                     if conf < thresh:
                         continue
                     label = rect['class'].strip()
                     # coords +1 as we did for load_truths
-                    bbox = [x + 1 for x in rect['rect']]
+                    bbox = [x + 1 for x in rect.get('rect', [])]
                     if label not in retdict:
                         retdict[label] = []
                     retdict[label] += [(key, conf, bbox)]

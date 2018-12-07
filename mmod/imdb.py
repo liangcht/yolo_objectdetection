@@ -6,7 +6,7 @@ import numpy as np
 from contextlib import contextmanager
 
 from mmod.simple_parser import tsv_data_sources, parse_prototxt, softmax_tree_path, parse_key_value, \
-    load_labelmap_list
+    load_labelmap_list, parse_truth
 from mmod.tsv_file import TsvFile
 from mmod.im_utils import img_from_base64, img_from_file, recursive_files_list, VALID_IMAGE_TYPES
 from mmod.utils import tsv_read, file_cache, FileCache, splitfilename
@@ -291,7 +291,7 @@ class ImageDatabase(object):
         for key, truth in self.iter_label_items(class_label, source=source, tax=tax):
             source, _, _ = key
             datasource = op.basename(op.dirname(source))
-            rects = json.loads(truth)
+            rects = parse_truth(truth)
             in_rects = []
             out_rects = []
             for rect in rects:
@@ -500,10 +500,7 @@ class ImageDatabase(object):
         cols = tsv_read(fp, 2, seek_offset=label_offset)
         if len(cols) != 2:
             return
-        rects = json.loads(cols[1]) if cols[1] else []
-        if not isinstance(rects, list):
-            rects = [{'class': cols[1]}]
-        return rects
+        return parse_truth(cols[1])
 
     def _read_label(self, key, fp, label_offset, retdict, class_label=None):
         rects = self._read_rects(fp, label_offset)

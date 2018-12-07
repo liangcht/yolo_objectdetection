@@ -7,7 +7,7 @@ from collections import OrderedDict
 
 from mmod.utils import is_in_sorted, search_in_sorted, search_both_sorted, tsv_read, splitfilename, tsv_multi_column, \
     FileCache, file_cache, tail_path
-from mmod.simple_parser import load_labelmap_list, is_number
+from mmod.simple_parser import load_labelmap_list, is_number, parse_truth
 from mmod.simple_tsv import SimpleTsv
 
 
@@ -559,10 +559,7 @@ class TsvFile(object):
         with open(label_file, 'r') as fp:
             row = tsv_read(fp, 2, seek_offset=label_offset)
             assert len(row) == 2, "Invalid label file: {}".format(label_file)
-            try:
-                rects = json.loads(row[1])
-            except ValueError:
-                rects = []
+            rects = parse_truth(row[1])
             ctype = 'name'
             stype = 'no_bb'
             if not isinstance(rects, list) or len(rects) == 0 or not isinstance(rects[0], dict):
