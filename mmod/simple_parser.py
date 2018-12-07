@@ -116,12 +116,12 @@ def tsv_data_sources(model):
             if layer['type'] == 'TsvBoxData':
                 param = layer['tsv_data_param']
                 sources = param['source']
-                labels = param['source_label']
                 if not isinstance(sources, list):
                     sources = [sources]
+                labels = param.get('source_label', [])
                 if not isinstance(labels, list):
                     labels = [labels]
-                return sources, labels
+                return sources, labels or None
         return [], None
     labels = []
     sources = []
