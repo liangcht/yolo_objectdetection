@@ -1,8 +1,36 @@
 from __future__ import print_function
 from collections import OrderedDict
+import json
 import numpy as np
 
 from mmod.utils import open_file, is_number
+
+
+def parse_truth(truth):
+    """Parse truth from string
+    :param truth: Truth string (json, single class, semicolon separated classes, ...)
+    :type truth: str
+    :rtype: list
+    """
+    if not truth:
+        return []
+    try:
+        rects = json.loads(truth)
+        return rects
+    except ValueError:
+        truth_list = truth.split(';')
+    rects = []
+    for rect in truth_list:
+        rect = rect.strip()
+        if not rect:
+            continue
+        cls_conf = rect.split(':')
+        if len(cls_conf) != 2 or not is_number(cls_conf[1]):
+            rect = {'class': rect}
+        else:
+            rect = {'class': cls_conf[0], 'conf': float(cls_conf[1])}
+        rects.append(rect)
+    return rects
 
 
 def load_labelmap_list(filename):

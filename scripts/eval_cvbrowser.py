@@ -22,7 +22,7 @@ from mmod.imdb import ImageDatabase
 from mmod.experiment import Experiment
 from mmod.api_utils import convert_api
 from mmod.runeval import run_eval, run_detect
-from mmod.simple_parser import parse_prototxt, parse_key_value
+from mmod.simple_parser import parse_prototxt, parse_key_value, parse_truth
 from mmod.tax_utils import create_predict_keys
 from mmod.philly_utils import fix_winpath
 
@@ -90,7 +90,7 @@ def down_sample_db(imdb, outtsv_file, size, class_thresh, obj_thresh, thresh):
                     continue
             offset = int(offset)
             cols = tsv_read(fp, 2, seek_offset=offset)
-            result = json.loads(cols[1])
+            result = parse_truth(cols[1])
             if with_predict:
                 # previous prediction files may have different thresholds
                 result = [
