@@ -35,6 +35,7 @@ sdist/
 var/
 data
 output
+Tagger
 *.egg-info/
 .installed.cfg
 *.egg
