@@ -284,20 +284,27 @@ class Experiment(object):
         )
         return self._tree_file
 
-    def load_detections(self, predict_path=None, thresh=0.0):
+    def load_detections(self, predict_path=None, thresh=0.0, group_by_label=True):
         """Load predictions from file
         :param predict_path:
         :param thresh: threshold to ignore detections
+        :param group_by_label: if should group the results by label
         :rtype: dict
         """
+        # TODO: this function should be a utility function
         if predict_path is None:
             predict_path = self.predict_path
+        class_thresh = None
+        if isinstance(thresh, dict):
+            class_thresh = thresh
+            thresh = None
         retdict = dict()
         logging.info("Loading detections from: {} for {}".format(predict_path, self))
         keys_file = predict_path + ".keys"
         if not op.isfile(keys_file):
             keys_file = None
             # TODO: Try creating .keys file in-place
+        ignored_labels = set()
         uid_as_key = None
         with open(predict_path, "r") as tsvin, \
                 open(keys_file, "r") if keys_file else open_file(None) as kfp:
@@ -325,16 +332,34 @@ class Experiment(object):
                 rects = parse_truth(cols[1])
                 for rect in rects:
                     conf = rect['conf']
-                    if conf < thresh:
-                        continue
                     label = rect['class'].strip()
+                    if class_thresh is not None:
+                        class_conf = class_thresh.get(label, class_thresh.get(label.lower()))
+                        if class_conf is None:
+                            if label not in ignored_labels:
+                                logging.error("Ignore label: {} with no threshold".format(label))
+                                ignored_labels.add(label)
+                            continue
+                        if conf < class_conf:
+                            continue
+                    elif conf < thresh:
+                        continue
                     # coords +1 as we did for load_truths
                     bbox = [x + 1 for x in rect.get('rect', [])]
-                    if label not in retdict:
-                        retdict[label] = []
-                    retdict[label] += [(key, conf, bbox)]
-        for label in retdict:
-            retdict[label] = sorted(retdict[label], key=lambda y: -y[1])
+                    if group_by_label:
+                        if label not in retdict:
+                            retdict[label] = []
+                        retdict[label] += [(key, conf, bbox)]
+                    else:
+                        if key not in retdict:
+                            retdict[key] = []
+                        rect['class'] = label
+                        if bbox:
+                            rect['rect'] = bbox
+                        retdict[key].append(rect)
+        if group_by_label:
+            for label in retdict:
+                retdict[label] = sorted(retdict[label], key=lambda y: -y[1])
         return retdict
 
     def _auto_test(self, reset):

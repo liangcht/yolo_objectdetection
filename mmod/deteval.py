@@ -1,11 +1,13 @@
 import os
 import json
+import sys
 import numpy as np
 from sklearn import metrics
 import logging
 import copy
 
 from mmod.io_utils import read_to_buffer
+from mmod.utils import open_file
 
 
 def rect_area(rc):
@@ -48,17 +50,22 @@ def evaluate_(c_detects, c_truths, ovthresh):
         conf = det[1]
         bbox = det[2]
         if img_id in c_truths:
-            # get overlaps with truth rectangles
-            overlaps = np.array([iou(bbox, gtbox[1]) for gtbox in c_truths[img_id]])
-            bbox_idx_max = np.argmax(overlaps)
-            if overlaps[bbox_idx_max] > ovthresh:
-                # if a detection hits a difficult gt_box, skip this detection
-                if c_truths[img_id][bbox_idx_max][0] != 0:
-                    continue
-
-                if (img_id, bbox_idx_max) not in dettag:
+            if ovthresh < 0:
+                if img_id not in dettag:
                     y_true = 1
-                    dettag.add((img_id, bbox_idx_max))
+                    dettag.add(img_id)
+            else:
+                # get overlaps with truth rectangles
+                overlaps = np.array([iou(bbox, gtbox[1]) for gtbox in c_truths[img_id]])
+                bbox_idx_max = np.argmax(overlaps)
+                if overlaps[bbox_idx_max] > ovthresh:
+                    # if a detection hits a difficult gt_box, skip this detection
+                    if c_truths[img_id][bbox_idx_max][0] != 0:
+                        continue
+
+                    if (img_id, bbox_idx_max) not in dettag:
+                        y_true = 1
+                        dettag.add((img_id, bbox_idx_max))
 
         y_trues += [y_true]
         y_scores += [conf]
@@ -72,7 +79,7 @@ def splitpath(filepath):
     return path, basename, ext
 
 
-def _eval(truths, detresults, ovthresh, confs=None, label_to_keys=None):
+def eval_one(truths, detresults, ovthresh=-1, confs=None, label_to_keys=None):
     if confs is None:
         confs = [0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
     y_scores = []
@@ -173,15 +180,17 @@ def get_report(exp, dets, ovths):
     for part in truths_list:
         reports[part] = dict()
         for ov_th in ovths:
-            reports[part][ov_th] = _eval(truths_list[part], dets, ov_th)
+            reports[part][ov_th] = eval_one(truths_list[part], dets, ov_th)
     return reports  # return the overal reports
 
 
-def print_reports(reports, precths, report_file_table):
+def print_reports(reports, precths=None, report_file_table=None):
+    if precths is None:
+        precths = [0.8, 0.9, 0.95]
     headings = ['IOU', 'MAP']
     for precth in precths:
         headings += ['Th@%g' % precth, 'P%g' % precth, 'R@%g' % precth]
-    with open(report_file_table, 'w') as fp:
+    with open(report_file_table, 'w') if report_file_table else open_file(sys.stdout) as fp:
         for key in reports:
             table = []
             mv_report = reports[key]

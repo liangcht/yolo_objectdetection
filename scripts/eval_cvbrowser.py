@@ -35,10 +35,12 @@ class Logger(object):
 
 
 # noinspection PyShadowingNames
-def down_sample_db(imdb, outtsv_file, size, class_thresh, obj_thresh, thresh):
+def down_sample_db(imdb, predict_file, out_path, size, class_thresh, obj_thresh, thresh):
     """down-sample imdb and use the predictions (and thresholds) as new truth
     :type imdb: mmod.imdb.ImageDatabase
-    :type outtsv_file: str
+    :param predict_file: the prediction tsv file used to create the db as new truth
+    :type predict_file: str
+    :param out_path: output path to create the db at
     :param size: size of the down-sample
     :type size: int
     :param class_thresh: per-class threshold
@@ -46,40 +48,40 @@ def down_sample_db(imdb, outtsv_file, size, class_thresh, obj_thresh, thresh):
     :param thresh: global class threshold
     """
     with_predict = False
-    if outtsv_file:
-        assert op.isfile(outtsv_file), "Cannot access prediction file: {}".format(outtsv_file)
+    if predict_file:
+        assert op.isfile(predict_file), "Cannot access prediction file: {}".format(predict_file)
         with_predict = True
 
     assert len(imdb) >= size >= 0, "Invalid sample size: {} for db: {}".format(size, imdb)
     if not size:
         size = len(imdb)
 
-    if not outtsv_file:
+    if not predict_file:
         assert caffemodel and caffemodel and op.isfile(caffemodel) and op.isfile(caffenet), \
             "caffemodel: {} or caffenet: {} do not exist".format(caffenet, caffemodel)
         name = op.basename(caffemodel) + "." + exp_id
         exp = Experiment(imdb, caffenet, caffemodel, name=name, cmapfile=cmapfile)
         logging.info("Input experiment: {}".format(exp))
-        outtsv_file = exp.predict_path
-        keys_file = outtsv_file + ".keys"
+        predict_file = exp.predict_path
+        keys_file = predict_file + ".keys"
     else:
-        keys_file = outtsv_file + ".keys"
+        keys_file = predict_file + ".keys"
         if not op.isfile(keys_file):
             logging.info("Creating keys: {} from db: {}".format(keys_file, imdb))
-            create_predict_keys(imdb, outtsv_file)
+            create_predict_keys(imdb, predict_file)
 
     input_range = np.random.choice(len(imdb) - 1, replace=False, size=(size,))
 
-    if not with_predict and (not op.isfile(outtsv_file) or args['clean']):
+    if not with_predict and (not op.isfile(predict_file) or args['clean']):
         run_detect(exp=exp, logger=Logger(),
                    thresh=thresh, class_thresh=class_thresh, obj_thresh=obj_thresh, input_range=input_range)
     elif not with_predict:
-        logging.info("Using previous prediction: {}, use --clean to re-do detection".format(outtsv_file))
+        logging.info("Using previous prediction: {}, use --clean to re-do detection".format(predict_file))
 
-    assert op.isfile(outtsv_file), "no prediction file: {}".format(outtsv_file)
+    assert op.isfile(predict_file), "no prediction file: {}".format(predict_file)
     assert op.isfile(keys_file), "no keys file: {}".format(keys_file)
     all_det = {}
-    with open(outtsv_file) as fp, open(keys_file) as fpk:
+    with open(predict_file) as fp, open(keys_file) as fpk:
         for line in fpk:
             uid, offset = line.split("\t")
             if with_predict:
@@ -101,9 +103,9 @@ def down_sample_db(imdb, outtsv_file, size, class_thresh, obj_thresh, thresh):
 
     assert len(all_det) == size, \
         "detections: {} != size: {}, some needed images have no detection in {}, run with --clean".format(
-            len(all_det), size, outtsv_file
+            len(all_det), size, predict_file
         )
-    new_label_file = op.join(out_path, "test0.tsv")
+    new_label_file = op.join(out_path, "test0.tsv").replace("\\", "/")
     with open_with_lineidx(new_label_file) as fp:
         with imdb.open():
             for idx in range(len(imdb)):
@@ -253,7 +255,7 @@ if __name__ == '__main__':
     if out_path:
         imdb = ImageDatabase(in_path, cmapfile=cmapfile)
         size = args['size']
-        path = down_sample_db(imdb, outtsv_file, size, class_thresh, obj_thresh, thresh)
+        path = down_sample_db(imdb, outtsv_file, out_path, size, class_thresh, obj_thresh, thresh)
 
     if not api_endpoint:
         raise SystemExit("No endpoint is given to evaluate db: {}".format(path))

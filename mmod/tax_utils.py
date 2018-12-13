@@ -1,7 +1,9 @@
 import logging
 import numpy as np
 import os.path as op
+import json
 from mmod.imdb import ImageDatabase
+from mmod.experiment import Experiment
 from mmod.taxonomy import Taxonomy
 from mmod.utils import open_with_lineidx, open_file, makedirs, tsv_read
 from mmod.im_utils import int_rect, tile_rects
@@ -144,6 +146,44 @@ def create_inverted(db, path=None, shuffle=None, labelmap=None,
             fp.write("{}\t{}\n".format(
                 prev_label, " ".join(label_shuffle_lines)
             ))
+
+
+def create_db_from_predict(db, predict_file, class_thresh, out_path):
+    """Use the prediction file and given thresholds to create a new composite db
+    :param db: input db
+    :type db: mmod.imdb.ImageDatabase
+    :param predict_file: prediction file
+    :type predict_file: str
+    :param class_thresh: class thresholds
+    :type class_thresh: dict
+    :param out_path: directory path to create composite db
+    :type out_path: str
+    :rtype: mmod.imdb.ImageDatabase
+    """
+    exp = Experiment(db)
+    all_det = exp.load_detections(predict_file, class_thresh, group_by_label=False)
+    new_label_file = op.join(out_path, "test0.tsv").replace("\\", "/")
+    with open_with_lineidx(new_label_file) as fp:
+        with db.open():
+            for idx in range(len(db)):
+                key = db.normkey(idx)
+                uid = db.uid(key)
+                if uid not in all_det:
+                    fp.write("d\td\n")
+                    continue
+                result = all_det[uid]
+                fp.write("{}\t{}\n".format(
+                    db.image_key(key),
+                    json.dumps(result, separators=(',', ':'), sort_keys=True),
+                ))
+
+    path = op.join(out_path, "testX.tsv")
+    logging.info("Creating the composite db at `{}` from db: {}".format(path, db.path))
+    with open(path, "w") as fp:
+        fp.write("{}\n".format(db.path))
+    with open(op.join(out_path, "testX.label.tsv"), "w") as fp:
+        fp.write("{}\n".format(new_label_file))
+    return ImageDatabase(path)
 
 
 def _sample_rects(db, keys, labels, max_label):
