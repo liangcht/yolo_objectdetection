@@ -127,18 +127,15 @@ class Concat(nn.Module):
 
 
 class Permute(nn.Module):
-    def __init__(self, order0, order1, order2, order3):
+    def __init__(self, *order):
         super(Permute, self).__init__()
-        self.order0 = order0
-        self.order1 = order1
-        self.order2 = order2
-        self.order3 = order3
-
+        self.order = order
+        
     def __repr__(self):
-        return 'Permute(%d, %d, %d, %d)' % (self.order0, self.order1, self.order2, self.order3)
+        return 'Permute({%d}, {%d}, {%d}, {%d})'.format(**self.order)
 
     def forward(self, x):
-        x = x.permute(self.order0, self.order1, self.order2, self.order3).contiguous()
+        x = x.permute(*self.order).contiguous()
         return x
 
 
@@ -171,6 +168,7 @@ class SoftmaxWithLoss(nn.CrossEntropyLoss):
         super(SoftmaxWithLoss, self).__init__(
             ignore_index=ignore_label if ignore_label is not None else -100,
             size_average=valid_normalization
+            #reduction='elementwise_mean' if valid_normalization else 'sum' # TODO: switch to this later 
         )
         self.ignore_label = ignore_label
         self.loss_weight = loss_weight
@@ -178,12 +176,11 @@ class SoftmaxWithLoss(nn.CrossEntropyLoss):
 
     def forward(self, x, targets):
         targets = targets.long()
-        x = x.permute(0, 2, 1, 3, 4)  # --> Batch Size X Number of Classes X Num of Anchors X Spatial Dims
         loss = nn.CrossEntropyLoss.forward(self, x, targets) * self.loss_weight
         if self.valid_normalization:
             return loss
-        # loss is sum, normalize by BATCH SIZE X Num of Anchors
-        return loss / x.size(0) / targets.size(1)
+        # loss is sum, normalize by BATCH SIZE 
+        return loss / x.size(0) 
 
     def extra_repr(self):
         """Extra information
@@ -250,6 +247,7 @@ class Accuracy(nn.Module):
 
 class Reorg(nn.Module):
     """Reorganize data blob to reduce spatial resolution by increasing channels, or vice versa
+    TODO: FIX THIS MODULE, it currently has a bug
     """
     def __init__(self, stride=2):
         super(Reorg, self).__init__()
