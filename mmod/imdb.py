@@ -89,7 +89,7 @@ class ImageDatabase(object):
                     raise RuntimeError("file: {} is invalid".format(key))
             return im
         if self._type == self._DB_TYPE_PROTOTXT or self._type == self._DB_TYPE_TSV:
-            _, b64str = self._read_tsv(key)
+            b64str = self._read_tsv(key)
             return img_from_base64(b64str)
         assert False, "Invalid type: {}".format(self._type)
 
@@ -411,13 +411,10 @@ class ImageDatabase(object):
         tsv_in = self._index.open(tsv_path)
         tsv_in.seek(offset)
         cols = [x.strip() for x in tsv_in.readline().split("\t")]
-        if len(cols) < 1:
-            return None, None
-        if len(cols) == 2:
-            return cols[0], cols[1]
-        if len(cols) < 2:
-            return cols[0], None
-        return cols[0], cols[2]
+        # ignore last column if empty
+        if cols and not cols[-1]:
+            cols = cols[:-1]
+        return cols[-1] if cols else None
 
     def normkey(self, key):
         """Convert any key to the normalized key
@@ -441,7 +438,7 @@ class ImageDatabase(object):
             key = self.normkey(key)
             with open(key, 'r') as fp:
                 return base64.b64encode(fp.read())
-        _, b64str = self._read_tsv(key)
+        b64str = self._read_tsv(key)
         return b64str
 
     def image(self, key):
@@ -457,7 +454,7 @@ class ImageDatabase(object):
             key = self.normkey(key)
             with open(key, 'r') as fp:
                 return fp.read()
-        _, b64str = self._read_tsv(key)
+        b64str = self._read_tsv(key)
         return base64.b64decode(b64str)
 
     def uid(self, key):
