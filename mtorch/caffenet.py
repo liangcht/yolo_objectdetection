@@ -24,6 +24,7 @@ from mtorch.softmaxtree import SoftmaxTree
 from mtorch.softmaxtree_prediction import SoftmaxTreePrediction
 from mtorch.nmsfilter import NMSFilter
 from mtorch.caffedata import CaffeData
+from mtorch.region_loss import RegionLoss
 
 BOX_DIMS = 5  # TODO: should be defined by parameter
 NUM_CHANNELS = 3  # TODO: should be defined by parameter
@@ -600,7 +601,7 @@ class CaffeNet(nn.Module):
                 self.blob_dims[tname] = n, c, h, w
                 i = i + 1
             elif ltype == 'BatchNorm':
-                momentum = 1 - float(layer.get('batch_norm_param', {}).get('moving_average_fraction', 0.999))
+                momentum = 0.1 # this is in fact PyTorch Default
                 n, c, h, w = self.blob_dims[bname]
                 models[lname] = nn.BatchNorm2d(c, momentum=momentum, affine=False)
                 self.blob_dims[tname] = self.blob_dims[bname]
@@ -666,15 +667,10 @@ class CaffeNet(nn.Module):
                 self.blob_dims[tname] = self.blob_dims[bname]
                 i = i + 1
             elif ltype == 'Permute':
-                orders = layer['permute_param']['order']
-                order0 = int(orders[0])
-                order1 = int(orders[1])
-                order2 = int(orders[2])
-                order3 = int(orders[3])
-                models[lname] = Permute(order0, order1, order2, order3)
-                n, c, h, w = self.blob_dims[bname]
-                shape = [n, c, h, w]
-                self.blob_dims[tname] = shape[order0], shape[order1], shape[order2], shape[order3]
+                orders = [int(order) for order in layer['permute_param']['order']]
+                models[lname] = Permute(orders)
+                shape = list(self.blob_dims[bname])
+                self.blob_dims[tname] = tuple([shape[order] for order in orders])
                 i = i + 1
             elif ltype == 'Flatten':
                 axis = int(layer['flatten_param'].get('axis', 1))
@@ -900,6 +896,10 @@ class CaffeNet(nn.Module):
                     first_class=first_class
                 )
                 self.blob_dims[tname] = self.blob_dims[bname[1]]
+                i = i + 1
+            elif ltype == 'RegionLoss':
+                models[lname] = RegionLoss() # TODO: add arguments based on prototxt
+                self.blob_dims[tname] = self.blob_dims[bname[0]] 
                 i = i + 1
             else:
                 if raise_unknown:

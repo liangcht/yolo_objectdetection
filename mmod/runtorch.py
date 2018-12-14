@@ -113,6 +113,7 @@ class TorchSession(object):
         self.rank = ompi_rank()
         self.world_size = ompi_size()
         self.batch_time = AverageMeter()
+        self.data_time = AverageMeter()
         self.iterations = 0  # current number of iterations
         self.all_losses = list()
 
@@ -277,12 +278,14 @@ class TorchSession(object):
         self.batch_time.update(time.time() - end)
 
         if self.display and self.iterations % self.display == 0:
-            logging.info("Iteration {} ({:.4f} iter/s, {:.5f}s/{} iter), loss = {:.6f}".format(
+            logging.info("Iteration {} (Data: {:.5f}/s{} iter, Model & Loss: {:.4f} iter/s, {:.5f}s/{} iter), loss = {:.6f}".format(
                 self.iterations,
+                self.data_time.sum, self.data_time.count,
                 1.0 / self.batch_time.avg,
                 self.batch_time.sum, self.batch_time.count,
                 crit.item())
             )
+            self.data_time.reset()
             self.batch_time.reset()
             if self.logger:
                 self.logger.set_iterations(self.iterations, losses=crit.item())
@@ -448,8 +451,11 @@ class TorchSession(object):
 
         # switch to train mode
         model.train()
+        
+        end = time.time()
         while self.iterations < self.max_iter:
             for i, batch_inputs in enumerate(data_loader):
+                self.data_time.update(time.time() - end)
                 if self.iterations > self.max_iter:
                     break
                 if scheduler:
@@ -460,6 +466,8 @@ class TorchSession(object):
                     self.snapshot(model, optimizer=optimizer, with_caffemodel=self.iterations and with_caffemodel)
 
                 self.iterations += 1
+                end = time.time()
+
         # last snapshot
         self.snapshot(model, optimizer=optimizer, with_caffemodel=True)
 
