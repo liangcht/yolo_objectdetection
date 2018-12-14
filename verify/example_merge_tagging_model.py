@@ -1,3 +1,4 @@
+import torch.nn as nn
 from mtorch.caffenet import CaffeNet
 
 # merged prototxt
@@ -13,6 +14,9 @@ textnet.load_weights('output/Tagging2K/Classification_text.caffemodel', ignore_s
 for lname, model in textnet.models.iteritems():
     lname = lname.replace('_taggingv2', '_text')
     tmodel = net.models[lname]
+    if isinstance(model, nn.Sequential):
+        model = model[1]
+        tmodel = tmodel[1]
     if hasattr(model, 'weight'):
         print('{} weight'.format(lname))
         tmodel.weight = model.weight
