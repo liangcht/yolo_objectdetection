@@ -148,7 +148,7 @@ def create_inverted(db, path=None, shuffle=None, labelmap=None,
             ))
 
 
-def create_db_from_predict(db, predict_file, class_thresh, out_path):
+def create_db_from_predict(db, predict_file, class_thresh, out_path, basename='test'):
     """Use the prediction file and given thresholds to create a new composite db
     :param db: input db
     :type db: mmod.imdb.ImageDatabase
@@ -158,11 +158,12 @@ def create_db_from_predict(db, predict_file, class_thresh, out_path):
     :type class_thresh: dict
     :param out_path: directory path to create composite db
     :type out_path: str
+    :param basename: base name for composite db
     :rtype: mmod.imdb.ImageDatabase
     """
     exp = Experiment(db)
     all_det = exp.load_detections(predict_file, class_thresh, group_by_label=False)
-    new_label_file = op.join(out_path, "test0.tsv").replace("\\", "/")
+    new_label_file = op.join(out_path, basename + "0.tsv").replace("\\", "/")
     with open_with_lineidx(new_label_file) as fp:
         with db.open():
             for idx in range(len(db)):
@@ -177,11 +178,44 @@ def create_db_from_predict(db, predict_file, class_thresh, out_path):
                     json.dumps(result, separators=(',', ':'), sort_keys=True),
                 ))
 
-    path = op.join(out_path, "testX.tsv")
+    path = op.join(out_path, basename + "X.tsv")
     logging.info("Creating the composite db at `{}` from db: {}".format(path, db.path))
     with open(path, "w") as fp:
         fp.write("{}\n".format(db.path))
-    with open(op.join(out_path, "testX.label.tsv"), "w") as fp:
+    with open(op.join(out_path, basename + "X.label.tsv"), "w") as fp:
+        fp.write("{}\n".format(new_label_file))
+    return ImageDatabase(path)
+
+
+def resample_db(db, input_range, out_path, basename='resampled_test'):
+    """Use the prediction file and given thresholds to create a new composite db
+    :param db: input db
+    :type db: mmod.imdb.ImageDatabase
+    :param input_range: new indices to select from db
+    :type input_range: list
+    :param out_path: directory path to create composite db
+    :type out_path: str
+    :param basename: base name for composite db
+    :rtype: mmod.imdb.ImageDatabase
+    """
+    new_label_file = op.join(out_path, basename + "0.tsv").replace("\\", "/")
+    with open_with_lineidx(new_label_file) as fp:
+        with db.open():
+            for idx in range(len(db)):
+                key = db.normkey(idx)
+                if idx not in input_range:
+                    fp.write("d\td\n")
+                    continue
+                fp.write("{}\t{}\n".format(
+                    db.image_key(key),
+                    json.dumps(db.truth_list(key), separators=(',', ':'), sort_keys=True),
+                ))
+
+    path = op.join(out_path, basename + "X.tsv")
+    logging.info("Creating the composite db at `{}` from db: {}".format(path, db.path))
+    with open(path, "w") as fp:
+        fp.write("{}\n".format(db.path))
+    with open(op.join(out_path, basename + "X.label.tsv"), "w") as fp:
         fp.write("{}\n".format(new_label_file))
     return ImageDatabase(path)
 
