@@ -64,9 +64,10 @@ def main():
     predict_file = fix_winpath(args['predict'])
     out_path = args['outdbpath']
     outtsv_file = op.join(out_path, "tagger.predict")
+    makedirs(out_path, exist_ok=True)
     if predict_file:
         assert predict_file and op.isfile(predict_file), "{} does not exist".format(predict_file)
-        makedirs(out_path, exist_ok=True)
+        logging.info("Creating db in {} from {}".format(out_path, predict_file))
         db = create_db_from_predict(db, predict_file, class_thresh, out_path)
 
     logging.info("cvapi tagging {}".format(db))

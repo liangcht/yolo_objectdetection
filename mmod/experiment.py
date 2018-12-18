@@ -9,7 +9,7 @@ from mmod.simple_parser import parse_key_value, load_labelmap_list, parse_truth
 class Experiment(object):
     def __init__(self, imdb, caffenet=None, caffemodel=None,
                  caffemodel_clone=None,
-                 name=None, vis_path=None, cmapfile=None,
+                 name=None, vis_path=None, cmapfile=None, predict_path=None,
                  input_range=None, root=None, data=None, reset=False, expid=None):
         """Experiment (training, or evaluation) using an image database
         :type imdb: mmod.imdb.ImageDatabase
@@ -23,6 +23,7 @@ class Experiment(object):
         :type name: str
         :type vis_path: str
         :type cmapfile: str
+        :type predict_path: str
         :param input_range: range of inputs to in this experiment
         :type input_range: xrange
         :param root: root folder of the experiment output
@@ -41,6 +42,7 @@ class Experiment(object):
         self._orig_name = self._name = name
         self._vis_path = vis_path
         self._cmapfile = cmapfile
+        self._predict_path = predict_path
         self._cmap = None  # cached cmap
         self._input_range = input_range
         self._root = root
@@ -132,10 +134,11 @@ class Experiment(object):
                 self._root = self.imdb.path
             elif self.imdb.is_image:
                 self._root = op.dirname(self.imdb.path) or '.'
-            else:
-                assert self._caffemodel, "Experiment: {} has no caffemodel".format(self)
+            elif self._caffemodel:
                 self._root = op.dirname(self._caffemodel) or '.'
-                makedirs(self._root, exist_ok=True)
+            elif self._predict_path:
+                self._root = op.dirname(self._predict_path) or '.'
+            makedirs(self._root, exist_ok=True)
         assert self._root and op.isdir(self._root), "Root does not exist: {}".format(self._root)
         return self._root
 
@@ -175,6 +178,8 @@ class Experiment(object):
         """Path to predictions of the experiment
         :rtype: str
         """
+        if self._predict_path:
+            return self._predict_path
         return self.path + ".predict"
 
     @property
