@@ -45,7 +45,7 @@ class Labeler(object):
         bboxs = np.zeros(shape=(length, BBOX_DIM + 1), dtype="float32")
         last_valid_box = 0
         for bbox in truth:
-            if filter_difficult and bbox['diff'] == 1:
+            if filter_difficult and bbox.get('diff', 0) == 1:
                 continue
             bboxs[last_valid_box, :BBOX_DIM] = [float(val) for val in bbox['rect']]
             bboxs[last_valid_box, BBOX_DIM] = cmap.index(bbox['class'])
@@ -78,6 +78,7 @@ class DarknetAugmentation(object):
                       int(float(params['transform_param']['mean_value'][1])),  # G
                       int(float(params['transform_param']['mean_value'][2]))]  # R
         self.max_boxes = int(params['box_data_param']['max_boxes'])
+        set_inrange = Transforms.SetBBoxesInRange()
         box_randomizer = Transforms.RandomizeBBoxes(self.max_boxes)
         random_distorter = Transforms.RandomDistort(hue=self.hue, saturation=self.saturation, exposure=self.exposure)
         random_resizer = Transforms.RandomResizeDarknet(self.jitter, library=Transforms.OPENCV)
@@ -89,11 +90,11 @@ class DarknetAugmentation(object):
 
         if USE_DARKNET_LIB:
             self.composed_transforms = Transforms.Compose(
-                [box_randomizer, darknet_random_resize_place, random_distorter,
+                [set_inrange, box_randomizer, darknet_random_resize_place, random_distorter,
                  horizontal_flipper, to_tensor, minus_dc])
         else:
             self.composed_transforms = Transforms.Compose(
-                [box_randomizer, random_resizer, place_on_canvas, random_distorter,
+                [set_inrange, box_randomizer, random_resizer, place_on_canvas, random_distorter,
                  horizontal_flipper, to_tensor, minus_dc])
         return self.composed_transforms
 
