@@ -50,7 +50,8 @@ FLIP_PROB = 0.5
 
 __all__ = sorted(["Compose", "ToTensor", "Resize", "RandomResizeDarknet", "RandomCrop", "RandomHorizontalFlip",
                   "RandomVerticalFlip", "PlaceOnCanvas", "CanvasAdapter", "SubtractMeans",
-                  "DarknetRandomResizeAndPlaceOnCanvas", "RandomizeBBoxes", "ToDarknetTensor"])
+                  "DarknetRandomResizeAndPlaceOnCanvas", "RandomizeBBoxes", "ToDarknetTensor",
+                  "SetBBoxesInRange"])
 
 
 class Compose(object):
@@ -1146,6 +1147,38 @@ class RandomizeBBoxes(ImageBoxAugmentation):
         mask = np.logical_and(mask, box_h > -0.001)
         
         self.bboxs = self.bboxs[mask]
+
+
+
+class SetBBoxesInRange(ImageBoxAugmentation):
+    """Validates bounding boxes, sets bounding boxes in range of image and omits invlalid boxes
+    
+    Output
+    -----------
+        sample  dictionary with IMAGE unaltered  and LABEL validated,
+    """
+
+    def __init__(self):
+        """Constructor of SetBBoxesInRange object
+        """
+        super(SetBBoxesInRange, self).__init__()
+
+    def __call__(self, sample):
+        """ Executes the validation of boxes in sample
+        :param sample:  dictionary with two fields defined by IMAGE and LABEL
+        :return: the sample with bounding boxes validated and invalid boxes dropped
+        """
+        super(SetBBoxesInRange, self).__call__(sample)
+        self.__set_bboxs_inrange()
+        return {IMAGE: self.image, LABEL: self.bboxs}
+ 
+    def __set_bboxs_inrange(self):
+        """ helper - validation of bbounding boxes, taken from Caffe"""       
+        mask = np.ones(self.bboxs.shape[0], dtype=bool)
+        self.bboxs[:, 0] = np.maximum(np.minimum(self.bboxs[:, 0], self.w), 0)
+        self.bboxs[:, 2] = np.maximum(np.minimum(self.bboxs[:, 2], self.w), 0)
+        self.bboxs[:, 1] = np.maximum(np.minimum(self.bboxs[:, 1], self.h), 0)
+        self.bboxs[:, 3] = np.maximum(np.minimum(self.bboxs[:, 3], self.h), 0)
 
 
 class InsufficientNumOfBBoxes(Exception):
