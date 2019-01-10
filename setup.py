@@ -5,6 +5,8 @@ import os
 import sys
 import os.path as op
 from setuptools import find_packages, setup
+import numpy as np
+from distutils.extension import Extension
 from torch.utils.cpp_extension import BuildExtension, CUDAExtension, CppExtension
 
 # change directory to this module path
@@ -18,6 +20,11 @@ if op.dirname(this_file):
 script_dir = os.getcwd()
 
 include_dirs = [op.abspath('./mtorch/common/')]
+# Obtain the numpy include directory.  This logic works across numpy versions.
+try:
+    numpy_include = np.get_include()
+except AttributeError:
+    numpy_include = np.get_numpy_include()
 
 
 def readme(fname):
@@ -36,6 +43,12 @@ setup(
     long_description=readme('README.md'),
     packages=find_packages(),
     ext_modules=[
+        Extension(
+            "mtorch.regionloss_utils.cython_bbox",
+            ["mtorch/regionloss_utils/bbox.pyx"],
+            extra_compile_args=["-Wno-cpp", "-Wno-unused-function"],
+            include_dirs=[numpy_include]
+        ),
         CUDAExtension('region_target_cuda', [
             'mtorch/rt/rt_cuda.cpp',
             'mtorch/rt/rt_cuda_kernel.cu',
