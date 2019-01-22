@@ -51,8 +51,9 @@ def main():
     parser.add_argument('--predict',
                         help='Prediction file to use (to avoid prediction step)')
     parser.add_argument('--auth',
-                        help='Authentication file path',
-                        default="~/auth/cvbrowser.txt")
+                        help='Authentication file path (or key)')
+    parser.add_argument('--subscription', '--subs',
+                        help='Authentication is subscription key', action='store_true')
     parser.add_argument('--api',
                         help='CV API endpoint url (pass "" to avoid evaluation)',
                         default="http://tax1300v14x3.westus.azurecontainer.io/api/detect")
@@ -99,12 +100,16 @@ def main():
         db = resample_db(db, input_range, out_path)
 
     session = requests.Session()
-    auth = op.expanduser(args['auth'])
-    if op.exists(auth):
-        with open(auth) as fp:
-            session.auth = ("Basic", fp.readline().strip())
-    else:
-        logging.warning("Ignoring non-existent auth file: {}".format(auth))
+    auth = args['auth']
+    if auth:
+        auth_path = op.expanduser(args['auth'])
+        if op.exists(auth_path):
+            with open(auth_path) as fp:
+                auth = fp.readline().strip()
+        if args['subscription']:
+            session.headers.update({'Ocp-Apim-Subscription-Key': auth})
+        else:
+            session.auth = ("Basic", auth)
     session.headers.update({'Content-Type': 'application/octet-stream'})
 
     logging.info("cvapi detection for {}".format(db))
@@ -116,6 +121,14 @@ def main():
             uid = db.uid(key)
             data = db.raw_image(uid)
             res = session.post(api_endpoint, data=data)
+            if res.status_code == 400:
+                # show parsable errors
+                try:
+                    err = json.loads(res.content)
+                    logging.error("Error: {} uid: {}".format(err, uid))
+                    continue
+                except ValueError:
+                    pass
             assert res.status_code == 200, "cvapi post failed uid: {}".format(uid)
             result = convert_api(json.loads(res.content)['objects'])
             result = [

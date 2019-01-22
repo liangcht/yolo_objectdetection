@@ -336,7 +336,7 @@ class Experiment(object):
                         key = self.imdb.uid_of_image_key(image_key=key)
                 rects = parse_truth(cols[1])
                 for rect in rects:
-                    conf = rect['conf']
+                    conf = rect.get('conf', 1.0)
                     label = rect['class'].strip()
                     if class_thresh is not None:
                         class_conf = class_thresh.get(label, class_thresh.get(label.lower()))
