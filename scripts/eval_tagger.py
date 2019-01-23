@@ -33,8 +33,9 @@ def main():
     parser.add_argument('--predict',
                         help='Prediction file to use (to create intermediate OUT_DB_DIR)')
     parser.add_argument('--auth',
-                        help='Authentication file path',
-                        default="~/auth/cvbrowser.txt")
+                        help='Authentication file path (or key)')
+    parser.add_argument('--subscription', '--subs',
+                        help='Authentication is subscription key', action='store_true')
     parser.add_argument('--api',
                         help='CV API endpoint url (pass "" to avoid evaluation)',
                         default="http://localhost:9000/api/tag")
@@ -48,14 +49,20 @@ def main():
     assert in_path and op.isfile(in_path), "'{}' does not exists, or is not a file".format(
         in_path
     )
-    threshs = args['thresh']
+    threshs = args['thresh'] or []
     class_thresh = {}
     for thresh in threshs:
         with open(thresh) as f:
             th = {}
+            is_scaled = False
             for l in [line.split('\t') for line in f.readlines()]:
                 val = float(l[1].rstrip())
-                if val > 1:
+                if not is_scaled and val >= 100:
+                    is_scaled = True
+                    logging.info("Threshld file {} is scaled by 1000".format(thresh))
+                    for k in th:
+                        th[k] /= 1000
+                if is_scaled:
                     val /= 1000
                 th[l[0]] = val
             class_thresh.update(th)
@@ -73,12 +80,16 @@ def main():
     logging.info("cvapi tagging {}".format(db))
 
     session = requests.Session()
-    auth = op.expanduser(args['auth'])
-    if op.exists(auth):
-        with open(auth) as fp:
-            session.auth = ("Basic", fp.readline().strip())
-    else:
-        logging.warning("Ignoring non-existent auth file: {}".format(auth))
+    auth = args['auth']
+    if auth:
+        auth_path = op.expanduser(args['auth'])
+        if op.exists(auth_path):
+            with open(auth_path) as fp:
+                auth = fp.readline().strip()
+        if args['subscription']:
+            session.headers.update({'Ocp-Apim-Subscription-Key': auth})
+        else:
+            session.auth = ("Basic", auth)
     session.headers.update({'Content-Type': 'application/octet-stream'})
     processed = 0
     total_count = len(db)
@@ -88,6 +99,15 @@ def main():
             uid = db.uid(key)
             data = db.raw_image(uid)
             res = session.post(api_endpoint, data=data)
+            if res.status_code == 400:
+                # show parsable errors
+                try:
+                    err = json.loads(res.content)
+                    logging.error("Error: {} uid: {}".format(err, uid))
+                    continue
+                except ValueError:
+                    pass
+
             assert res.status_code == 200, "cvapi post failed uid: {}".format(uid)
             tags = json.loads(res.content)['tags']
             results = ";".join([":".join([t['name'], "{}".format(t['confidence'])]) for t in tags])
@@ -105,7 +125,7 @@ def main():
 
     exp = Experiment(db)
     logging.info("cvapi evaluate tagging {}".format(exp))
-    detresults = exp.load_detections(outtsv_file, class_thresh)
+    detresults = exp.load_detections(outtsv_file, class_thresh or 0)
     truths = db.all_truths()
     reports = {'all': {-1: eval_one(truths, detresults)}}
     print_reports(reports, report_file_table=op.join(out_path, "report.table"))
