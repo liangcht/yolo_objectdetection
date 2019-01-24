@@ -23,6 +23,8 @@ def intersection(rc1, rc2):
 
 # calculate the Jaccard similarity between two rectangles
 def iou(rc1, rc2):
+    if len(rc1) == 0 or len(rc2) == 0:
+        return 0
     rc_inter = [max(rc1[0], rc2[0]), max(rc1[1], rc2[1]), min(rc1[2], rc2[2]), min(rc1[3], rc2[3])]
     iw = rc_inter[2] - rc_inter[0] + 1
     ih = rc_inter[3] - rc_inter[1] + 1
@@ -50,7 +52,7 @@ def evaluate_(c_detects, c_truths, ovthresh):
         conf = det[1]
         bbox = det[2]
         if img_id in c_truths:
-            if ovthresh < 0:
+            if ovthresh < 0 and (bbox is None or len(bbox) == 0):
                 if img_id not in dettag:
                     y_true = 1
                     dettag.add(img_id)

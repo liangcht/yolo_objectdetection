@@ -257,25 +257,26 @@ def _parse_block(fp):
     block = OrderedDict()
     _line = fp.readline().strip()
     while _line != '}':
-        ltype = _line_type(_line)
-        if ltype == 0:  # key: value
-            # print _line
-            _line = _line.split('#')[0]
-            key, value = _line.split(':')
-            key = key.strip()
-            value = value.strip().strip('"')
-        elif ltype == 1:  # blockname {
-            key = _line.split('{')[0].strip()
-            value = _parse_block(fp)
-        else:
-            raise NotImplementedError(ltype)
-        if key in block:
-            if isinstance(block[key], list):
-                block[key].append(value)
+        if _line:
+            ltype = _line_type(_line)
+            if ltype == 0:  # key: value
+                # print _line
+                _line = _line.split('#')[0]
+                key, value = _line.split(':')
+                key = key.strip()
+                value = value.strip().strip('"')
+            elif ltype == 1:  # blockname {
+                key = _line.split('{')[0].strip()
+                value = _parse_block(fp)
             else:
-                block[key] = [block[key], value]
-        else:
-            block[key] = value
+                raise NotImplementedError("{} in '{}'".format(ltype, _line))
+            if key in block:
+                if isinstance(block[key], list):
+                    block[key].append(value)
+                else:
+                    block[key] = [block[key], value]
+            else:
+                block[key] = value
         _line = fp.readline().strip()
         _line = _line.split('#')[0]
     return block

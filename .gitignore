@@ -36,6 +36,8 @@ var/
 data
 output
 Tagger
+iris
+
 *.egg-info/
 .installed.cfg
 *.egg
