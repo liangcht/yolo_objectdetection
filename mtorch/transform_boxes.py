@@ -3,7 +3,7 @@ from __future__ import division
 import numpy as np
 import math
 
-__all__ = ['crop', 'flip', 'resize', 'translate']
+__all__ = ['crop', 'flip', 'resize', 'translate', 'filter_boxes_area_criteria']
 CROP_BOX_DIM = 4
 IMAGE_SPATIAL_DIM = 2
 
@@ -45,8 +45,6 @@ def crop(bbox, crop_box=None, allow_outside_center=True):
     -------
     numpy.ndarray
         Cropped bounding boxes with shape (M, 4+) where M <= N.
-    int
-        Number of 
     """
     
     if crop_box is None:
@@ -173,7 +171,9 @@ def translate(bbox, x_offset=0, y_offset=0, size=None):
     Returns
     -------
     numpy.ndarray
-        Translated bounding boxes with original shape.
+        bbox: Translated bounding boxes with original shape.
+        mask: boolean mask of the bounding boxes that remained valid after translation 
+
     """
 
     bbox = bbox.copy()
@@ -188,7 +188,7 @@ def translate(bbox, x_offset=0, y_offset=0, size=None):
     mask = np.logical_and(mask, (bbox[:, :2] + 1 < bbox[:, 2:4]).all(axis=1))
     bbox = bbox[mask]
 
-    return bbox
+    return bbox, mask
 
 
 def to_xy_wh(bbox, w=1.0, h=1.0):
@@ -220,3 +220,49 @@ def to_xy_wh(bbox, w=1.0, h=1.0):
     bbox_xywh[:, 3] = (bbox[:, 3] - bbox[:, 1]) / h
 
     return bbox_xywh
+
+def filter_boxes_area_criteria(before_crop_bbox, crop_bbox, area_ratio=0.5):
+    """Filters cropped bounding boxes if the area of the new bounding box 
+    is at least half of the original area
+    Assumes that the bounding boxes in before_crop_bbox correposnd to crop_bbox respectively
+    Parameters
+    ----------
+    before_crop_bbox : numpy.ndarray
+        Numpy.ndarray with shape (N, 4+) where N is the number of bounding boxes.
+        The second axis represents attributes of the bounding box.
+        Specifically, these are :math:`(x_{min}, y_{min}, x_{max}, y_{max})`,
+        we allow additional attributes other than coordinates, which stay intact
+        during bounding box transformations.
+        The original bounding boxes before crop
+    crop_bbox : numpy.ndarray
+        Numpy.ndarray with shape (N, 4+) where N is the number of bounding boxes.
+        The second axis represents attributes of the bounding box.
+        Specifically, these are :math:`(x_{min}, y_{min}, x_{max}, y_{max})`,
+        we allow additional attributes other than coordinates, which stay intact
+        during bounding box transformations.
+        The bounding boxes after crop
+    area_ratio : int or float
+        area ratio to maintain 
+    Returns
+    -------
+    numpy.ndarray
+        bbox: bounding boxes in math: (x_{cent},y_{cent}, w_{box}, h_{box}) representation
+        normalized by w and h
+    """
+    if crop_bbox.shape[0] == 0:
+        return crop_bbox
+
+    if crop_bbox.shape != before_crop_bbox.shape:
+        raise ValueError("The number of bouding boxes before and after transform does not match")
+
+    bbox = crop_bbox.copy()
+    orig_bbox = before_crop_bbox.copy()
+            
+    mask = np.ones(bbox.shape[0], dtype=bool)
+    area_cropped = np.cumprod(bbox[:, :2] - bbox[:, 2:4], axis=1)[:, 1]
+    area_orig = np.cumprod(orig_bbox[:, :2] - orig_bbox[:, 2:4], axis=1)[:, 1]
+    mask = np.logical_and(mask, area_cropped >= area_orig * area_ratio)
+    bbox = bbox[mask]
+    
+    return bbox
+

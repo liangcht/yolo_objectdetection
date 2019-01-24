@@ -42,6 +42,7 @@ DARKNET = "darkresize"
 #  Number of tries for random augmentation to be left with at least one bounding box
 DEF_NUM_TRIES = 1
 MIN_NUM_BBOXES = 1
+DEF_AREA_RATIO = 0
 REQ_VALID_TRANS = False  # if to search for transform with at least one bounding box
 # Crop related constants
 ORIGIN = (0, 0)
@@ -200,9 +201,11 @@ class ImageBoxAugmentation(object):
                 assert(bbox[0] < bbox[2] and int(bbox[0]) >= 0 and int(bbox[2]) <= int(sz[0]))
                 assert(bbox[1] < bbox[3] and int(bbox[1]) >= 0 and int(bbox[3]) <= int(sz[1]))
             except:
-                raise ValueError("Bounding box: {}, {}, {}, {}; Image size:  {}, {} "
-                                 .format(bbox[0], bbox[1], bbox[2], bbox[3], sz[0], sz[1]))
-
+                bbox[0] = max(bbox[0], 0)
+                bbox[1] = max(bbox[1], 0)
+                bbox[2] = min(bbox[2], sz[0])
+                bbox[3] = min(bbox[3], sz[1])
+ 
     @staticmethod
     def check_dynamic_range(image, max_pixel_val):
         """Checks if all the values of the image are within correct Dynamic Range
@@ -1010,7 +1013,7 @@ class CanvasAdapter(ImageBoxAugmentation):
         cropped = cropper2(cropped1)
         self.canvas.paste(cropped[IMAGE].copy(), (int(left), int(top)))
 
-        set_bboxes = tbox.translate(self.bboxs, self.dx, self.dy, self.canvas.size)
+        set_bboxes, mask = tbox.translate(self.bboxs, self.dx, self.dy, self.canvas.size)
 
         result = {IMAGE: self.canvas, LABEL: set_bboxes}
         ImageBoxAugmentation.check_correctness(result)
@@ -1327,18 +1330,26 @@ class DarknetRandomResizeAndPlaceOnCanvas(ImageBoxAugmentation):
         """
         super(DarknetRandomResizeAndPlaceOnCanvas, self).__call__(sample)
         output_size = self.__get_rand_output_size()
-        dx, dy = self.__get_offset_on_canvas(output_size[0], output_size[1])
+        resized_bboxes = tbox.resize(self.bboxs, (self.w, self.h), (output_size[0], output_size[1]))
+
+        for i in range(DEF_NUM_TRIES):
+            dx, dy = self.__get_offset_on_canvas(output_size[0], output_size[1])
+            translated_boxes, mask = tbox.translate(resized_bboxes, dx, dy, self.canvas_size)
+            filtered = tbox.filter_boxes_area_criteria(resized_bboxes[mask], translated_boxes, 0.25)
+            if filtered.shape[0] >= MIN_NUM_BBOXES:
+                translated_boxes = filtered
+                break
+           
+
         #placeholder for resized image TODO: to rewrite darkresize to return a result
         resized = transforms.functional.to_tensor(Image.new('RGB', self.canvas_size,
                                                             PADDING_COL)).permute((2, 1, 0))
-        input = transforms.functional.to_tensor(self.image).permute((2, 1, 0))
-        darkresize.forward(input, int(output_size[0]), int(output_size[1]), int(dx), int(dy), resized)
+        image_tensor = transforms.functional.to_tensor(self.image).permute((2, 1, 0))
+        darkresize.forward(image_tensor, int(output_size[0]), int(output_size[1]), int(dx), int(dy), resized)
         resized_perm = resized.permute((2, 1, 0))
         toPIL = transforms.ToPILImage()
         resized_image = toPIL(resized_perm)
 
-        resized_bboxes = tbox.resize(self.bboxs, (self.w, self.h), (output_size[0], output_size[1]))
-        translated_boxes = tbox.translate(resized_bboxes, dx, dy, self.canvas_size)
         return {IMAGE: resized_image, LABEL: translated_boxes}
 
     def __get_offset_on_canvas(self, w, h):

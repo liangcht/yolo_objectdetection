@@ -11,7 +11,6 @@ import torch
 from torch.optim import Adam
 import torch.distributed as dist
 from torch.utils.data import DataLoader
-from torch.utils.data.sampler import RandomSampler
 from torch.utils.data.distributed import DistributedSampler
 
 try:
@@ -48,7 +47,7 @@ from mtorch.caffeloader import CaffeLoader
 from mtorch.multifixed_scheduler import MultiFixedScheduler
 from mtorch.imdbdata import ImdbData
 from mtorch.tbox_utils import Labeler, DarknetAugmentation
-from mtorch.samplers import SequentialWrappingSampler
+from mtorch.samplers import SequentialWrappingSampler, RandomWrappingSampler
 
 
 class AverageMeter(object):
@@ -261,7 +260,7 @@ class TorchSession(object):
 
         # compute output
         data, labels = inputs[0].cuda(), inputs[1].cuda().float()
-
+        
         optimizer.zero_grad()
 
         loss = model(data, labels)
@@ -370,7 +369,7 @@ class TorchSession(object):
             assert self.batch_size > 0
 
             total_batch_size = self.batch_size * len(self.gpus) 
-            sampler = SequentialWrappingSampler(
+            sampler = RandomWrappingSampler(
                 augmented_dataset, 
                 int(np.ceil(float(len(augmented_dataset)) / float(total_batch_size)) * total_batch_size)
             )
