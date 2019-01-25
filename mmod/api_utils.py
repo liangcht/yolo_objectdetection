@@ -6,12 +6,13 @@ def ltwh_to_ltrb(rect):
     """
     if not rect:
         return
-    x, y, w, h = rect['x'], rect['y'], rect['w'], rect['h']
+    x, y = rect.get('x', rect['left']), rect.get('y', rect['top'])
+    w, h = rect.get('w', rect['width']), rect.get('h', rect['height'])
     return [x, y, x + w, y + h]
 
 
-def convert_api(objects, child_rect=None):
-    """Convert API results to detection results format
+def convert_api_od(objects, child_rect=None):
+    """Convert OS API results to detection results format
     :param objects: the list of objects
     :type objects: list[dict]
     :param child_rect: rectangle of the child to use if parent does not have one
@@ -31,8 +32,28 @@ def convert_api(objects, child_rect=None):
         rects.append(rect)
         parent = o.get('parent')
         if parent:
-            rects += convert_api([parent], child_rect=child_rect)
+            rects += convert_api_od([parent], child_rect=child_rect)
         # the sibling has to have its own rect
         child_rect = None
+
+    return rects
+
+
+def convert_api_celeb(objects):
+    """Convert OS API results to detection results format
+    :param objects: the list of objects
+    :type objects: list[dict]
+    :return: list of detected objects
+    :rtype: list[dict]
+    """
+    rects = []
+    for o in objects:
+        roi = ltwh_to_ltrb(o.get('faceRectangle'))
+        rect = {
+            'class': o['name'],
+            'conf': o['confidence'],
+            'rect': roi
+        }
+        rects.append(rect)
 
     return rects

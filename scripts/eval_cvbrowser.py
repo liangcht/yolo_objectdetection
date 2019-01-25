@@ -20,7 +20,7 @@ if __name__ == '__main__':
 from mmod.utils import makedirs, is_number, init_logging, open_with_lineidx
 from mmod.imdb import ImageDatabase
 from mmod.experiment import Experiment
-from mmod.api_utils import convert_api
+from mmod.api_utils import convert_api_od
 from mmod.runeval import run_eval
 from mmod.tax_utils import create_db_from_predict, resample_db
 from mmod.philly_utils import fix_winpath
@@ -130,7 +130,7 @@ def main():
                 except ValueError:
                     pass
             assert res.status_code == 200, "cvapi post failed uid: {}".format(uid)
-            result = convert_api(json.loads(res.content)['objects'])
+            result = convert_api_od(json.loads(res.content)['objects'])
             result = [
                 crect for crect in result
                 if crect['conf'] >= (class_thresh[crect['class']] if class_thresh else thresh)

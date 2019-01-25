@@ -147,7 +147,7 @@ class CaffeNet(nn.Module):
                 n_w = data.data.size(3)
                 data -= Variable(self.mean_img.view(1, n_c, n_h, n_w).expand(n_b, n_c, n_h, n_w))
 
-            self.seen_images += inputs[0].size(0) * self.gpus_size
+            self.seen_images += int(inputs[0].size(0)) * self.gpus_size
 
         layers = self.net_info['layers']
 
@@ -622,10 +622,8 @@ class CaffeNet(nn.Module):
                 i = i + 1
             elif ltype == 'Pooling':
                 kernel_size = int(layer['pooling_param']['kernel_size'])
-                stride = int(layer['pooling_param']['stride'])
-                padding = 0
-                if 'pad' in layer['pooling_param']:
-                    padding = int(layer['pooling_param']['pad'])
+                stride = int(layer['pooling_param'].get('stride', 1))
+                padding = int(layer['pooling_param'].get('pad', 0))
                 pool_type = layer['pooling_param']['pool']
                 if pool_type == 'MAX':
                     models[lname] = nn.MaxPool2d(kernel_size, stride, padding=padding, ceil_mode=True)
