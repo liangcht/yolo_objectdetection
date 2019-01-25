@@ -24,6 +24,7 @@ from mmod.api_utils import convert_api_od
 from mmod.runeval import run_eval
 from mmod.tax_utils import create_db_from_predict, resample_db
 from mmod.philly_utils import fix_winpath
+from mmod.im_utils import img_from_bytes, im_rescale, img_to_bytes
 
 
 class Logger(object):
@@ -120,6 +121,11 @@ def main():
         for key in db:
             uid = db.uid(key)
             data = db.raw_image(uid)
+            # work around service size limit
+            if len(data) > 1024 * 1024 * 4:
+                data = img_from_bytes(data)
+                logging.info("Resize uid: {} from {}x{}".format(uid, data.shape[0], data.shape[1]))
+                data = img_to_bytes(im_rescale(data, 2048))
             res = session.post(api_endpoint, data=data)
             if res.status_code == 400:
                 # show parsable errors

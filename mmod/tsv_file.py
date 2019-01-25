@@ -39,7 +39,7 @@ class TsvFile(object):
         self._check_keys = False
 
         if isinstance(sources, basestring):
-            sources, labels = self._composite_sources(sources, labels)
+            sources, labels = self._composite_sources(sources, labels=labels)
 
         if labels:
             if isinstance(labels, basestring):
@@ -251,7 +251,7 @@ class TsvFile(object):
             last_idx += count
         self._len = last_idx
 
-    def _composite_sources(self, source, labels):
+    def _composite_sources(self, source, labels=None):
         """Return sources from potentially composite source (list of other sources)
         :type source: basestring
         :type labels: list
@@ -266,10 +266,8 @@ class TsvFile(object):
                     with open(labelfile, 'r') as fp:
                         labels = [l for l in fp.read().splitlines() if l]
             if not labels:
-                assert source.endswith('X.tsv')
-                labels = [
-                    source.replace('X.tsv', '{}.label.tsv'.format(idx)) for idx in range(len(sources))
-                ]
+                # If no label file is given, assume sources do not have a separate label file
+                labels = [None] * len(sources)
             self._is_composite = True
             # composite sources also could have a single inverted file
             inverted_file = splitfilename(source, 'inverted.label', is_composite=True)

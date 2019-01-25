@@ -15,16 +15,31 @@ def img_to_base64(path):
         return base64.b64encode(fp.read())
 
 
-def img_from_base64(imagestring):
-    if not imagestring:
-        return None
-    jpgbytestring = base64.b64decode(imagestring)
+def img_from_bytes(jpgbytestring):
+    """Convert jpg bytes to image array
+    """
     nparr = np.frombuffer(jpgbytestring, np.uint8)
     # noinspection PyBroadException
     try:
         return cv2.imdecode(nparr, cv2.IMREAD_COLOR)
     except Exception:
         return None
+
+
+def img_from_base64(imagestring):
+    """Convert base64-encoded jpg bytes to image array
+    """
+    if not imagestring:
+        return None
+    jpgbytestring = base64.b64decode(imagestring)
+    return img_from_bytes(jpgbytestring)
+
+
+def img_to_bytes(im):
+    """Convert image array to jpg bytes in memory
+    """
+    _, jpgbytestring = cv2.imencode(".jpg", im)
+    return jpgbytestring.tostring()
 
 
 def im_rescale(im, target_size):
@@ -132,7 +147,6 @@ def tile_rects(db, keys, key_rects, target_size, label, jpg_path):
 
         x = x2 + 4
         
-
     # clip the collage
     collage = collage[:y + max_h, :max_x, :]
     if jpg_path:
