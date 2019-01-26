@@ -22,12 +22,13 @@ from mmod.experiment import Experiment
 from mmod.philly_utils import fix_winpath
 from mmod.tax_utils import create_db_from_predict
 from mmod.deteval import eval_one, print_reports
+from mmod.api_utils import convert_api_celeb
 from mmod.im_utils import img_from_bytes, im_rescale, img_to_bytes
 
 
 def main():
     init_logging()
-    parser = argparse.ArgumentParser(description='Evaluate a db against a tagger endpoint.')
+    parser = argparse.ArgumentParser(description='Evaluate a db against a celebrity endpoint.')
     parser.add_argument('dbpath', metavar='IN_DB_PATH', help='Path to an image db to evaluate')
     parser.add_argument('outdbpath', metavar='OUT_DB_DIR',
                         help='Directory path to create intermediate db with given predictions as ground truth.')
@@ -39,10 +40,9 @@ def main():
                         help='Authentication is subscription key', action='store_true')
     parser.add_argument('--api',
                         help='CV API endpoint url (pass "" to avoid evaluation)',
-                        default="http://localhost:9000/api/tag")
-    parser.add_argument('--thresh', '--class_thresh',
-                        action='append',
-                        help='Class threshold file(s) to apply to predictions')
+                        default="http://localhost:9000/api/models/celebrities/analyze")
+    parser.add_argument('--thresh', default=0, type=float,
+                        help='Threshold to apply')
     args = vars(parser.parse_args())
 
     api_endpoint = args['api']
@@ -50,23 +50,7 @@ def main():
     assert in_path and op.isfile(in_path), "'{}' does not exists, or is not a file".format(
         in_path
     )
-    threshs = args['thresh'] or []
-    class_thresh = {}
-    for thresh in threshs:
-        with open(thresh) as f:
-            th = {}
-            is_scaled = False
-            for l in [line.split('\t') for line in f.readlines()]:
-                val = float(l[1].rstrip())
-                if not is_scaled and val >= 100:
-                    is_scaled = True
-                    logging.info("Threshld file {} is scaled by 1000".format(thresh))
-                    for k in th:
-                        th[k] /= 1000
-                if is_scaled:
-                    val /= 1000
-                th[l[0]] = val
-            class_thresh.update(th)
+    thresh = args['thresh'] or 0
 
     db = ImageDatabase(in_path)
     predict_file = fix_winpath(args['predict'])
@@ -76,7 +60,7 @@ def main():
     if predict_file:
         assert predict_file and op.isfile(predict_file), "{} does not exist".format(predict_file)
         logging.info("Creating db in {} from {}".format(out_path, predict_file))
-        db = create_db_from_predict(db, predict_file, class_thresh, out_path)
+        db = create_db_from_predict(db, predict_file, thresh, out_path)
 
     logging.info("cvapi tagging {}".format(db))
 
@@ -104,6 +88,7 @@ def main():
                 data = img_from_bytes(data)
                 logging.info("Resize uid: {} from {}x{}".format(uid, data.shape[0], data.shape[1]))
                 data = img_to_bytes(im_rescale(data, 2048))
+
             res = session.post(api_endpoint, data=data)
             if res.status_code == 400:
                 # show parsable errors
@@ -115,12 +100,11 @@ def main():
                     pass
 
             assert res.status_code == 200, "cvapi post failed uid: {}".format(uid)
-            tags = json.loads(res.content)['tags']
-            results = ";".join([":".join([t['name'], "{}".format(t['confidence'])]) for t in tags])
+            result = convert_api_celeb(json.loads(res.content)['result']['celebrities'])
             tell = fp.tell()
             fp.write("{}\t{}\n".format(
                 db.image_key(key),
-                results
+                json.dumps(result, separators=(',', ':'), sort_keys=True)
             ))
             kfp.write("{}\t{}\n".format(
                 uid, tell
@@ -131,7 +115,7 @@ def main():
 
     exp = Experiment(db)
     logging.info("cvapi evaluate tagging {}".format(exp))
-    detresults = exp.load_detections(outtsv_file, class_thresh or 0)
+    detresults = exp.load_detections(outtsv_file, thresh=thresh)
     truths = db.all_truths()
     reports = {'all': {-1: eval_one(truths, detresults)}}
     print_reports(reports, report_file_table=op.join(out_path, "report.table"))

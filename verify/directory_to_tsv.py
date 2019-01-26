@@ -1,32 +1,41 @@
-import json
-import base64
+from __future__ import print_function
 import os.path as op
-from mmod.utils import open_with_lineidx, cwd
-from mmod.im_utils import recursive_files_list
 
-annotations_path = op.expanduser('~/Downloads/annotations.txt')
-# parse annotations
-annotations = {}
-with open(annotations_path) as fp:
+from mmod.utils import init_logging, open_with_lineidx
+from mmod.imdb import ImageDatabase
+from mmod.tax_utils import create_db_from_predict, create_inverted
+
+init_logging()
+
+in_path = "iris/Celeb/ImageRecogntion/2.selfie"
+db = ImageDatabase(in_path)
+
+with open_with_lineidx("iris/Celeb/Video/train.tsv") as fp:
+    for k in db:
+        im_id = op.basename(k)
+        label = op.basename(op.dirname(k))
+        fp.write("{}\t{}\t{}\n".format(
+            im_id, label, db.base64(k)
+        ))
+
+all_im_id = {}
+all_label = {}
+with open("iris/Celeb/ImageRecogntion/2.selfie_SatoriIdMKeyMUrl.tsv") as fp:
     for line in fp:
-        uid, x, y, w, h, label = line.split(",")
-        # Check if it is xywh
-        x, y, w, h = [int(c) for c in [x, y, w, h]]
-        annotations[uid] = json.dumps([{'rect': [x, y, x + w, y + h], 'class': label.strip()}])
+        label, name, im_id = line.split("\t")
+        all_im_id[name] = im_id.strip()
+        all_label[name] = label
 
-# annotations file references relative paths, the paths must be relative to the root
-root = op.expanduser('~/Pictures')
+with open_with_lineidx("iris/Celeb/Selfie/train.tsv") as fp:
+    for k in db:
+        name = op.splitext(op.basename(k))[0]
+        im_id = all_im_id[name]
+        label = all_label[name]
+        if im_id == 'Unknown':
+            im_id = op.basename(k)
+        fp.write("{}\t{}\t{}\n".format(
+            im_id, label, db.base64(k)
+        ))
 
-outtsv_path = op.expanduser('~/Desktop/boz.tsv')
-
-with open_with_lineidx(outtsv_path) as fp:
-    with cwd(root):
-        for fname in recursive_files_list('.'):
-            fname = fname.replace('\\', '/').replace("./", "")
-            with open(fname, 'r') as ifp:
-                b64 = base64.b64encode(ifp.read())
-            label = annotations.get(fname)
-            if not label:
-                print("No label for {}".format(fname))
-                label = json.dumps([])
-            fp.write("{}\t{}\t{}\n".format(fname, label, b64))
+db = ImageDatabase("iris/Celeb/Selfie/train.tsv")
+create_inverted(db, create_shuffle=False)
