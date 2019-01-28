@@ -217,7 +217,8 @@ class CaffeNet(nn.Module):
                     self._blob_size(bnames),
                     self._blob_size(tnames)
                 ))
-
+        #return self.blobs.get(tname), self.blobs.get('dark6e/conv') #  remove ONLY for debugging yolo and darknet
+        # TODO: fix the need in above 
         if self.targets:
             tdatas = [[tname, self.blobs.get(tname)] for tname in self.targets]
             odatas = [d[1] for d in tdatas if d[1] is not None]
