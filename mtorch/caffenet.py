@@ -432,10 +432,11 @@ class CaffeNet(nn.Module):
                             ignore_shape_mismatch
                         )
                 i = i + 1
-            elif ltype == 'RegionTarget':
+            elif ltype == 'RegionTarget' or ltype == 'RegionLoss':
                 if self.verbose:
                     logging.info('load weights %s' % lname)
                 self.models[lname].seen_images.data.copy_(torch.tensor(lmap[lname].blobs[0].data[0]))
+                self.seen_images = self.models[lname].seen_images
                 i = i + 1
             else:
                 if ltype not in SUPPORTED_LAYERS:
