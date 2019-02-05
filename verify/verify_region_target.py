@@ -10,7 +10,8 @@ from mtorch.caffenet_weight_converter import prep_dict
 from mtorch.caffenet import CaffeNet
 from mtorch.darknet import darknet_layers
 from mtorch.yolo_v2 import yolo
-from mtorch.tbox_utils import Labeler, DarknetAugmentation
+from mtorch.tbox_utils import Labeler
+from mtorch.augmentation import DefaultDarknetAugmentation
 from mtorch.samplers import SequentialWrappingSampler, RandomWrappingSampler
 from mtorch.imdbdata import ImdbData
 from mtorch.caffeloader import CaffeLoader
@@ -62,13 +63,13 @@ torch.save(state, snapshot_pt)
 
     
 
-augmenter = DarknetAugmentation()
+augmenter = DefaultDarknetAugmentation()
 labeler = Labeler()
 layer = model.net_info['layers'][model.input_index]
 augmented_dataset = ImdbData(path=protofile,
-                            transform=augmenter(layer), labeler=labeler)
+                            transform=augmenter(), labeler=labeler)
 
-total_batch_size = 16
+total_batch_size = 1
 sampler = RandomWrappingSampler(
             augmented_dataset, 
             int(np.ceil(float(len(augmented_dataset)) / float(total_batch_size)) * total_batch_size)

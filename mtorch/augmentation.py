@@ -48,6 +48,7 @@ class DefaultDarknetAugmentation(object):
                  horizontal_flipper, to_tensor, minus_dc])
         return self.composed_transforms
 
+
 class DarknetAugmentation(object):
     """
     Constructs the transform for augmentation

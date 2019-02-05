@@ -11,7 +11,7 @@ def reduce_tensor(tensor):
 
 def sum_tensor(tensor):
     rt = tensor.clone()
-    dist.all_reduce(rt, op=dist.reduce_op.SUM)
+    dist.all_reduce(rt, op=dist.ReduceOp.SUM)
     return rt
 
 
