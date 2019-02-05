@@ -90,7 +90,7 @@ def get_args_debug():
     args["workers"] = 2
     args["solver"] = "/work/fromLei/yolo_voc_solver_pytorch_4GPU.prototxt" 
     args["logdir"] = "/work/fromLei/"
-    args["train_dataset_path"] = "/work/fromLei/train_yolo_withSoftMaxLoss.prototxt"
+    args["train_dataset_path"] = "/work/fromLei/train_yolo_withSoftMaxTreeLoss.prototxt"
     args["dist_url"] = "tcp://127.0.0.1:2345"
     return args
 
@@ -252,7 +252,7 @@ def main():
                                         num_workers=args["workers"], distributed=args["distributed"])
 
     start_time = datetime.now()  # Loading start to after everything is loaded
-    num_epochs = 4 * int(round( float(solver_params["max_iter"]) / len(data_loader) + 0.5))
+    num_epochs = int(round( float(solver_params["max_iter"]) / len(data_loader) + 0.5))
     loss_arr = []
     for epoch in range(args["start_epoch"], num_epochs):
         train(data_loader, model, criterion, optimizer, scheduler, epoch, loss_arr)
