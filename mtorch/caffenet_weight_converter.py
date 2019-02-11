@@ -10,7 +10,7 @@ def prep_dict(init_net_dict, net_dict, switch_bn2scale=True):
     """
     layer_names = net_dict.keys()
     init_weights = []
-    add_token = "module."
+    add_token = ""
     for layer_name in layer_names:            
         token = _set_token(layer_name)
         init_layer_name = add_token + token + layer_name.split(token)[-1]
@@ -43,33 +43,39 @@ def _set_token(layer_name):
     if 'dark' in layer_name:
         return'dark'
 
-def prep_dict_pt2caffe(init_net_dict, net_dict, switch_bn2scale=True):
+def prep_dict_pt2caffe(init_net_dict, net_dict):
     """fixes the names of layers in initializing state dictionary 
     to fit the new network state dictionary
     :param init_net_dict: dictionary to take weights from
     :param net_dict: dictionary to take layers names from 
-    :param switch_bn2scale: boolean, 
     if to switch to BatchNormalization to Scale when searching for a weight 
     """
     layer_names = net_dict.keys()
     init_weights = []
-    add_token = "module."
     for layer_name in layer_names:            
-        for init_layer_name, init_weight in init_net_dict.items():
+        for init_layer_name, init_weight in init_net_dict['state_dict'].items():
             if layer_name in init_layer_name:
                init_weights.append((layer_name, init_weight))
                print("{} to {}".format(init_layer_name, layer_name))
                break
-            if "extra_conv" in init_layer_name and "/conv.weight" in init_layer_name \
-            and "extra_conv" in layer_name and "weight" in layer_name:
+            if "extra_conv19" in init_layer_name and "/conv.weight" in init_layer_name \
+                                                and layer_name == "extra_conv19.weight":
                 print("{} to {}".format(init_layer_name, layer_name))
-                init_weights.append((layer_name, init_net_dict[init_layer_name])) 
+                init_weights.append((layer_name, init_net_dict['state_dict'][init_layer_name])) 
                 break
-    init_weights.append(("region_target.biases", torch.tensor([ 1.0800,  1.1900,  3.4200,  4.4100,  6.6300, 11.3800,  9.4200,  5.1100,
-        16.6200, 10.5200])))
-    init_weights.append(("region_target.seen_images", torch.tensor(15000)))
-
-    init_weights.append(("seen_images", torch.tensor(15000)))
+            if "extra_conv20" in init_layer_name and "/conv.weight" in init_layer_name \
+                                                and layer_name == "extra_conv20.weight": 
+                print("{} to {}".format(init_layer_name, layer_name))
+                init_weights.append((layer_name, init_net_dict['state_dict'][init_layer_name])) 
+                break
+            if "extra_conv21" in init_layer_name and "/conv.weight" in init_layer_name \
+                                                and layer_name == "extra_conv21.weight":
+                print("{} to {}".format(init_layer_name, layer_name))
+                init_weights.append((layer_name, init_net_dict['state_dict'][init_layer_name])) 
+                break
+  
+  
+    init_weights.append(("seen_images", init_net_dict['region_target.seen_images']))
     init_weights.append(("forward_net_only", torch.tensor(1, dtype=torch.uint8)))
 
     return OrderedDict(init_weights)

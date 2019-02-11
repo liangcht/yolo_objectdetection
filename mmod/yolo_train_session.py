@@ -83,14 +83,15 @@ def get_args_debug():
     args = {}
     args["distributed"] = True
     args["display"] = True
-    args["snapshot"] = "/work/fromLei/py_caf_batch_fixed3_70/snapshot/model_iter_0.pt"
+    args["snapshot"] = "/work/fromLei/snapshot/darknet_3extraconv.pt"
+    #args["latest_snapshot"] = "/work/fromLei/test_refactored3/snapshot/model_epoch_120.pt"
     args["restore"] = False
     args["local_rank"] =  dist_utils.env_rank()
     args["batch_size"] = 16
     args["workers"] = 2
     args["solver"] = "/work/fromLei/yolo_voc_solver_pytorch_4GPU.prototxt" 
     args["logdir"] = "/work/fromLei/"
-    args["train_dataset_path"] = "/work/fromLei/train_yolo_withSoftMaxTreeLoss.prototxt"
+    args["train_dataset_path"] = "/work/fromLei/train_yolo_withSoftMaxLoss.prototxt"
     args["dist_url"] = "tcp://127.0.0.1:2345"
     return args
 
@@ -169,7 +170,7 @@ def train(trn_loader, model, criterion, optimizer, scheduler, epoch, loss_arr):
             reduced_loss = reduced_loss / dist_utils.env_world_size()
 
         losses.update(reduced_loss, batch_total)
-        loss_arr.append(loss)
+        loss_arr.append(torch.tensor(reduced_loss))
         should_print = (args["display"] and batch_num % args["display"] == 0) or batch_num == last_batch
         if should_print:
             output = ("{:.2f} Epoch {}: Time per iter =  {:.4f}s), loss master = {:.4f}, reduced loss = {:.4f},batch_total = {}, lr = {}".format(
@@ -205,9 +206,6 @@ def main():
     lrs = get_lrs(solver_params)
     steps = get_steps(solver_params)
 
-    criterion = RegionTargetWithSoftMaxTreeLoss('/work/fromLei/tree.txt', seen_images=seen_images)
-    criterion = criterion.cuda()# TODO: implement YoloLoss, add loss_mode to arguments
-
     decay, no_decay, lr2 = [], [], []
     for name, param in model.named_parameters():
         if not param.requires_grad:
@@ -231,25 +229,32 @@ def main():
                          weight_decay=float(solver_params['weight_decay']))
 
     if args["restore"]:
-        checkpoint = torch.load(get_latest_snapshot(solver_params["snapshot_prefix"]),
+        checkpoint = torch.load(args["latest_snapshot"],
                                 map_location=lambda storage, loc: storage.cuda(args["local_rank"]))
         model.load_state_dict(checkpoint['state_dict'])
-        args["start_epoch"] = checkpoint['epoch']
+        args["start_epoch"] = checkpoint['epochs'] + 1
         optimizer.load_state_dict(checkpoint['optimizer'])
+        seen_images  = checkpoint['seen_images']
     else:
         args["start_epoch"] = 0
 
-    log.console("Creating data loaders (this could take up to 10 minutes if volume needs to be warmed up)")
-    if solver_params.get('lr_policy', 'fixed') == "multifixed":
-        scheduler = MultiFixedScheduler(optimizer, steps, lrs, last_iter=0) #TODO: fix last_iter for restore mode
-    else:
-        scheduler = None
+    criterion = RegionTargetWithSoftMaxLoss(seen_images=seen_images)
+    criterion = criterion.cuda()# TODO: implement YoloLoss, add loss_mode to arguments
+
+
+    log.console("Creating data loaders")
 
     if args["distributed"]:
         log.console('Syncing machines before training')
         dist_utils.sum_tensor(torch.tensor([1.0]).float().cuda())
     data_loader = yolo_train_data_loader(args["train_dataset_path"], batch_size=args["batch_size"],
                                         num_workers=args["workers"], distributed=args["distributed"])
+
+    if solver_params.get('lr_policy', 'fixed') == "multifixed":
+        scheduler = MultiFixedScheduler(optimizer, steps, lrs, 
+                                    last_iter=args["start_epoch"] * 78) 
+    else:
+        scheduler = None
 
     start_time = datetime.now()  # Loading start to after everything is loaded
     num_epochs = int(round( float(solver_params["max_iter"]) / len(data_loader) + 0.5))
@@ -258,10 +263,11 @@ def main():
         train(data_loader, model, criterion, optimizer, scheduler, epoch, loss_arr)
         time_diff = (datetime.now() - start_time).total_seconds() / 3600.0
         log.event('{}\t {}\n'.format(epoch, time_diff))
-        if epoch % float(solver_params["snapshot"]) == 0:
+        if args["local_rank"] == 0 and  epoch % float(solver_params["snapshot"]) == 0:
             snapshot(model, criterion, loss_arr, epoch, solver_params["snapshot_prefix"], optimizer=optimizer)
+    if args["local_rank"] == 0: 
+        snapshot(model, criterion, loss_arr, epoch, solver_params["snapshot_prefix"], optimizer=optimizer)
 
-    
 if __name__ == '__main__':
     # try:
     #     with warnings.catch_warnings():

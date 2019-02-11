@@ -49,10 +49,10 @@ ORIGIN = (0, 0)
 # Flip related constants
 FLIP_PROB = 0.5
 
-__all__ = sorted(["Compose", "ToTensor", "Resize", "RandomResizeDarknet", "RandomCrop", "RandomHorizontalFlip",
+__all__ = sorted(["Compose", "Resize", "RandomResizeDarknet", "RandomCrop", "RandomHorizontalFlip",
                   "RandomVerticalFlip", "PlaceOnCanvas", "CanvasAdapter", "SubtractMeans",
-                  "DarknetRandomResizeAndPlaceOnCanvas", "RandomizeBBoxes", "ToDarknetTensor",
-                  "SetBBoxesInRange"])
+                  "DarknetRandomResizeAndPlaceOnCanvas", "RandomizeBBoxes", "ToDarknetLabels",
+                  "SetBBoxesInRange", "ToDarknetTensor"])
 
 
 class Compose(object):
@@ -1220,13 +1220,19 @@ class SubtractMeans(object):
         :param sample: dictionary with two fields defined by IMAGE and LABEL
         :return: sample with IMAGE after subtraction and normalization (LABEL is unaltered)
         """
-        transforms.functional.normalize(sample[IMAGE], self.mean, self.norm)
+        if isinstance(sample, dict):
+            transforms.functional.normalize(sample[IMAGE], self.mean, self.norm)
+        else:
+            transforms.functional.normalize(sample, self.mean, self.norm)
         return sample
 
 
-class ToDarknetTensor(object):  # TODO: this class should be decoupled into two classes (ToTensor and ToDarknet)
-    """Convert PIL image and numpy array of bounding boxes in sample
-    to network Tensors.
+class ToDarknetLabels(object):  
+    """Convert  bounding boxes in sample to Darknet labels by flattening 
+       Discards boxes beyond maximum allowed
+    
+    Parameters:
+        num_bboxes: int, maximum boxes allowed
 
     Output
     -----------
@@ -1246,26 +1252,14 @@ class ToDarknetTensor(object):  # TODO: this class should be decoupled into two 
         :param sample: dictionary with PIL IMAGE and NUMPY.ARRAY LABEL
         :return: dictionary with torchvision tensors for IMAGE and LABEL
         """
-        image, bboxes = sample[IMAGE], sample[LABEL]
-        bboxes = tbox.to_xy_wh(bboxes, image.size[0], image.size[1])
-        labels = self.__boxes_to_labels(bboxes)
-        return {IMAGE: self.to_BGR(transforms.functional.to_tensor(image)),
-                LABEL: torch.from_numpy(labels)}
+        bboxes = tbox.to_xy_wh(sample[LABEL], sample[IMAGE].size[0], sample[IMAGE].size[1])
+        labels = self._keep_max_num_bboxes(bboxes).flatten()
+        return {IMAGE: sample[IMAGE],
+                LABEL: labels}
     
-    @staticmethod
-    def to_BGR(img):
-        """Transforms RGB into BGR
-        :param img: torch tensor or numpy array image with 3 channels
-        :return: image with the first and last channels swapped
-        """
-        assert(img.shape[0] == 3)
-        return img[(2, 1, 0), :, :]
-
-    def __boxes_to_labels(self, bboxes):
-        """Helper to create a 1D label of 1 x num_bboxes * BOX_DIM
-        out of N X BOX_DIM boxes
-        Note that boxes beyond num_bboxes are discarded
-        """
+   
+    def _keep_max_num_bboxes(self, bboxes):
+        """Discards boxes beyond num_bboxes"""
         if self.num_bboxes is not None:
             cur_num = bboxes.shape[0]
             diff_to_max = self.num_bboxes - cur_num
@@ -1274,7 +1268,7 @@ class ToDarknetTensor(object):  # TODO: this class should be decoupled into two 
                                     "constant", constant_values=(0.0,))
             elif diff_to_max < 0:
                 bboxes = bboxes[:self.num_bboxes, :]
-        return bboxes.flatten()
+        return bboxes
 
 
 class DarknetRandomResizeAndPlaceOnCanvas(ImageBoxAugmentation):
@@ -1383,3 +1377,38 @@ class DarknetRandomResizeAndPlaceOnCanvas(ImageBoxAugmentation):
             new_w = scale_factor * self.canvas_size[0]
             new_h = float(new_w) / new_aspect_ratio
         return new_w, new_h
+
+class ToDarknetTensor(object):  
+    """Convert PIL image and numpy array of bounding boxes (if present) in sample
+    to network Tensors.
+
+    Output
+    -----------
+        a dictionary with torch tensors for IMAGE and LABEL
+        For example: IMAGE is torchvision tensor of 3 X 416 X 416
+                    LABEL is torchvision tensor of 1 x 150
+    """
+
+    def __init__(self):
+        """Constructor of ToDarknetTensor object"""
+        pass
+
+    def __call__(self, sample):
+        """Prepares sample to fit Darknet format
+        :param sample: dictionary with PIL IMAGE and NUMPY.ARRAY LABEL
+        :return: dictionary with torchvision tensors for IMAGE and LABEL
+        """
+        if isinstance(sample, dict):
+            return {IMAGE: self.to_BGR(transforms.functional.to_tensor(sample[IMAGE])),
+                    LABEL: torch.from_numpy(sample[LABEL])}
+
+        return self.to_BGR(transforms.functional.to_tensor(sample))
+    
+    @staticmethod
+    def to_BGR(img):
+        """Transforms RGB into BGR
+        :param img: torch tensor or numpy array image with 3 channels
+        :return: image with the first and last channels swapped
+        """
+        assert(img.shape[0] == 3)
+        return img[(2, 1, 0), :, :]

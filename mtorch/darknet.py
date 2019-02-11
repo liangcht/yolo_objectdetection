@@ -97,7 +97,14 @@ def darknet_layers(weights_file=None, caffe_format_weights=False, map_location=N
         else:
             init_dict = orig_dict
         model.load_state_dict(init_dict)
-    
+        try:
+            model.seen_images = orig_dict["module.seen_images"]
+        except:
+            try:
+                model.seen_images = orig_dict["seen_images"]
+            except:
+                model.seen_images = snapshot["seen_images"]
+
     return model
 
 

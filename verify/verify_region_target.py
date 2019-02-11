@@ -20,10 +20,10 @@ from mtorch.caffesgd import CaffeSGD
 
 
 # change information below as needed
-MODE = "SoftMaxLoss"
+MODE = "SoftMaxTreeLoss"
 protofile = "/work/fromLei/train_yolo_with" + MODE + ".prototxt"
-caffemodel = "/work/fromLei/snapshot/model_iter_10022.caffemodel"#model_iter_0.caffemodel"
-snapshot_pt = '/work/temp_weights.pt'  # this will contain temporary weights for testing only
+caffemodel = "/work/fromLei/snapshot/model_iter_0.caffemodel"#model_iter_0.caffemodel"
+snapshot_pt = '/work/fromLei/snapshot/darknet_3extraconv.pt'  # this will contain temporary weights for testing only
 assert op.isfile(protofile) and op.isfile(caffemodel)
 
 if MODE == "SoftMaxTreeLoss":
@@ -56,9 +56,14 @@ def get_group_params(model, initial_lr):
 model = CaffeNet(protofile, keep_diffs=True, verbose=False)
 model.load_weights(caffemodel)
 model = model.cuda()
-seen_images_ini = model.seen_images.data.cpu().detach()
+seen_images_ini = model.region_target.seen_images.data.cpu().detach()
 
-state = model.state_dict()
+state_dict = model.state_dict()
+state = {
+            'state_dict': state_dict,
+            'seen_images': seen_images_ini
+            
+        }
 torch.save(state, snapshot_pt)
 
     

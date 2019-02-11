@@ -2,16 +2,23 @@ import numpy as np
 
 from torch.utils.data import DataLoader
 from torch.utils.data.distributed import DistributedSampler
+from torch.utils.data import SequentialSampler
+from torch.utils.data.dataloader import default_collate
 
 from mmod.dist_utils import env_world_size, env_rank
 from mtorch.imdbdata import ImdbData
 from mtorch.tbox_utils import Labeler
-from mtorch.augmentation import DefaultDarknetAugmentation
+from mtorch.augmentation import DefaultDarknetAugmentation, TestAugmentation
 from mtorch.samplers import SequentialWrappingSampler, RandomWrappingSampler
-from torch.utils.data import SequentialSampler
 
+def _list_collate(batch):
+    """ Function that collates lists or tuples together into one list (of lists/tuples).
+    Use this as the collate function in a Dataloader, if you want to have a list of items as an output, as opposed to tensors (eg. Brambox.boxes).
+    """
+    items = list(zip(*batch))
+    return items
 
-def yolo_train_data_loader(datafile,batch_size=16, num_workers=2, distributed=True):
+def yolo_train_data_loader(datafile, batch_size=16, num_workers=2, distributed=True):
     augmenter = DefaultDarknetAugmentation()
     augmented_dataset = ImdbData(path=datafile,
                                  transform=augmenter(),
@@ -28,5 +35,18 @@ def yolo_train_data_loader(datafile,batch_size=16, num_workers=2, distributed=Tr
 
     return DataLoader(augmented_dataset, batch_size=batch_size,
                       sampler=sampler, num_workers=num_workers, pin_memory=True)
+
+
+
+def yolo_test_data_loader(datafile, batch_size=16, num_workers=8):
+    test_augmenter = TestAugmentation()
+    augmented_dataset = ImdbData(path=datafile,
+                                 transform=test_augmenter(), 
+                                 predict_phase=True)
+
+    return DataLoader(augmented_dataset, batch_size=batch_size,
+                     num_workers=num_workers, pin_memory=True, 
+                     collate_fn=_list_collate)
+
 
 

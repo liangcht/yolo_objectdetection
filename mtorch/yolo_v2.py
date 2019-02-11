@@ -110,7 +110,10 @@ def yolo(backbone_model, weights_file=None, caffe_format_weights=False, map_loca
         try:
             model.seen_images = orig_dict["module.seen_images"]
         except:
-            model.seen_images = orig_dict["seen_images"]
+            try:
+                model.seen_images = orig_dict["seen_images"]
+            except:
+                model.seen_images = snapshot["seen_images"]
         
     return model
 

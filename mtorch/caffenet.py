@@ -365,16 +365,14 @@ class CaffeNet(nn.Module):
             elif ltype == 'BatchNorm':
                 if self.verbose:
                     logging.info('load weights %s' % lname)
-                try:
+                if lmap[lname].blobs[2].data[0] > 0.0000001:
                     self.models[lname].running_mean.copy_(
                         torch.from_numpy(np.array(lmap[lname].blobs[0].data) / lmap[lname].blobs[2].data[0]))
-                except FloatingPointError:
+                    self.models[lname].running_var.copy_(
+                        torch.from_numpy(np.array(lmap[lname].blobs[1].data) / lmap[lname].blobs[2].data[0]))  
+                else:
                     self.models[lname].running_mean.copy_(
                         torch.from_numpy(np.array(lmap[lname].blobs[0].data)))
-                try:
-                    self.models[lname].running_var.copy_(
-                        torch.from_numpy(np.array(lmap[lname].blobs[1].data) / lmap[lname].blobs[2].data[0]))
-                except FloatingPointError:
                     self.models[lname].running_var.copy_(
                         torch.from_numpy(np.array(lmap[lname].blobs[1].data)))
                 i = i + 1

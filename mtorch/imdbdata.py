@@ -29,7 +29,7 @@ class ImdbData(data.Dataset):
     """
 
     def __init__(self, path,
-                 transform=None, labeler=None):
+                 transform=None, labeler=None, predict_phase=False):
         """Constructor of ImdbData
         :param path: string - path to the dataset with images and labels
         :param transform: see Transforms.py - transform to be applied on sample
@@ -38,6 +38,7 @@ class ImdbData(data.Dataset):
         self._path = path
         self.transform = transform
         self.labeler = labeler
+        self.predict_phase = predict_phase
 
     def __repr__(self):
         return 'ImdbData({}, size={})'.format(self._path, len(self))
@@ -52,6 +53,8 @@ class ImdbData(data.Dataset):
         else:
             raw = imdb.raw_image(index)
             img = Image.open(StringIO(raw)).convert('RGB')
+        if self.predict_phase:
+            w, h = img.size
         if self.labeler is not None:
             label = self.labeler(imdb.truth_list(key), imdb.cmap)
             sample = {
@@ -62,8 +65,10 @@ class ImdbData(data.Dataset):
             sample = img
         if self.transform is not None:
             sample = self.transform(sample)
-        if isinstance(sample, dict):
+        if isinstance(sample, dict):  # typical for training
             return sample[IMAGE], sample[LABEL]
+        if self.predict_phase:  # typical for prediction
+            return sample, key, imdb.image_key(key), h, w
         return sample
 
     def __len__(self):

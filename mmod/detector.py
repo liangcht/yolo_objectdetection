@@ -149,7 +149,7 @@ def detect(exp, num_gpu, gpu, to_json, key, im=None, thresh=None, class_thresh=N
     if im is None:
         im = exp.imdb.image(key)
     scores, boxes = im_detect(net, im, **kwargs)
-    result = result2bblist(im, scores, boxes, exp.cmap,
+    result = result2bblist(im.shape[:2], scores, boxes, exp.cmap,
                            thresh=thresh, obj_thresh=obj_thresh, class_thresh=class_thresh)
     if to_json:
         result = json.dumps(result, separators=(',', ':'), sort_keys=True)
