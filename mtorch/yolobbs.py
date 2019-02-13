@@ -18,7 +18,7 @@ class YoloBBs(nn.Module):
         self.feat_stride = feat_stride
         self.num_anchor = len(biases) // 2
         assert self.num_anchor > 0, "Invalid number of biases"
-        self.register_buffer('biases', torch.from_numpy(np.array(biases, dtype=np.float32).reshape(-1, 2)))
+        self.register_buffer('biases', torch.from_numpy(np.array(biases, dtype=np.float32).reshape(-1, 2)).cuda())
 
     def forward(self, xy, wh, im_info=None):
         """

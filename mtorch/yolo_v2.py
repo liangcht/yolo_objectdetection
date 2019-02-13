@@ -103,7 +103,7 @@ def yolo(backbone_model, weights_file=None, caffe_format_weights=False, map_loca
         orig_dict = snapshot["state_dict"] 
         #orig_dict = snapshot 
         if caffe_format_weights:
-            init_dict = prep_dict(orig_dict, model.state_dict()) 
+            init_dict = prep_dict(orig_dict, model.state_dict(), switch_bn2scale=True) 
         else:
             init_dict = orig_dict
         model.load_state_dict(init_dict)

@@ -53,8 +53,8 @@ class SoftmaxTree(nn.Module):
         self.axis = axis
 
         group_offsets, group_sizes, cid_groups, parents, _, _, _ = read_softmax_tree(self.tree)
-        self.register_buffer('group_offsets', torch.from_numpy(np.array(group_offsets, dtype=np.int32)))
-        self.register_buffer('group_sizes', torch.from_numpy(np.array(group_sizes, dtype=np.int32)))
+        self.register_buffer('group_offsets', torch.from_numpy(np.array(group_offsets, dtype=np.int32)).cuda())
+        self.register_buffer('group_sizes', torch.from_numpy(np.array(group_sizes, dtype=np.int32)).cuda())
         self.node_count = len(cid_groups)
         self.group_count = len(group_offsets)
         assert self.node_count == group_offsets[-1] + group_sizes[-1], "node count: {} last group: {}+{}".format(

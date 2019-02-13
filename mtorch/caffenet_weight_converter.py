@@ -16,7 +16,7 @@ def prep_dict(init_net_dict, net_dict, switch_bn2scale=True):
         init_layer_name = add_token + token + layer_name.split(token)[-1]
        
         if switch_bn2scale and "bn." in init_layer_name and ('weight' in init_layer_name 
-                                                            or 'scale' in init_layer_name):
+                                                            or 'bias' in init_layer_name):
             init_layer_name = init_layer_name.replace("bn", "scale")
         try:
             init_weight = init_net_dict[init_layer_name] 
