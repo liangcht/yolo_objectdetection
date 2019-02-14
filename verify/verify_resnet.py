@@ -130,10 +130,11 @@ def prep_dict_resnet_pt2caffe_ordered(pt_dict, caffe_dict, mapping_file=None):
         pt_idx += num_params
 
     assert caffe_idx == len(caffe_dict) and pt_idx == len(pt_dict)
-    with open(mapping_file, 'w') as fp:
-        for row in all_mapping:
-            fp.write('\t'.join(row))
-            fp.write('\n')
+    if mapping_file:
+        with open(mapping_file, 'w') as fp:
+            for row in all_mapping:
+                fp.write('\t'.join(row))
+                fp.write('\n')
 
     return OrderedDict(ret)
 
