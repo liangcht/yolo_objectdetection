@@ -10,7 +10,8 @@ from mtorch.caffenet_weight_converter import prep_dict
 from mtorch.caffenet import CaffeNet
 from mtorch.darknet import darknet_layers
 from mtorch.yolo_v2 import yolo
-from mtorch.tbox_utils import Labeler, DarknetAugmentation
+from mtorch.tbox_utils import Labeler
+from mtorch.augmentation import DefaultDarknetAugmentation
 from mtorch.samplers import SequentialWrappingSampler, RandomWrappingSampler
 from mtorch.imdbdata import ImdbData
 from mtorch.caffeloader import CaffeLoader
@@ -19,10 +20,10 @@ from mtorch.caffesgd import CaffeSGD
 
 
 # change information below as needed
-MODE = "SoftMaxLoss"
+MODE = "SoftMaxTreeLoss"
 protofile = "/work/fromLei/train_yolo_with" + MODE + ".prototxt"
-caffemodel = "/work/fromLei/snapshot/model_iter_10022.caffemodel"#model_iter_0.caffemodel"
-snapshot_pt = '/work/temp_weights.pt'  # this will contain temporary weights for testing only
+caffemodel = "/work/fromLei/snapshot/model_iter_0.caffemodel"#model_iter_0.caffemodel"
+snapshot_pt = '/work/fromLei/snapshot/darknet_3extraconv.pt'  # this will contain temporary weights for testing only
 assert op.isfile(protofile) and op.isfile(caffemodel)
 
 if MODE == "SoftMaxTreeLoss":
@@ -55,20 +56,25 @@ def get_group_params(model, initial_lr):
 model = CaffeNet(protofile, keep_diffs=True, verbose=False)
 model.load_weights(caffemodel)
 model = model.cuda()
-seen_images_ini = model.seen_images.data.cpu().detach()
+seen_images_ini = model.region_target.seen_images.data.cpu().detach()
 
-state = model.state_dict()
+state_dict = model.state_dict()
+state = {
+            'state_dict': state_dict,
+            'seen_images': seen_images_ini
+            
+        }
 torch.save(state, snapshot_pt)
 
     
 
-augmenter = DarknetAugmentation()
+augmenter = DefaultDarknetAugmentation()
 labeler = Labeler()
 layer = model.net_info['layers'][model.input_index]
 augmented_dataset = ImdbData(path=protofile,
-                            transform=augmenter(layer), labeler=labeler)
+                            transform=augmenter(), labeler=labeler)
 
-total_batch_size = 16
+total_batch_size = 1
 sampler = RandomWrappingSampler(
             augmented_dataset, 
             int(np.ceil(float(len(augmented_dataset)) / float(total_batch_size)) * total_batch_size)

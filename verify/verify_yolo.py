@@ -55,7 +55,8 @@ def get_group_params(model, initial_lr):
 from mtorch.caffenet import CaffeNet
 from mtorch.darknet import darknet_layers
 from mtorch.yolo_v2 import yolo
-from mtorch.tbox_utils import Labeler, DarknetAugmentation
+from mtorch.tbox_utils import Labeler
+from mtorch.augmentation import DarknetAugmentation
 from mtorch.samplers import SequentialWrappingSampler, RandomWrappingSampler
 from mtorch.imdbdata import ImdbData
 from mtorch.caffeloader import CaffeLoader
@@ -66,7 +67,10 @@ model = CaffeNet(protofile, keep_diffs=True, verbose=False)
 model.load_weights(caffemodel)
 model = model.cuda()
 
-state = model.state_dict()
+snapshot = model.state_dict()
+state = {}
+state['state_dict'] = snapshot
+state['seen_image'] = 0
 torch.save(state, snapshot_pt)
 
     
@@ -91,7 +95,7 @@ inputs = next(iter(data_loader))
 
 data, labels = inputs[0].cuda(), inputs[1].cuda().float()
         
-features, features_darknet = model(data, labels) 
+features, features_darknet = model(data, labels)  # for this line to work  uncomment line 220 in caffenet
 
 
 dark_layers = darknet_layers(snapshot_pt, True)

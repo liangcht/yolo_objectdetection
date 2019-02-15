@@ -46,7 +46,8 @@ from mtorch.caffesgd import CaffeSGD
 from mtorch.caffeloader import CaffeLoader
 from mtorch.multifixed_scheduler import MultiFixedScheduler
 from mtorch.imdbdata import ImdbData
-from mtorch.tbox_utils import Labeler, DarknetAugmentation
+from mtorch.tbox_utils import Labeler
+from mtorch.augmentation import DarknetAugmentation
 from mtorch.samplers import SequentialWrappingSampler, RandomWrappingSampler
 
 

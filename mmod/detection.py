@@ -77,7 +77,7 @@ def im_detect(caffe_net, im, pixel_mean=None, target_size=416, maintain_ratio=Tr
     return prob, bbox
 
 
-def result2bblist(im, probs, boxes, class_map, thresh=None, obj_thresh=None, class_thresh=None):
+def result2bblist(hw, probs, boxes, class_map, thresh=None, obj_thresh=None, class_thresh=None):
     if thresh is None:
         thresh = 0
     if obj_thresh is None:
@@ -99,7 +99,7 @@ def result2bblist(im, probs, boxes, class_map, thresh=None, obj_thresh=None, cla
 
             x, y, w, h = box
 
-            im_h, im_w = im.shape[0:2]
+            im_h, im_w = hw
             left = (x - w / 2.)
             right = (x + w / 2.)
             top = (y - h / 2.)

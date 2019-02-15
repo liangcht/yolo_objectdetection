@@ -89,12 +89,22 @@ def darknet_layers(weights_file=None, caffe_format_weights=False, map_location=N
     pretrained = weights_file is not None
 
     if pretrained:
+        snapshot = torch.load(weights_file, map_location=map_location)
+        orig_dict = snapshot["state_dict"] 
+
         if caffe_format_weights:
-            init_dict = prep_dict(torch.load(weights_file, map_location=map_location), model.state_dict()) 
+            init_dict = prep_dict(orig_dict, model.state_dict()) 
         else:
-            init_dict = torch.load(weights_file, map_location=map_location)
+            init_dict = orig_dict
         model.load_state_dict(init_dict)
-    
+        try:
+            model.seen_images = orig_dict["module.seen_images"]
+        except KeyError:
+            try:
+                model.seen_images = orig_dict["seen_images"]
+            except KeyError:
+                model.seen_images = snapshot["seen_images"]
+
     return model
 
 
