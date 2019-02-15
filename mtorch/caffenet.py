@@ -625,14 +625,19 @@ class CaffeNet(nn.Module):
                 stride = int(layer['pooling_param'].get('stride', 1))
                 padding = int(layer['pooling_param'].get('pad', 0))
                 pool_type = layer['pooling_param']['pool']
+                ceil_mode = layer['pooling_param'].get('round_mode', 'CEIL') == 'CEIL'
                 if pool_type == 'MAX':
-                    models[lname] = nn.MaxPool2d(kernel_size, stride, padding=padding, ceil_mode=True)
+                    models[lname] = nn.MaxPool2d(kernel_size, stride, padding=padding, ceil_mode=ceil_mode)
                 elif pool_type == 'AVE':
-                    models[lname] = nn.AvgPool2d(kernel_size, stride, padding=padding, ceil_mode=True)
+                    models[lname] = nn.AvgPool2d(kernel_size, stride, padding=padding, ceil_mode=ceil_mode)
 
                 n, c, h, w = self.blob_dims[bname]
-                new_w = int(math.ceil((w + 2 * padding - kernel_size) / float(stride))) + 1
-                new_h = int(math.ceil((h + 2 * padding - kernel_size) / float(stride))) + 1
+                if ceil_mode:
+                    new_w = int(math.ceil((w + 2 * padding - kernel_size) / float(stride))) + 1
+                    new_h = int(math.ceil((h + 2 * padding - kernel_size) / float(stride))) + 1
+                else:
+                    new_w = int(math.floor((w + 2 * padding - kernel_size) / float(stride))) + 1
+                    new_h = int(math.floor((h + 2 * padding - kernel_size) / float(stride))) + 1
                 self.blob_dims[tname] = n, c, new_h, new_w
                 i = i + 1
             elif ltype == 'Eltwise':

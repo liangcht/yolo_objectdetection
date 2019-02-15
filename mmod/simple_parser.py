@@ -337,9 +337,10 @@ def format_value(value):
     """
     if is_number(value):
         return value
+    # Enum values
     if value in [
         'true', 'false', 'MAX', 'SUM', 'AVE', 'TRAIN', 'TEST', 'WARP', 'LINEAR', 'AREA', 'NEAREST',
-        'CUBIC', 'LANCZOS4', 'CENTER', 'LMDB', 'BATCH_SIZE', 'VALID'
+        'CUBIC', 'LANCZOS4', 'CENTER', 'LMDB', 'BATCH_SIZE', 'VALID', 'CEIL', 'FLOOR'
     ]:
         return value
     return '\"%s\"' % value
