@@ -81,10 +81,10 @@ class SoftmaxTreePrediction(nn.Module):
         )
         self.stack_size = _find_max_stack_size(group_offsets, group_sizes, child, child_sizes, self.root_size)
         # TODO: share buffers with SoftmaxTree
-        self.register_buffer('group_offsets', torch.from_numpy(np.array(group_offsets, dtype=np.int32)).cuda())
-        self.register_buffer('group_sizes', torch.from_numpy(np.array(group_sizes, dtype=np.int32)).cuda())
-        self.register_buffer('child', torch.from_numpy(np.array(child, dtype=np.int32)).cuda())
-        self.register_buffer('child_sizes', torch.from_numpy(np.array(child_sizes, dtype=np.int32)).cuda())
+        self.register_buffer('group_offsets', torch.from_numpy(np.array(group_offsets, dtype=np.int32)))
+        self.register_buffer('group_sizes', torch.from_numpy(np.array(group_sizes, dtype=np.int32)))
+        self.register_buffer('child', torch.from_numpy(np.array(child, dtype=np.int32)))
+        self.register_buffer('child_sizes', torch.from_numpy(np.array(child_sizes, dtype=np.int32)))
         self.node_count = len(cid_groups)
         self.group_count = len(group_offsets)
         assert self.node_count == group_offsets[-1] + group_sizes[-1], "node count: {} last group: {}+{}".format(

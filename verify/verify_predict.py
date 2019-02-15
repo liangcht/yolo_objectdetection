@@ -82,7 +82,7 @@ def load_model():
     return model
 
 new_model = load_model()
-yolo_predictor = TreePredictor('/work/fromLei/tree.txt')
+yolo_predictor = TreePredictor('/work/fromLei/tree.txt').cuda()
 cmap = load_labelmap_list('/work/fromLei/labelmap.txt')
 
 with torch.no_grad():

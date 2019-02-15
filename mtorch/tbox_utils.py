@@ -2,6 +2,7 @@ import numpy as np
 
 BBOX_DIM = 4
 
+
 class Labeler(object):
     """
     Creates labels in a format of top left bottom right corners of bounding box

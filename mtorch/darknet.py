@@ -99,10 +99,10 @@ def darknet_layers(weights_file=None, caffe_format_weights=False, map_location=N
         model.load_state_dict(init_dict)
         try:
             model.seen_images = orig_dict["module.seen_images"]
-        except:
+        except KeyError:
             try:
                 model.seen_images = orig_dict["seen_images"]
-            except:
+            except KeyError:
                 model.seen_images = snapshot["seen_images"]
 
     return model

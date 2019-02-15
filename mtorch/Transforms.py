@@ -10,13 +10,13 @@ import torch
 from torchvision import transforms
 from PIL import Image
 import random
-from skimage import transform 
+from skimage import transform
 import logging
 import darkresize
 
 # Dictionary key
 IMAGE = "image"  # TODO: change to get that as parameter from prototxt
-LABEL = "bbox"   # TODO: change to get that as parameter from prototxt
+LABEL = "bbox"  # TODO: change to get that as parameter from prototxt
 # Color related constants/ defaults
 H = 0
 S = 1
@@ -71,6 +71,7 @@ class Compose(object):
         >>>     RandomCrop((200,200))
         >>> ])
     """
+
     def __init__(self, transform_list):
         """Constructs Compose object
         :param transform_list: list of transforms to concatenate
@@ -107,6 +108,7 @@ class ComposeDebugger(object):
         >>>     RandomCrop((200,200))
         >>> ])
     """
+
     def __init__(self, transform_list):
         """ Constructs ComposeDebugger object
         :param transform_list: list of transforms to compose
@@ -135,7 +137,7 @@ class ComposeDebugger(object):
             format_string += '\n'
             format_string += '    {0}'.format(t)
         format_string += '\n)'
-        return format_string 
+        return format_string
 
 
 class ImageBoxAugmentation(object):
@@ -147,15 +149,16 @@ class ImageBoxAugmentation(object):
             a numpy nd array of bounding boxes under key LABEL
 
     """
+
     def __init__(self, valid_num_boxes=MIN_NUM_BBOXES):
         """Constructor of ImageBoxAugmentation
         :param valid_num_boxes: required number of bounding boxes
         to be left after augmentation is done, default is 1
         """
-        if isinstance(valid_num_boxes, int): 
+        if isinstance(valid_num_boxes, int):
             self.valid_num_bboxes = valid_num_boxes
         else:
-            raise ValueError("Please provide an integer for valid_num_boxes") 
+            raise ValueError("Please provide an integer for valid_num_boxes")
 
     def __call__(self, sample):
         """Prepares the sample for other transforms
@@ -198,14 +201,14 @@ class ImageBoxAugmentation(object):
         sz = sample[IMAGE].size
         for bbox in sample[LABEL]:
             try:
-                assert(bbox[0] < bbox[2] and int(bbox[0]) >= 0 and int(bbox[2]) <= int(sz[0]))
-                assert(bbox[1] < bbox[3] and int(bbox[1]) >= 0 and int(bbox[3]) <= int(sz[1]))
+                assert (bbox[0] < bbox[2] and int(bbox[0]) >= 0 and int(bbox[2]) <= int(sz[0]))
+                assert (bbox[1] < bbox[3] and int(bbox[1]) >= 0 and int(bbox[3]) <= int(sz[1]))
             except:
                 bbox[0] = max(bbox[0], 0)
                 bbox[1] = max(bbox[1], 0)
                 bbox[2] = min(bbox[2], sz[0])
                 bbox[3] = min(bbox[3], sz[1])
- 
+
     @staticmethod
     def check_dynamic_range(image, max_pixel_val):
         """Checks if all the values of the image are within correct Dynamic Range
@@ -310,8 +313,8 @@ class Resize(ImageBoxAugmentation):
             resized_image = Image.fromarray(np.uint8(resized_image * int(MAX_PIXEL_VAL)))
 
         elif self.library == DARKNET:
-            resized = transforms.functional.to_tensor(Image.new('RGB', (int(self.__new_w), int(self.__new_h)), 
-                                                        PADDING_COL)).permute((2, 1, 0))
+            resized = transforms.functional.to_tensor(Image.new('RGB', (int(self.__new_w), int(self.__new_h)),
+                                                                PADDING_COL)).permute((2, 1, 0))
             input = transforms.functional.to_tensor(self.image).permute((2, 1, 0))
             darkresize.forward(input, int(self.__new_w), int(self.__new_h), 0, 0, resized)
             resized_perm = resized.permute((2, 1, 0))
@@ -453,10 +456,10 @@ class RandomResizeDarknet(ImageBoxAugmentation):
         :return: dictionary with two fields defined by IMAGE and LABEL with their content resized
         """
         super(RandomResizeDarknet, self).__call__(sample)
-       
+
         self.resizer = Resize(output_size=self.__get_rand_output_size(), interp_method=self.interp_method,
                               library=self.library, valid_num_bboxes=self.valid_num_bboxes)
-        
+
         for i in range(self.tries):
             try:
                 result = self.resizer(sample)
@@ -556,7 +559,7 @@ class Crop(ImageBoxAugmentation):
         width = int(round(self.crop_box[2]))
         cropped_bboxes = tbox.crop(self.bboxs, self.crop_box,
                                    allow_outside_center=self.allow_outside_bb_center)
-       
+
         cropped_image = transforms.functional.crop(self.image, i=upper, j=left, h=height, w=width)
 
         result = {IMAGE: cropped_image, LABEL: cropped_bboxes}
@@ -581,7 +584,7 @@ class Crop(ImageBoxAugmentation):
         else:
             format_string += str(self.crop_box)
         format_string += ')\n'
-        return format_string 
+        return format_string
 
 
 class RandomCrop(Crop):
@@ -610,7 +613,7 @@ class RandomCrop(Crop):
         else:
             tbox.check_size_dim(output_size, 'output_size')
             self.output_size = output_size
-        self.offset_w,  self.offset_h = offsets
+        self.offset_w, self.offset_h = offsets
         super(RandomCrop, self).__init__(crop_box=None, allow_outside_bb_center=allow_outside_bb_center)
 
     def __call__(self, sample, crop_box=None, allow_outside_bb_center=None):
@@ -620,7 +623,7 @@ class RandomCrop(Crop):
         """
         super(Crop, self).__call__(sample)
         self.output_size = tuple([min(self.output_size[0], self.w),
-                                 min(self.output_size[1], self.h)])
+                                  min(self.output_size[1], self.h)])
         if self.output_size[0] == self.w and self.output_size[1] == self.h:
             self.__crop = None
             return sample
@@ -633,7 +636,7 @@ class RandomCrop(Crop):
     def __random_placement(self):
         """Helper to randomly generate cropped region"""
         new_w, new_h = self.output_size
-        if self.h - (new_h - self.offset_h) < self.offset_h: 
+        if self.h - (new_h - self.offset_h) < self.offset_h:
             raise ValueError("Height: New {}, old {}".format(new_h, self.h))
         if self.w - (new_w - self.offset_w) < self.offset_w:
             raise ValueError("Width: New {}, old {}".format(new_w, self.w))
@@ -653,7 +656,7 @@ class RandomCrop(Crop):
         :return: string
         """
         format_string = super(RandomCrop, self).__repr__()
-        return format_string 
+        return format_string
 
 
 class RandomHorizontalFlip(ImageBoxAugmentation):
@@ -667,6 +670,7 @@ class RandomHorizontalFlip(ImageBoxAugmentation):
     -----------
          randomly flipped sample - dictionary with two fields defined by IMAGE and LABEL
     """
+
     def __init__(self, prob=FLIP_PROB):
         """Constructs the HorizontalFlip object
         :param prob: probability to flip the sample
@@ -706,8 +710,8 @@ class RandomHorizontalFlip(ImageBoxAugmentation):
         """
         format_string = self.__class__.__name__ + '('
         format_string += ("Flipped Horizontally" if self.has_flipped else "Not Flipped")
-        format_string += ') \n' 
-        return format_string 
+        format_string += ') \n'
+        return format_string
 
 
 class RandomVerticalFlip(ImageBoxAugmentation):
@@ -764,7 +768,7 @@ class RandomVerticalFlip(ImageBoxAugmentation):
         """
         format_string = self.__class__.__name__ + '('
         format_string += ("Flipped Vertically" if self.has_flipped else "Not Flipped")
-        format_string += ') \n' 
+        format_string += ') \n'
         return format_string
 
 
@@ -807,7 +811,7 @@ class DistortColor(ImageBoxAugmentation):
         :return: sample with color distorted IMAGE (LABEL is unaltered)
         """
         if self.hue == NO_CHANGE_IN_HUE and \
-                self.saturation == NO_CHANGE_IN_SAT and\
+                self.saturation == NO_CHANGE_IN_SAT and \
                 self.exposure == NO_CHANGE_IN_EXP:
             return sample
 
@@ -859,10 +863,10 @@ class DarknetDistortColor(ImageBoxAugmentation):
         :return: sample with color distorted IMAGE (LABEL is unaltered)
         """
         if self.hue == NO_CHANGE_IN_HUE and \
-                self.saturation == NO_CHANGE_IN_SAT and\
+                self.saturation == NO_CHANGE_IN_SAT and \
                 self.exposure == NO_CHANGE_IN_EXP:
             return sample
-            
+
         super(DarknetDistortColor, self).__call__(sample)
         hsv_im = self.image.convert('HSV')
         im_channels = list(hsv_im.split())
@@ -883,7 +887,7 @@ class DarknetDistortColor(ImageBoxAugmentation):
         if self.exposure is not None and self.exposure != NO_CHANGE_IN_EXP:
             im_channels[V] = Image.eval(im_channels[V],
                                         lambda pixel: pixel * self.exposure)
- 
+
         im = Image.merge(hsv_im.mode, tuple(im_channels))
         im = im.convert('RGB')
         ImageBoxAugmentation.check_dynamic_range(im, self.pixel_max_val)
@@ -913,7 +917,7 @@ class RandomDistort(ImageBoxAugmentation):
         :param exposure: maximum factor to increase/ decrease exposure by (no limit on value)
         :param pixel_max_value: maximum possible value per color channel
         """
-        
+
         super(RandomDistort, self).__init__()
         if isinstance(hue, float):
             self.hue = hue
@@ -935,6 +939,7 @@ class RandomDistort(ImageBoxAugmentation):
         :param sample: dictionary with two fields defined by IMAGE and LABEL
         :return: sample with color distorted IMAGE (LABEL is unaltered)
         """
+
         def rand_scale(s):
             if s is None:
                 return None
@@ -1001,12 +1006,12 @@ class CanvasAdapter(ImageBoxAugmentation):
         :return: sample adapted to the canvas
         """
         super(CanvasAdapter, self).__call__(sample)
-        
+
         new_left = max(-self.dx, 0.0)
         new_top = max(-self.dy, 0.0)
         left = max(self.dx, 0.0)
         top = max(self.dy, 0.0)
-        
+
         cropper1 = Crop([new_left, new_top, self.w - new_left, self.h - new_top], allow_outside_bb_center=True)
         cropper2 = Crop([0, 0, self.cw, self.ch], allow_outside_bb_center=True)
         cropped1 = cropper1(sample)
@@ -1038,7 +1043,7 @@ class ResizeToCanvas(ImageBoxAugmentation):
         super(ResizeToCanvas, self).__init__()
         self.cw = size[0]
         self.ch = size[1]
-      
+
     def __call__(self, sample):
         """Resizes the image to fit the Canvas
         :param sample: dictionary with two fields defined by IMAGE and LABEL
@@ -1079,7 +1084,7 @@ class PlaceOnCanvas(ImageBoxAugmentation):
         super(PlaceOnCanvas, self).__init__(valid_num_bboxes)
         self.fixed_offset = fixed_offset
         self.canvas_size = canvas_size
-        self.default_pixel_value = default_pixel_value        
+        self.default_pixel_value = default_pixel_value
 
     def __call__(self, sample):
         """Places the sample within the limits of Canvas (NO resizing, just cropping)
@@ -1093,11 +1098,11 @@ class PlaceOnCanvas(ImageBoxAugmentation):
 
     def __get_offset_on_canvas(self):
         """Helper to calculate the offset from origin for cropped region placement"""
-        canvas_w, canvas_h = self.canvas_size    
+        canvas_w, canvas_h = self.canvas_size
         if self.fixed_offset:
             return float(canvas_w - self.w) / 2.0, float(canvas_h - self.h) / 2.0
         return random.uniform(0, canvas_w - self.w), random.uniform(0, canvas_h - self.h)
-            
+
 
 class RandomizeBBoxes(ImageBoxAugmentation):
     """Randomizes bounding boxes (Caffe compatibility) and omits invlalid boxes
@@ -1131,9 +1136,9 @@ class RandomizeBBoxes(ImageBoxAugmentation):
         if self.min_num_bboxes_to_randomize is None or self.bboxs.shape[0] > self.min_num_bboxes_to_randomize:
             self.bboxs = np.random.permutation(self.bboxs)
         return {IMAGE: self.image, LABEL: self.bboxs}
- 
+
     def __keep_only_valid_boxs(self):
-        """ helper - validation of bbounding boxes, taken from Caffe"""       
+        """ helper - validation of bbounding boxes, taken from Caffe"""
         mask = np.ones(self.bboxs.shape[0], dtype=bool)
 
         bboxs_xywh = tbox.to_xy_wh(self.bboxs, self.w, self.h)
@@ -1148,9 +1153,8 @@ class RandomizeBBoxes(ImageBoxAugmentation):
         mask = np.logical_and(mask, y_cent > 0)
         mask = np.logical_and(mask, box_w > -0.001)
         mask = np.logical_and(mask, box_h > -0.001)
-        
-        self.bboxs = self.bboxs[mask]
 
+        self.bboxs = self.bboxs[mask]
 
 
 class SetBBoxesInRange(ImageBoxAugmentation):
@@ -1174,10 +1178,9 @@ class SetBBoxesInRange(ImageBoxAugmentation):
         super(SetBBoxesInRange, self).__call__(sample)
         self.__set_bboxs_inrange()
         return {IMAGE: self.image, LABEL: self.bboxs}
- 
+
     def __set_bboxs_inrange(self):
-        """ helper - validation of bbounding boxes, taken from Caffe"""       
-        mask = np.ones(self.bboxs.shape[0], dtype=bool)
+        """ helper - validation of bbounding boxes, taken from Caffe"""
         self.bboxs[:, 0] = np.maximum(np.minimum(self.bboxs[:, 0], self.w), 0)
         self.bboxs[:, 2] = np.maximum(np.minimum(self.bboxs[:, 2], self.w), 0)
         self.bboxs[:, 1] = np.maximum(np.minimum(self.bboxs[:, 1], self.h), 0)
@@ -1214,7 +1217,7 @@ class SubtractMeans(object):
         """
         self.mean = tuple([mean_c / max_pixel_val for mean_c in mean])
         self.norm = tuple([n_c / max_pixel_val for n_c in norm])
-    
+
     def __call__(self, sample):
         """Performs the subtraction of mean and possible normalization on sample
         :param sample: dictionary with two fields defined by IMAGE and LABEL
@@ -1227,7 +1230,7 @@ class SubtractMeans(object):
         return sample
 
 
-class ToDarknetLabels(object):  
+class ToDarknetLabels(object):
     """Convert  bounding boxes in sample to Darknet labels by flattening 
        Discards boxes beyond maximum allowed
     
@@ -1256,8 +1259,7 @@ class ToDarknetLabels(object):
         labels = self._keep_max_num_bboxes(bboxes).flatten()
         return {IMAGE: sample[IMAGE],
                 LABEL: labels}
-    
-   
+
     def _keep_max_num_bboxes(self, bboxes):
         """Discards boxes beyond num_bboxes"""
         if self.num_bboxes is not None:
@@ -1333,9 +1335,8 @@ class DarknetRandomResizeAndPlaceOnCanvas(ImageBoxAugmentation):
             if filtered.shape[0] >= MIN_NUM_BBOXES:
                 translated_boxes = filtered
                 break
-           
 
-        #placeholder for resized image TODO: to rewrite darkresize to return a result
+        # placeholder for resized image TODO: to rewrite darkresize to return a result
         resized = transforms.functional.to_tensor(Image.new('RGB', self.canvas_size,
                                                             PADDING_COL)).permute((2, 1, 0))
         image_tensor = transforms.functional.to_tensor(self.image).permute((2, 1, 0))
@@ -1378,7 +1379,8 @@ class DarknetRandomResizeAndPlaceOnCanvas(ImageBoxAugmentation):
             new_h = float(new_w) / new_aspect_ratio
         return new_w, new_h
 
-class ToDarknetTensor(object):  
+
+class ToDarknetTensor(object):
     """Convert PIL image and numpy array of bounding boxes (if present) in sample
     to network Tensors.
 
@@ -1403,12 +1405,12 @@ class ToDarknetTensor(object):
                     LABEL: torch.from_numpy(sample[LABEL])}
 
         return self.to_BGR(transforms.functional.to_tensor(sample))
-    
+
     @staticmethod
     def to_BGR(img):
         """Transforms RGB into BGR
         :param img: torch tensor or numpy array image with 3 channels
         :return: image with the first and last channels swapped
         """
-        assert(img.shape[0] == 3)
+        assert (img.shape[0] == 3)
         return img[(2, 1, 0), :, :]

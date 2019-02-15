@@ -16,7 +16,7 @@ def _conv3x3(in_planes, out_planes, stride=1):
                      padding=1, bias=False)
 
 
-def bn_relu_block(in_planes, block_name, momentum=0.1, negative_slope=0.1, use_scale=False):
+def bn_relu_block(in_planes, block_name, momentum=0.1, negative_slope=0.1, use_scale=True):
     """batch normalization followed by leaky ReLU
     :param in_planes: int, number of input channels
     :param block_name: str, name to attach to the layer name (for initialization from caffemodel and Caffe prototxt)

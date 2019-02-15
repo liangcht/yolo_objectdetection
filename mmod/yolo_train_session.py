@@ -44,74 +44,62 @@ def to_python_float(t):
 
 
 def get_parser():
-    parser = argparse.ArgumentParser(description='Run Yolo training')
+    """prespares parser of input parameters"""
 
-    parser.add_argument('-d', '--train_dataset_path', '--trainDatasetPath', help='Path to the training dataset tsv file',
-                        required='true')
-    parser.add_argument('-m', '--outputdir', '--modeldir', '--modelDir',
-                        help='Output directory for checkpoints and models',
-                        required=False)
-    parser.add_argument('-l', '--logdir', '--logDir', help='Log directory', required=False)
-    parser.add_argument('--prevmodelpath', help='Previous model path', required=False)
-    parser.add_argument('--configfile', '--stdoutdir', '--numgpu', help='Ignored', required=False)
-    # ------------------------------------------------------------------------------------------------------------
-    parser.add_argument('-s', '--solver', action='append',
+    parser = argparse.ArgumentParser(description='Run Yolo training')
+    parser.add_argument('-d', '--train', help='Path to the training dataset file',
+                        required=True)
+    parser.add_argument('-m', '--model', type=str, metavar='MODEL_PATH',
+                        help='path to latest checkpoint', required=False)
+    parser.add_argument('-l', '--logdir', help='Log directory', required=False)
+    parser.add_argument('-s', '--solver',
                         help='solver file with training parameters',
                         required=True)
-    parser.add_argument('-prev', '--prev', help='Previous model path (override)', required=False)
-    parser.add_argument('--skip_weights', help='If should avoid reusing weights across solvers', action='store_true',
-                        default=False, required=False)
-    parser.add_argument('--restore', help='If should restore the last valid snapshot', action='store_true',
-                        default=True, required=False)
-    parser.add_argument('-snapshot', '--snapshot', '-weights', '--weights',
-                        help='Initial snapshot to finetune from', required=False)
-    parser.add_argument('-t', '--iters', '-max_iter', '--max_iter', dest='max_iters', action='append',
-                        help='number of iterations to train (to override --solver file)', required=False)
-    parser.add_argument('-b', '--batch_size', '--batchsize', action='append', type=int,
-                        help='per-gpu batch size',
+    parser.add_argument('-t', '--tree', default='', type=str, metavar='TREE',
+                        help='path to a tree structure, it prediction based on tree is required')
+    parser.add_argument('--distributed', default=True, type=bool,
+                        help='input False is you do NOT want to use distributed training (default=True)',
                         required=False)
-    parser.add_argument('-j', '--workers', default=8, type=int, metavar='N',
-                        help='number of data loading workers (default: 8)')
+    parser.add_argument('--display', default=True, type=bool,
+                        help='input False is you do NOT want to print progress (default=True)',
+                        required=False)
+    parser.add_argument('-r', '--restore', default=False, type=bool,
+                        help='Initial snapshot to finetune from', required=False)
+    parser.add_argument('-latest_snapshot', '--latest_snapshot',
+                        help='Initial snapshot to finetune from', required=False)
+    parser.add_argument('-b', '--batch_size', '--batchsize', default=16, type=int, metavar='N',
+                        help='per-gpu batch size (default=16)',
+                        required=False)
+    parser.add_argument('-j', '--workers', default=2, type=int, metavar='N',
+                        help='number of data loading workers (default: 2)')
     parser.add_argument('--start-epoch', default=0, type=int, metavar='N',
                         help='manual epoch number (useful on restarts)')
-    parser.add_argument('--distributed', action='store_false', help='Run distributed training. Default False ')
-
+    parser.add_argument('--local_rank', help='local_rank', required=False)
+    parser.add_argument('--dist_url', default="tcp://127.0.0.1:2345",
+                        help='dist_url')
     return parser
 
 
-def get_args_debug():
-    args = {}
-    args["distributed"] = True
-    args["display"] = True
-    args["snapshot"] = "/work/fromLei/snapshot/darknet_3extraconv.pt"
-    #args["latest_snapshot"] = "/work/fromLei/test_refactored3/snapshot/model_epoch_120.pt"
-    args["restore"] = False
-    args["local_rank"] =  dist_utils.env_rank()
-    args["batch_size"] = 16
-    args["workers"] = 2
-    args["solver"] = "/work/fromLei/yolo_voc_solver_pytorch_4GPU.prototxt" 
-    args["logdir"] = "/work/fromLei/"
-    args["train_dataset_path"] = "/work/fromLei/train_yolo_withSoftMaxLoss.prototxt"
-    args["dist_url"] = "tcp://127.0.0.1:2345"
-    return args
-
-
-
-#args = get_parser().parse_args()
-#args = vars(args)
-
-args = get_args_debug()
-# Only want master rank logging to tensorboard
+args = get_parser().parse_args()
+args = vars(args)
+args["local_rank"] = dist_utils.env_rank()
 is_master = (not args["distributed"]) or (dist_utils.env_rank() == 0)
 is_rank0 = args["local_rank"] == 0
-log = FileLogger(args["logdir"], is_master=is_master, is_rank0=is_rank0)
+if "logdir" in args:
+    log = FileLogger(args["logdir"], is_master=is_master, is_rank0=is_rank0)
+else:
+    import logging as log
 
 
 def snapshot(model, criterion, losses, epoch, snapshot_prefix, optimizer=None):
-    """Take a snapshot
-    :param model: mtorch.caffenet.CaffeNet
-    :param epoch:
-    :type optimizer: torch.optim.SGD
+    """Takes a snapshot of training procedure
+    :param model: model to snapshot
+    :param criterion: loss - required for saving seen_images
+    :param losses: list of losses
+    :param epoch: int, epoch reached so far 
+    :param snapshot_prefix: str, file to save the current 
+    :param optimizer: torch.optim.SGD - required to continue training properly,
+    is not reqired for testing
     """
 
     snapshot_pt = snapshot_prefix + "_epoch_{}".format(epoch) + '.pt'
@@ -134,13 +122,21 @@ def snapshot(model, criterion, losses, epoch, snapshot_prefix, optimizer=None):
 
 
 def train(trn_loader, model, criterion, optimizer, scheduler, epoch, loss_arr):
+    """
+    :param trn_loader: utils.data.DataLoader, data loader for training
+    :param model: torch.nn.Module or nn.Sequential, model
+    :param criterion: torch.nn.Module, loss 
+    :param optimizer: torch.optim, optimizer to update model 
+    :param scheduler: torch.optim.lr_scheduler, takes care of weight decay and learning rate updates  
+    :param epoch: int, current epoch
+    :param loss_arr: list, stores all the losses
+     """
     timer = TimeMeter()
     losses = AverageMeter()
 
     # switch to train mode
     model.train()
     last_batch = len(trn_loader)
-    batch_num = 0
     for i, inputs in enumerate(trn_loader):
 
         batch_num = i + 1
@@ -152,19 +148,16 @@ def train(trn_loader, model, criterion, optimizer, scheduler, epoch, loss_arr):
 
         # compute output
         features = model(data)
-
-        loss = criterion(features, labels) 
+        loss = criterion(features, labels)
         assert loss == loss, "Batch {} in epoch {}: NaN loss!".format(batch_num, epoch)
 
         # compute gradient and do SGD step
         loss.backward()
         optimizer.step()
-        #log.verbose("Current loss " + str(to_python_float(loss.data)))
-        master_loss = to_python_float(loss.data)
         # Train batch done. Logging results
         timer.batch_end()
         reduced_loss, batch_total = to_python_float(loss.data), to_python_float(data.size(0))
-        if args["distributed"]:  #keeping track of all the machines
+        if args["distributed"]:  # keeping track of all the machines
             metrics = torch.tensor([batch_total, reduced_loss]).float().cuda()
             batch_total, reduced_loss = dist_utils.sum_tensor(metrics).cpu().numpy()
             reduced_loss = reduced_loss / dist_utils.env_world_size()
@@ -173,11 +166,9 @@ def train(trn_loader, model, criterion, optimizer, scheduler, epoch, loss_arr):
         loss_arr.append(torch.tensor(reduced_loss))
         should_print = (args["display"] and batch_num % args["display"] == 0) or batch_num == last_batch
         if should_print:
-            output = ("{:.2f} Epoch {}: Time per iter =  {:.4f}s), loss master = {:.4f}, reduced loss = {:.4f},batch_total = {}, lr = {}".format(
-                float(batch_num) / (last_batch), epoch,
-                timer.batch_time.val, master_loss,
-                losses.val, batch_total, scheduler.get_lr())
-            )
+            output = "{:.2f} Epoch {}: Time per iter =  {:.4f}s), loss = {:.4f},batch_total = {}, lr = {}"\
+                .format(float(batch_num) / last_batch, epoch, timer.batch_time.val,
+                        losses.val, batch_total, scheduler.get_lr())
             log.verbose(output)
 
 
@@ -193,19 +184,18 @@ def main():
 
     log.console("Loading model")
 
-    model = yolo(darknet_layers(weights_file=args['snapshot'], caffe_format_weights=True),
-                 weights_file=args['snapshot'],
+    model = yolo(darknet_layers(), weights_file=args['model'],
                  caffe_format_weights=True).cuda()
     seen_images = model.seen_images
 
     if args["distributed"]:
         model = dist_utils.DDP(model, device_ids=[args['local_rank']], output_device=args['local_rank'])
 
-    # TODO: the next 3 lines could be put in a Class SOLVER including lr_policy
     solver_params = parse_prototxt(args['solver'])
     lrs = get_lrs(solver_params)
     steps = get_steps(solver_params)
 
+    # code below sets caffe compatible learning rate and weight decay hyper parameters 
     decay, no_decay, lr2 = [], [], []
     for name, param in model.named_parameters():
         if not param.requires_grad:
@@ -219,61 +209,63 @@ def main():
         else:
             decay.append(param)
 
-    initial_lr = lrs[0]
-    param_groups = [{'params': no_decay, 'weight_decay': 0., 'initial_lr': initial_lr, 'lr_mult': 1.},
-           {'params': decay,  'initial_lr': initial_lr, 'lr_mult': 1.},
-           {'params': lr2, 'weight_decay': 0., 'initial_lr': initial_lr * 2., 'lr_mult': 2.}]
+    param_groups = [{'params': no_decay, 'weight_decay': 0., 'initial_lr': lrs[0], 'lr_mult': 1.},
+                    {'params': decay, 'initial_lr': lrs[0], 'lr_mult': 1.},
+                    {'params': lr2, 'weight_decay': 0., 'initial_lr': lrs[0] * 2., 'lr_mult': 2.}]
 
     optimizer = CaffeSGD(param_groups, lr=lrs[0],
-                         momentum=float(solver_params['momentum']), 
+                         momentum=float(solver_params['momentum']),
                          weight_decay=float(solver_params['weight_decay']))
 
     if args["restore"]:
+        log.console("Restoring model from latest snapshot")
         checkpoint = torch.load(args["latest_snapshot"],
                                 map_location=lambda storage, loc: storage.cuda(args["local_rank"]))
         model.load_state_dict(checkpoint['state_dict'])
-        args["start_epoch"] = checkpoint['epochs'] + 1
         optimizer.load_state_dict(checkpoint['optimizer'])
-        seen_images  = checkpoint['seen_images']
+        seen_images = checkpoint['seen_images']
+        args["start_epoch"] = checkpoint['epochs'] + 1
+
+    if "tree" in args:  # TODO: implement YoloLoss with loss_mode as an argument
+        criterion = RegionTargetWithSoftMaxTreeLoss(args["tree"], seen_images=seen_images)
     else:
-        args["start_epoch"] = 0
-
-    criterion = RegionTargetWithSoftMaxLoss(seen_images=seen_images)
-    criterion = criterion.cuda()# TODO: implement YoloLoss, add loss_mode to arguments
-
-
-    log.console("Creating data loaders")
+        criterion = RegionTargetWithSoftMaxLoss(seen_images=seen_images)
+    criterion = criterion.cuda()
 
     if args["distributed"]:
         log.console('Syncing machines before training')
         dist_utils.sum_tensor(torch.tensor([1.0]).float().cuda())
-    data_loader = yolo_train_data_loader(args["train_dataset_path"], batch_size=args["batch_size"],
-                                        num_workers=args["workers"], distributed=args["distributed"])
+
+    log.console("Creating data loaders")
+    data_loader = yolo_train_data_loader(args["train"], batch_size=args["batch_size"],
+                                         num_workers=args["workers"], distributed=args["distributed"])
 
     if solver_params.get('lr_policy', 'fixed') == "multifixed":
-        scheduler = MultiFixedScheduler(optimizer, steps, lrs, 
-                                    last_iter=args["start_epoch"] * 78) 
+        scheduler = MultiFixedScheduler(optimizer, steps, lrs,
+                                        last_iter=args["start_epoch"] * len(data_loader))
     else:
         scheduler = None
 
     start_time = datetime.now()  # Loading start to after everything is loaded
-    num_epochs = int(round( float(solver_params["max_iter"]) / len(data_loader) + 0.5))
+    num_epochs = int(round(float(solver_params["max_iter"]) / len(data_loader) + 0.5))
     loss_arr = []
     for epoch in range(args["start_epoch"], num_epochs):
         train(data_loader, model, criterion, optimizer, scheduler, epoch, loss_arr)
         time_diff = (datetime.now() - start_time).total_seconds() / 3600.0
         log.event('{}\t {}\n'.format(epoch, time_diff))
-        if args["local_rank"] == 0 and  epoch % float(solver_params["snapshot"]) == 0:
+        if args["local_rank"] == 0 and epoch % float(solver_params["snapshot"]) == 0:
             snapshot(model, criterion, loss_arr, epoch, solver_params["snapshot_prefix"], optimizer=optimizer)
-    if args["local_rank"] == 0: 
+
+    log.console("Snapshoting final model")
+    if args["local_rank"] == 0:
         snapshot(model, criterion, loss_arr, epoch, solver_params["snapshot_prefix"], optimizer=optimizer)
 
-if __name__ == '__main__':
-    # try:
-    #     with warnings.catch_warnings():
-    #         warnings.simplefilter("ignore", category=UserWarning)
-    main()
 
-    # except Exception as e:
-    #     exc_type, exc_value, exc_traceback = sys.exc_info()
-    #     log.event(e)
+if __name__ == '__main__':
+    try:
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=UserWarning)
+            main()
+    except Exception as e:
+        exc_type, exc_value, exc_traceback = sys.exc_info()
+        log.event(e)

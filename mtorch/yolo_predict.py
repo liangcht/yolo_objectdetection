@@ -22,20 +22,12 @@ class YoloPredict(nn.Module):
         num_anchors: int, number of anchors for bounding box predictions
         biases: list, default anchors
         coords: int, number of coordinates in bounding box to predict
-        obj_esc_thresh: int, objectness threshold
-        rescore: boolean,
-        xy_scale: float, weight of the xy loss
-        wh_scale: float, weight of the wh loss
-        object_scale: float, weight of the objectness loss
-        noobject_scale: float, weight of the no-objectness loss
-        coord_scale:float,
-        anchor_aligned_images: int, threshold to pass to warm stage
-        ngpu: int, number of gpus
-        seen_images: int, number of images seen by the model
+        nms_threshold: float
+        pre_threshold: float
     """
 
     def __init__(self, num_classes=20, num_anchors=5, biases=DEFAULT_BIASES, coords=4,
-                 obj_esc_thresh=0.6, nms_threshold=0.45, pre_threshold=0.005, ngpu=1):
+                 nms_threshold=0.45, pre_threshold=0.005):
         super(YoloPredict, self).__init__()
         self.num_classes = num_classes
         self.num_anchors = num_anchors
@@ -52,9 +44,9 @@ class YoloPredict(nn.Module):
 
     def forward(self, x, im_info):
         """
-        :param x: torch tensor, the input to the loss layer
-        :param label: [N x (coords+1)], expected format: x,y,w,h,cls
-        :return: float32 loss scalar 
+        :param x: torch.Tensor, the input to the prediction
+        :param im_info: torch.Tensor, height and width of the original image
+        :return: predictions: probability and corresponding bounding boxes
         """
         xy, wh, obj, conf = self.slice_region(x)
         sig = nn.Sigmoid()
@@ -67,8 +59,7 @@ class YoloPredict(nn.Module):
         return prob, bboxs
 
     def class_probability(self, x):
-        """calculates classification loss (SoftMaxTreeLoss)
-        after permuting the dimensions of input features (compatibility to Caffe)
+        """calculates class probabilities
         :param x: torch tensor, features
         :return torch tensor with loss value
         """
@@ -78,7 +69,7 @@ class YoloPredict(nn.Module):
     def top_predictions(self, class_prob, obj):
         raise NotImplementedError(
             "Please create an instance of TreePredictor")
-        
+
     @property
     def shape(self):
         """
@@ -87,16 +78,14 @@ class YoloPredict(nn.Module):
         raise NotImplementedError(
             "Please create an instance of TreePredictor")
 
-    
 
 class PlainPredictor(YoloPredict):
     """Extends RegionTargetLosses by calculating classification loss based on SoftMaxLoss"""
 
     def __init__(self, num_classes=20, num_anchors=5, biases=DEFAULT_BIASES, coords=4,
-                 obj_esc_thresh=0.6, nms_threshold=0.45, pre_threshold=0.005, ngpu=1):
-        super(PlainPredictor, self).__init__(num_classes, num_anchors,
-                                            biases, coords, obj_esc_thresh, 
-                                            nms_threshold, pre_threshold, ngpu)
+                 obj_esc_thresh=0.6, nms_threshold=0.45, pre_threshold=0.005):
+        super(PlainPredictor, self).__init__(num_classes, num_anchors, biases, coords,
+                                             nms_threshold, pre_threshold)
 
         raise NotImplementedError(
             "Please create an instance of TreePredictor")
@@ -108,7 +97,7 @@ class PlainPredictor(YoloPredict):
     def top_predictions(self, class_prob, obj):
         raise NotImplementedError(
             "Please create an instance of TreePredictor instead")
-    
+
     @property
     def shape(self):
         raise NotImplementedError(
@@ -116,31 +105,31 @@ class PlainPredictor(YoloPredict):
 
 
 class TreePredictor(YoloPredict):
-    """Extends RegionTargetLosses by calculating classification loss based on SoftMaxTreeLoss"""
+    """Extends YoloPredict to perform prediction based on tree structure
+    Parameters:
+        tree: str, path to the file with tree structure
+        obj_esc_thresh: int, objectness threshold
+    """
     def __init__(self, tree, num_classes=20, num_anchors=5, biases=DEFAULT_BIASES, coords=4,
-                 obj_esc_thresh=0.6, nms_threshold=0.45, pre_threshold=0.005, ngpu=1):
-        super(TreePredictor, self).__init__(num_classes, num_anchors,
-                                            biases, coords, obj_esc_thresh, 
-                                            nms_threshold, pre_threshold, ngpu)
-        self._class_prob = SoftmaxTree(tree, axis=1) 
-        self._predictor =  SoftmaxTreePrediction(tree, threshold=obj_esc_thresh, 
+                 obj_esc_thresh=0.6, nms_threshold=0.45, pre_threshold=0.005):
+        super(TreePredictor, self).__init__(num_classes, num_anchors, biases, coords,
+                                            nms_threshold, pre_threshold)
+        self._class_prob = SoftmaxTree(tree, axis=1)
+        self._predictor = SoftmaxTreePrediction(tree, threshold=obj_esc_thresh,
                                                 append_max=True, output_tree_path=True)
-                
-        
+
     def class_probability(self, x):
-        """calculates classification loss (SoftMaxTreeLoss)
-        after permuting the dimensions of input features (compatibility to Caffe)
+        """calculates classification probability
         :param x: torch tensor, features
         :return torch tensor with loss value
         """
         return self._class_prob(x)
-    
+
     def top_predictions(self, class_prob, obj):
-        """calculates classification loss (SoftMaxTreeLoss)
-        after permuting the dimensions of input features (compatibility to Caffe)
-        :param x: torch tensor, features
-        :param label: ground truth label
-        :return torch tensor with loss value
+        """predictions
+        :param class_prob: classification probabilities
+        :param obj: objectness
+        :return torch tensor with prediction probabilities
         """
         return self._predictor(class_prob, obj)
 
