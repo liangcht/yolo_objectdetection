@@ -36,13 +36,13 @@ bbox = bbox.reshape(-1, 4)
 prob = prob.reshape(-1, prob.shape[-1])
 
 cmap = load_labelmap_list(labelmap)
-result = result2bblist(im, prob, bbox, cmap, thresh=0.52, obj_thresh=0.2)
+result = result2bblist(im.shape[:2], prob, bbox, cmap, thresh=0.52, obj_thresh=0.2)
 
 from mmod.detection import im_detect
 import caffe
 net = caffe.Net(test_protofile, caffemodel, caffe.TEST)
 scores, boxes = im_detect(net, im)
-result2 = result2bblist(im, scores, boxes, cmap, thresh=0.52, obj_thresh=0.2)
+result2 = result2bblist(im.shape[:2], scores, boxes, cmap, thresh=0.52, obj_thresh=0.2)
 
 model = model.cuda()
 data = data.cuda()
@@ -54,5 +54,5 @@ prob = prob.cpu().numpy()
 assert bbox.shape[-1] == 4
 bbox = bbox.reshape(-1, 4)
 prob = prob.reshape(-1, prob.shape[-1])
-result3 = result2bblist(im, prob, bbox, cmap, thresh=0.52, obj_thresh=0.2)
+result3 = result2bblist(im.shape[:2], prob, bbox, cmap, thresh=0.52, obj_thresh=0.2)
 

@@ -1,17 +1,30 @@
-import torch
 import os
+import os.path as op
+import sys
 import time
 import json
 import argparse
+import torch
 
-from mtorch.dataloaders import yolo_test_data_loader
-from mtorch.yolo_predict import TreePredictor
-from mtorch.yolo_v2 import yolo
-from mtorch.darknet import darknet_layers
+try:
+    this_file = __file__
+except NameError:
+    this_file = sys.argv[0]
+this_file = op.abspath(this_file)
+
+if __name__ == '__main__':
+    # When run as script, modify path assuming absolute import
+    sys.path.append(op.join(op.dirname(this_file), '..'))
+
 from mmod.file_logger import FileLogger
 from mmod.meters import AverageMeter
 from mmod.detection import result2bblist
 from mmod.simple_parser import load_labelmap_list
+from mmod.utils import open_with_lineidx
+from mtorch.dataloaders import yolo_test_data_loader
+from mtorch.yolo_predict import TreePredictor
+from mtorch.yolo_v2 import yolo
+from mtorch.darknet import darknet_layers
 
 
 def get_parser():
@@ -27,7 +40,7 @@ def get_parser():
                         help='path to a tree structure, it prediction based on tree is required')
     parser.add_argument('-j', '--workers', default=8, type=int, metavar='N',
                         help='number of data loading workers (default: 0)')
-    parser.add_argument('-b', '--batch-size', default=16, type=int,
+    parser.add_argument('-b', '--batch-size', default=8, type=int,
                         metavar='N', help='mini-batch size (default: 1)')
     parser.add_argument('--thresh', default=0.1, type=float, metavar='N',
                         help='threshold for final prediction (default: 0.1)')
@@ -53,8 +66,9 @@ else:
 
 def load_model():
     """creates a yolo model for evaluation"""
-    model = yolo(darknet_layers(), weights_file=args['model'], caffe_format_weights=True).cuda()
-    model = torch.nn.DataParallel(model)
+    model = torch.nn.DataParallel(
+        yolo(darknet_layers(), weights_file=args['model'], caffe_format_weights=True).cuda()
+        )
     model.eval()
     return model
 
@@ -77,13 +91,12 @@ def write_predict(outtsv_file, results):
                     uid, tell
                 ))
     except Exception as e:
-        log.info("Exception {}".format(e))
-        raise
+        log.event(e)
 
 
-def get_predictor():
+def get_predictor(num_classes):
     if "tree" in args:
-        return TreePredictor(args['tree']).cuda()
+        return TreePredictor(args['tree'], num_classes=num_classes).cuda()
     raise NotImplementedError("Currently plain prediction is not supported, please provide tree structure")
 
 
@@ -92,12 +105,12 @@ def main():
     test_loader = yolo_test_data_loader(args["test"], batch_size=args["batch_size"],
                                         num_workers=args["workers"])
 
-    log.console("Loading model")
-    model = load_model()
-
-    yolo_predictor = get_predictor()
     cmap = load_labelmap_list(args["labelmap"])
 
+    log.console("Loading model")
+    model = load_model()
+    yolo_predictor = get_predictor(len(cmap))
+ 
     batch_time = AverageMeter()
     data_time = AverageMeter()
     tic = time.time()
@@ -109,7 +122,6 @@ def main():
         data, keys, image_keys, hs, ws = inputs[0], inputs[1], inputs[2], inputs[3], inputs[4]
 
         # compute output
-
         for im, key, image_key, h, w in zip(data, keys, image_keys, hs, ws):
             im = im.unsqueeze_(0)
             im = im.float().cuda()
@@ -143,7 +155,7 @@ def main():
                        'Data {data_time.val:.3f} ({data_time.avg:.3f})'.format(
                         i, len(test_loader), speed=speed, batch_time=batch_time, data_time=data_time)
             print(info_str)
-            tic = time.time()
+            tic = time.time()        
 
     log.console("Prediction is done, saving results")
     write_predict(args["output"], results)
