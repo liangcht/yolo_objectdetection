@@ -10,8 +10,6 @@ import torch.distributed as dist
 import dist_utils
 import warnings
 
-DEBUG_MODE = True
-
 try:
     this_file = __file__
 except NameError:
@@ -26,6 +24,7 @@ from mmod.simple_parser import parse_prototxt
 from mmod.experimental_utils import *
 from mmod.meters import AverageMeter, TimeMeter
 from mmod.file_logger import FileLogger
+from mmod.simple_parser import load_labelmap_list
 
 from mtorch.caffesgd import CaffeSGD
 from mtorch.multifixed_scheduler import MultiFixedScheduler
@@ -47,15 +46,21 @@ def get_parser():
     """prespares parser of input parameters"""
 
     parser = argparse.ArgumentParser(description='Run Yolo training')
-    parser.add_argument('-d', '--train', help='Path to the training dataset file',
+    parser.add_argument('-d', '--train', type=str, metavar='TRAINDATA_PATH', 
+                        help='Path to the training dataset file',
                         required=True)
     parser.add_argument('-m', '--model', type=str, metavar='MODEL_PATH',
                         help='path to latest checkpoint', required=False)
+    parser.add_argument('-c', '--is_caffemodel', default=False, action='store_true', 
+                        help='if provided, assumes model weights are derived from caffemodel, false by default', 
+                        required=False)
     parser.add_argument('-l', '--logdir', help='Log directory', required=False)
     parser.add_argument('-s', '--solver',
                         help='solver file with training parameters',
                         required=True)
-    parser.add_argument('-t', '--tree', default='', type=str, metavar='TREE',
+    parser.add_argument('--labelmap', type=str, metavar='LABELMAP_PATH',
+                        help='path to labelmap', required=True)
+    parser.add_argument('-t', '--tree', default='', type=str, metavar='TREE_PATH',
                         help='path to a tree structure, it prediction based on tree is required')
     parser.add_argument('--distributed', default=True, type=bool,
                         help='input False is you do NOT want to use distributed training (default=True)',
@@ -63,14 +68,15 @@ def get_parser():
     parser.add_argument('--display', default=True, type=bool,
                         help='input False is you do NOT want to print progress (default=True)',
                         required=False)
-    parser.add_argument('-r', '--restore', default=False, type=bool,
-                        help='Initial snapshot to finetune from', required=False)
+    parser.add_argument('-r', '--restore', default=False, action='store_true', 
+                        help='specify if the model should be restored from latest_snapshot, default is false',
+                        required=False)
     parser.add_argument('-latest_snapshot', '--latest_snapshot',
                         help='Initial snapshot to finetune from', required=False)
-    parser.add_argument('-b', '--batch_size', '--batchsize', default=16, type=int, metavar='N',
+    parser.add_argument('-b', '--batch_size', '--batchsize', default=16, type=int, metavar='PER_GPU_BATCH_SIZE',
                         help='per-gpu batch size (default=16)',
                         required=False)
-    parser.add_argument('-j', '--workers', default=2, type=int, metavar='N',
+    parser.add_argument('-j', '--workers', default=2, type=int, metavar='NUM_WORKERS',
                         help='number of data loading workers (default: 2)')
     parser.add_argument('--start-epoch', default=0, type=int, metavar='N',
                         help='manual epoch number (useful on restarts)')
@@ -82,7 +88,8 @@ def get_parser():
 
 args = get_parser().parse_args()
 args = vars(args)
-args["local_rank"] = dist_utils.env_rank()
+args["local_rank"] = dist_utils.env_rank() # this may be different on a different machine
+
 is_master = (not args["distributed"]) or (dist_utils.env_rank() == 0)
 is_rank0 = args["local_rank"] == 0
 if "logdir" in args:
@@ -185,7 +192,7 @@ def main():
     log.console("Loading model")
 
     model = yolo(darknet_layers(), weights_file=args['model'],
-                 caffe_format_weights=True).cuda()
+                 caffe_format_weights=args['is_caffemodel']).cuda()
     seen_images = model.seen_images
 
     if args["distributed"]:
@@ -226,10 +233,13 @@ def main():
         seen_images = checkpoint['seen_images']
         args["start_epoch"] = checkpoint['epochs'] + 1
 
+    cmap = load_labelmap_list(args["labelmap"])
     if "tree" in args:  # TODO: implement YoloLoss with loss_mode as an argument
-        criterion = RegionTargetWithSoftMaxTreeLoss(args["tree"], seen_images=seen_images)
+        criterion = RegionTargetWithSoftMaxTreeLoss(args["tree"], 
+                                                    num_classes=len(cmap),
+                                                    seen_images=seen_images)
     else:
-        criterion = RegionTargetWithSoftMaxLoss(seen_images=seen_images)
+        criterion = RegionTargetWithSoftMaxLoss(num_classes=len(cmap), seen_images=seen_images)
     criterion = criterion.cuda()
 
     if args["distributed"]:

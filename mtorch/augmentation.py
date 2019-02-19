@@ -135,14 +135,14 @@ class TestAugmentation(object):
     """Prepares image for testing/prediction"""
 
     def __init__(self):
-        self.__call__()
+        pass
 
     def __call__(self, means=MEANS):
         minus_dc = Transforms.SubtractMeans(means)
         od_resizer = ODImResize()
         self.composed_transforms = Transforms.Compose(
             [Transforms.ToDarknetTensor(), minus_dc, self._permute_whc, self._to_numpy, od_resizer,
-             transforms.functional.to_tensor])
+            transforms.functional.to_tensor])
         return self.composed_transforms
 
     @staticmethod

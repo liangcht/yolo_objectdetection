@@ -46,7 +46,7 @@ def yolo_train_data_loader(datafile, batch_size=16, num_workers=2, distributed=T
                       sampler=sampler, num_workers=num_workers, pin_memory=True)
 
 
-def yolo_test_data_loader(datafile, batch_size=16, num_workers=2):
+def yolo_test_data_loader(datafile, batch_size=1, num_workers=2):
     """prepares test data loader
     :param datafile: str, path to file with data
     :param batch_size: int, batch size per GPU
@@ -57,7 +57,8 @@ def yolo_test_data_loader(datafile, batch_size=16, num_workers=2):
     augmented_dataset = ImdbData(path=datafile,
                                  transform=test_augmenter(),
                                  predict_phase=True)
+    sampler = SequentialSampler(augmented_dataset)
 
     return DataLoader(augmented_dataset, batch_size=batch_size,
-                      num_workers=num_workers, pin_memory=True,
+                      sampler=sampler,num_workers=num_workers, pin_memory=True,
                       collate_fn=_list_collate)
