@@ -5,6 +5,7 @@ import time
 from datetime import datetime
 import sys
 import argparse
+import re
 import torch
 import torch.distributed as dist
 import dist_utils
@@ -46,29 +47,33 @@ def get_parser():
     """prespares parser of input parameters"""
 
     parser = argparse.ArgumentParser(description='Run Yolo training')
-    parser.add_argument('-d', '--train', type=str, metavar='TRAINDATA_PATH', 
+    parser.add_argument('-d', '--train', type=str, metavar='TRAINDATA_PATH',
                         help='Path to the training dataset file',
                         required=True)
     parser.add_argument('-m', '--model', type=str, metavar='MODEL_PATH',
                         help='path to latest checkpoint', required=False)
-    parser.add_argument('-c', '--is_caffemodel', default=False, action='store_true', 
-                        help='if provided, assumes model weights are derived from caffemodel, false by default', 
+    parser.add_argument('-c', '--is_caffemodel', default=False, action='store_true',
+                        help='if provided, assumes model weights are derived from caffemodel, false by default',
                         required=False)
-    parser.add_argument('-l', '--logdir', help='Log directory', required=False)
+    parser.add_argument('-l', '--logdir', help='Log directory', required=True)
     parser.add_argument('-s', '--solver',
                         help='solver file with training parameters',
                         required=True)
     parser.add_argument('--labelmap', type=str, metavar='LABELMAP_PATH',
                         help='path to labelmap', required=True)
-    parser.add_argument('-t', '--tree', default='', type=str, metavar='TREE_PATH',
-                        help='path to a tree structure, it prediction based on tree is required')
-    parser.add_argument('--distributed', default=True, type=bool,
-                        help='input False is you do NOT want to use distributed training (default=True)',
+    parser.add_argument('-t', '--use_treestructure', default=False, action='store_true',
+                        help='if provided, will use tree structure, false by default',
+                        required=False)
+    parser.add_argument('--tree', type=str, metavar='TREE_PATH',
+                        help='path to a tree structure, it prediction based on tree is required',
+                        required=False)
+    parser.add_argument('--distributed', default=False, action='store_true',
+                        help='specify if you want to use distributed training (default=False)',
                         required=False)
     parser.add_argument('--display', default=True, type=bool,
                         help='input False is you do NOT want to print progress (default=True)',
                         required=False)
-    parser.add_argument('-r', '--restore', default=False, action='store_true', 
+    parser.add_argument('-r', '--restore', default=False, action='store_true',
                         help='specify if the model should be restored from latest_snapshot, default is false',
                         required=False)
     parser.add_argument('-latest_snapshot', '--latest_snapshot',
@@ -86,16 +91,53 @@ def get_parser():
     return parser
 
 
+MAX_EPOCH = 128
+
 args = get_parser().parse_args()
 args = vars(args)
-args["local_rank"] = dist_utils.env_rank() # this may be different on a different machine
+args["local_rank"] = dist_utils.env_rank()  # this may be different on a different machine
 
 is_master = (not args["distributed"]) or (dist_utils.env_rank() == 0)
 is_rank0 = args["local_rank"] == 0
-if "logdir" in args:
-    log = FileLogger(args["logdir"], is_master=is_master, is_rank0=is_rank0)
-else:
-    import logging as log
+log = FileLogger(args["logdir"], is_master=is_master, is_rank0=is_rank0)
+
+
+def last_snapshot_path(prefix, max_epoch=None):
+    """Find the last checkpoints inside given prefix paths
+    Look at the paths in prefixes, and return once found
+    :param prefix: str, paths to check for the snapshot
+    :param max_iter: maximum number of iterations that could be found
+    :exception: ValueError if last snapshot is not a valid path or cannot be retried
+    :return: snapshot, str
+    """
+    if args["latest_snapshot"] is not None and op.isfile(args["latest_snapshot"]):
+        return args["latest_snapshot"]
+
+    last_epoch = -1
+    path = op.dirname(prefix)
+    if not op.isdir(path):
+        raise ValueError("Cannot restore snapshot from invalid path:{}".format(prefix))
+
+    base = op.basename(prefix)
+    model_iter_pattern = re.compile(r'epoch_(?P<EPOCH>\d+){}$'.format(re.escape(".pt")))
+
+    epoch = max_epoch
+    for fname in os.listdir(path):
+        if not fname.startswith(base):
+            continue
+        model = re.search(model_iter_pattern, fname)
+        if model:
+            epoch = int(model.group('EPOCH'))
+        if epoch == max_epoch:
+            return op.join(path, fname)
+        if epoch > last_epoch:
+            snapshot_path = op.join(path, fname)
+            last_epoch = epoch
+
+    if last_epoch == -1:
+        raise ValueError("Cannot restore snapshot from provided path:{}".format(prefix))
+
+    return snapshot_path
 
 
 def snapshot(model, criterion, losses, epoch, snapshot_prefix, optimizer=None):
@@ -108,6 +150,11 @@ def snapshot(model, criterion, losses, epoch, snapshot_prefix, optimizer=None):
     :param optimizer: torch.optim.SGD - required to continue training properly,
     is not reqired for testing
     """
+    snapshot_dir = op.dirname(snapshot_prefix)
+    os.makedirs(snapshot_dir, exist_ok=True)
+
+    if op.basename(snapshot_prefix) != "model":
+        snapshot_prefix = op.join(snapshot_dir, "model")
 
     snapshot_pt = snapshot_prefix + "_epoch_{}".format(epoch) + '.pt'
     snapshot_losses_pt = snapshot_prefix + "_losses.pt"
@@ -126,6 +173,20 @@ def snapshot(model, criterion, losses, epoch, snapshot_prefix, optimizer=None):
     log.verbose("Snapshotting to: {}".format(snapshot_pt))
     torch.save(state, snapshot_pt)
     torch.save(losses, snapshot_losses_pt)
+
+
+def restore_state(model, optimizer, latest_snapshot):
+    """restores the latest state of training from a snapshot
+    :param model: will update model weights from latest state_dict
+    :param optimizer:  will update optimizer
+    :param latest_snapshot: latest snapshot to use
+    :return: seen images and last epoch
+    """
+    checkpoint = torch.load(latest_snapshot,
+                            map_location=lambda storage, loc: storage.cuda(args["local_rank"]))
+    model.load_state_dict(checkpoint['state_dict'])
+    optimizer.load_state_dict(checkpoint['optimizer'])
+    return checkpoint['seen_images'], checkpoint['epochs']
 
 
 def train(trn_loader, model, criterion, optimizer, scheduler, epoch, loss_arr):
@@ -173,7 +234,7 @@ def train(trn_loader, model, criterion, optimizer, scheduler, epoch, loss_arr):
         loss_arr.append(torch.tensor(reduced_loss))
         should_print = (args["display"] and batch_num % args["display"] == 0) or batch_num == last_batch
         if should_print:
-            output = "{:.2f} Epoch {}: Time per iter =  {:.4f}s), loss = {:.4f},batch_total = {}, lr = {}"\
+            output = "{:.2f} Epoch {}: Time per iter =  {:.4f}s), loss = {:.4f},batch_total = {}, lr = {}" \
                 .format(float(batch_num) / last_batch, epoch, timer.batch_time.val,
                         losses.val, batch_total, scheduler.get_lr())
             log.verbose(output)
@@ -224,21 +285,40 @@ def main():
                          momentum=float(solver_params['momentum']),
                          weight_decay=float(solver_params['weight_decay']))
 
+    log.console("Creating data loaders")
+    data_loader = yolo_train_data_loader(args["train"], batch_size=args["batch_size"],
+                                         num_workers=args["workers"], distributed=args["distributed"])
+
+    try:
+        num_epochs = int(solver_params["max_epoch"])
+    except KeyError:
+        try:
+            num_epochs = int(round(float(solver_params["max_iter"]) / len(data_loader) + 0.5))
+        except KeyError:
+            num_epochs = MAX_EPOCH
+            log.event("Maximal epoch/iteration not specified in solver params, hence set to {}".format(MAX_EPOCH))
+    log.console("Training will maximum {} epochs".format(num_epochs))
+
+    last_epoch = -1
     if args["restore"]:
-        log.console("Restoring model from latest snapshot")
-        checkpoint = torch.load(args["latest_snapshot"],
-                                map_location=lambda storage, loc: storage.cuda(args["local_rank"]))
-        model.load_state_dict(checkpoint['state_dict'])
-        optimizer.load_state_dict(checkpoint['optimizer'])
-        seen_images = checkpoint['seen_images']
-        args["start_epoch"] = checkpoint['epochs'] + 1
+        try:
+            latest_snapshot = last_snapshot_path(solver_params["snapshot_prefix"], num_epochs)
+        except ValueError as exp:
+            log.event("Cannot restore from latest snapshot " + exp)
+        else:
+            log.console("Restoring model from latest snapshot {}".format(latest_snapshot))
+            seen_images, last_epoch = restore_state(model, optimizer, latest_snapshot)
+    start_epoch = last_epoch + 1
+    log.console("Training will start from {} epoch".format(start_epoch))
 
     cmap = load_labelmap_list(args["labelmap"])
-    if "tree" in args:  # TODO: implement YoloLoss with loss_mode as an argument
-        criterion = RegionTargetWithSoftMaxTreeLoss(args["tree"], 
+    if args["use_treestructure"]:  # TODO: implement YoloLoss with loss_mode as an argument
+        log.console("Using tree structure")
+        criterion = RegionTargetWithSoftMaxTreeLoss(args["tree"],
                                                     num_classes=len(cmap),
                                                     seen_images=seen_images)
     else:
+        log.console("Using plain structure")
         criterion = RegionTargetWithSoftMaxLoss(num_classes=len(cmap), seen_images=seen_images)
     criterion = criterion.cuda()
 
@@ -246,20 +326,18 @@ def main():
         log.console('Syncing machines before training')
         dist_utils.sum_tensor(torch.tensor([1.0]).float().cuda())
 
-    log.console("Creating data loaders")
-    data_loader = yolo_train_data_loader(args["train"], batch_size=args["batch_size"],
-                                         num_workers=args["workers"], distributed=args["distributed"])
-
     if solver_params.get('lr_policy', 'fixed') == "multifixed":
         scheduler = MultiFixedScheduler(optimizer, steps, lrs,
-                                        last_iter=args["start_epoch"] * len(data_loader))
+                                        last_iter=start_epoch * len(data_loader))
     else:
         scheduler = None
 
     start_time = datetime.now()  # Loading start to after everything is loaded
-    num_epochs = int(round(float(solver_params["max_iter"]) / len(data_loader) + 0.5))
+
     loss_arr = []
-    for epoch in range(args["start_epoch"], num_epochs):
+    epoch = start_epoch
+    for epoch in range(start_epoch, num_epochs):
+        data_loader.sampler.set_epoch(epoch)
         train(data_loader, model, criterion, optimizer, scheduler, epoch, loss_arr)
         time_diff = (datetime.now() - start_time).total_seconds() / 3600.0
         log.event('{}\t {}\n'.format(epoch, time_diff))
@@ -279,3 +357,4 @@ if __name__ == '__main__':
     except Exception as e:
         exc_type, exc_value, exc_traceback = sys.exc_info()
         log.event(e)
+        raise SystemExit(exc_traceback)
