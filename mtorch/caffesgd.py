@@ -36,6 +36,6 @@ class CaffeSGD(torch.optim.SGD):
                     else:
                         d_p = buf
 
-                p.data.add_(-1, d_p) # changed from sub to be more compatible with SGD implementation
+                p.data.add_(-1, d_p)  # changed from sub to be more compatible with SGD implementation
 
         return loss

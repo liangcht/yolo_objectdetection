@@ -8,7 +8,7 @@ from mmod.dist_utils import env_world_size, env_rank
 from mtorch.imdbdata import ImdbData
 from mtorch.tbox_utils import Labeler
 from mtorch.augmentation import DefaultDarknetAugmentation, TestAugmentation
-from mtorch.samplers import SequentialWrappingSampler, RandomWrappingSampler
+from mtorch.distributed_samplers import DistributedSequentialWrappingSampler, DistributedRandomWrappingSampler
 
 
 def _list_collate(batch):
@@ -33,14 +33,13 @@ def yolo_train_data_loader(datafile, batch_size=16, num_workers=2, distributed=T
                                  transform=augmenter(),
                                  labeler=Labeler())
 
-    # sampler = SequentialWrappingSampler( # TODO: Fix Wrapping Sampler to work with Distributed
-    #     augmented_dataset,
-    #     int(np.ceil(float(len(augmented_dataset)) / float(batch_size)) * batch_size)
-    # )
-    sampler = SequentialSampler(augmented_dataset)
-    if distributed:
-        sampler = DistributedSampler(augmented_dataset, num_replicas=env_world_size(),
-                                     rank=env_rank() if distributed else None)
+    total_batch_size = batch_size * env_world_size()
+    full_epoch_dataset_length = int(np.ceil(float(len(augmented_dataset)) / float(total_batch_size))) * total_batch_size
+
+    sampler = DistributedRandomWrappingSampler(augmented_dataset,
+                                               full_epoch_dataset_length,
+                                               num_replicas=env_world_size() if distributed else 1,
+                                               rank=env_rank() if distributed else 0)
 
     return DataLoader(augmented_dataset, batch_size=batch_size,
                       sampler=sampler, num_workers=num_workers, pin_memory=True)
@@ -60,5 +59,5 @@ def yolo_test_data_loader(datafile, batch_size=1, num_workers=2):
     sampler = SequentialSampler(augmented_dataset)
 
     return DataLoader(augmented_dataset, batch_size=batch_size,
-                      sampler=sampler,num_workers=num_workers, pin_memory=True,
+                      sampler=sampler, num_workers=num_workers, pin_memory=True,
                       collate_fn=_list_collate)
