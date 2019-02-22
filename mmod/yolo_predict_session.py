@@ -22,7 +22,7 @@ from mmod.detection import result2bblist
 from mmod.simple_parser import load_labelmap_list
 from mmod.utils import open_with_lineidx
 from mtorch.dataloaders import yolo_test_data_loader
-from mtorch.yolo_predict import TreePredictor
+from mtorch.yolo_predict import PlainPredictor, TreePredictor
 from mtorch.yolo_v2 import yolo
 from mtorch.darknet import darknet_layers
 
@@ -34,19 +34,26 @@ def get_parser():
                         help='full path to dataset tsv file', required=True)
     parser.add_argument('-m', '--model', type=str, metavar='MODEL_PATH',
                         help='path to latest checkpoint', required=True)
+    parser.add_argument('-c', '--is_caffemodel', default=False, action='store_true',
+                        help='if provided, assumes model weights are derived from caffemodel, false by default',
+                        required=False)
     parser.add_argument('--labelmap', type=str, metavar='LABELMAP_PATH',
                         help='path to labelmap', required=True)
-    parser.add_argument('-t', '--tree', default='', type=str, metavar='TREE_PATH',
-                        help='path to a tree structure, it prediction based on tree is required')
-    parser.add_argument('-j', '--workers', default=8, type=int, metavar='N',
-                        help='number of data loading workers (default: 0)')
+    parser.add_argument('--tree', type=str, metavar='TREE_PATH',
+                        help='path to a tree structure, it prediction based on tree is required',
+                        required=False)
+    parser.add_argument('-t', '--use_treestructure', default=False, action='store_true',
+                        help='if provided, will use tree structure, false by default',
+                        required=False)
+    parser.add_argument('-j', '--workers', default=8, type=int, metavar='NUM_WORKERS',
+                        help='number of data loading workers (default: 8)')
     parser.add_argument('-b', '--batch-size', default=8, type=int,
-                        metavar='N', help='mini-batch size (default: 1)')
-    parser.add_argument('--thresh', default=0.1, type=float, metavar='N',
-                        help='threshold for final prediction (default: 0.1)')
-    parser.add_argument('--obj_thresh', default=0.02, type=float, metavar='N',
-                        help='objectness threshold for final prediction(default: 0.02)')
-    parser.add_argument('--output', default='', type=str, metavar='PATH',
+                        metavar='BATCH_SIZE', help='mini-batch size (default: 8)')
+    parser.add_argument('--thresh', type=float, metavar='N',
+                        help='threshold for final prediction')
+    parser.add_argument('--obj_thresh', type=float, metavar='N',
+                        help='objectness threshold for final prediction')
+    parser.add_argument('--output', type=str, metavar='PATH',
                         help='path to save prediction result')
     parser.add_argument('-l', '--logdir', help='Log directory, if log info is required', required=False)
     parser.add_argument('--log_interval', default=1, type=int,
@@ -54,7 +61,6 @@ def get_parser():
     return parser
 
 
-TO_JSON = True
 args = get_parser().parse_args()
 args = vars(args)
 
@@ -67,7 +73,8 @@ else:
 def load_model():
     """creates a yolo model for evaluation"""
     model = torch.nn.DataParallel(
-        yolo(darknet_layers(), weights_file=args['model'], caffe_format_weights=True).cuda()
+        yolo(darknet_layers(), weights_file=args['model'],
+             caffe_format_weights=args['is_caffemodel']).cuda()
     )
     model.eval()
     return model
@@ -95,12 +102,16 @@ def write_predict(outtsv_file, results):
 
 
 def get_predictor(num_classes):
-    if "tree" in args:
+    if args["use_treestructure"]:
         return TreePredictor(args['tree'], num_classes=num_classes).cuda()
-    raise NotImplementedError("Currently plain prediction is not supported, please provide tree structure")
+    else:
+        return PlainPredictor(num_classes=num_classes).cuda()
 
 
 def main():
+    if args["output"] is None or not op.isfile(args["output"]):
+        args["output"] = op.join(args["model"] + args["test"].replace('/', '_') + '.predict')
+
     log.console("Creating test data loader")
     test_loader = yolo_test_data_loader(args["test"], batch_size=args["batch_size"],
                                         num_workers=args["workers"])
@@ -137,10 +148,6 @@ def main():
             prob = prob.reshape(-1, prob.shape[-1])
             result = result2bblist((h, w), prob, bbox, cmap,
                                    thresh=args["thresh"], obj_thresh=args["obj_thresh"])
-            if TO_JSON:
-                result = json.dumps(result, separators=(',', ':'), sort_keys=True)
-                key = json.dumps(key)
-                image_key = json.dumps(image_key)
             results.append((key, image_key, result))
 
         # measure elapsed time
@@ -158,6 +165,7 @@ def main():
             tic = time.time()
 
     log.console("Prediction is done, saving results")
+    log.console("Prediction results will be saved to {}".format(args["output"]))
     write_predict(args["output"], results)
 
 

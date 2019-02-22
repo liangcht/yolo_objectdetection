@@ -31,6 +31,7 @@ class YoloPredict(nn.Module):
         super(YoloPredict, self).__init__()
         self.num_classes = num_classes
         self.num_anchors = num_anchors
+        self.class_axis = 1
         slice_points = [point for point in SLICE_POINTS]
         slice_points.append((num_classes + coords + OBJECTNESS_DIM) * num_anchors)
         self.slice_region = Slice(1, slice_points)
@@ -83,25 +84,36 @@ class PlainPredictor(YoloPredict):
     """Extends RegionTargetLosses by calculating classification loss based on SoftMaxLoss"""
 
     def __init__(self, num_classes=20, num_anchors=5, biases=DEFAULT_BIASES, coords=4,
-                 obj_esc_thresh=0.6, nms_threshold=0.45, pre_threshold=0.005):
+                 pred_thresh=0.24, nms_threshold=0.45, pre_threshold=0.005):
         super(PlainPredictor, self).__init__(num_classes, num_anchors, biases, coords,
                                              nms_threshold, pre_threshold)
+        self._class_prob = nn.Softmax(dim=self.class_axis)
+        self._thresh = pred_thresh
+       
 
-        raise NotImplementedError(
-            "Please create an instance of TreePredictor")
-
+        
     def class_probability(self, x):
-        raise NotImplementedError(
-            "Please create an instance of TreePredictor instead")
-
+        """calculates classification probability
+        after permuting the dimensions of input features  (compatibility to Caffe)
+        :param x: torch tensor, features
+        :return torch tensor with loss value
+        """
+        return self._class_prob(x.permute([0, 2, 1, 3, 4]))
+    
     def top_predictions(self, class_prob, obj):
-        raise NotImplementedError(
-            "Please create an instance of TreePredictor instead")
-
+        """predictions
+        :param class_prob: classification probabilities
+        :param obj: objectness
+        :return torch tensor with prediction probabilities
+        """
+        conf_obj = class_prob * obj.unsqueeze_(self.class_axis)
+        conf_obj[conf_obj <= self._thresh] = 0 
+        max_conf_obj, max_idxs = torch.max(conf_obj, self.class_axis)
+        return torch.cat([conf_obj, max_conf_obj.unsqueeze_(self.class_axis)], self.class_axis)
+        
     @property
     def shape(self):
-        raise NotImplementedError(
-            "Please create an instance of TreePredictor instead")
+        return [self.num_anchors, self.num_classes]
 
 
 class TreePredictor(YoloPredict):
@@ -111,11 +123,11 @@ class TreePredictor(YoloPredict):
         obj_esc_thresh: int, objectness threshold
     """
     def __init__(self, tree, num_classes=20, num_anchors=5, biases=DEFAULT_BIASES, coords=4,
-                 obj_esc_thresh=0.6, nms_threshold=0.45, pre_threshold=0.005):
+                 pred_thresh=0.5, nms_threshold=0.45, pre_threshold=0.005):
         super(TreePredictor, self).__init__(num_classes, num_anchors, biases, coords,
                                             nms_threshold, pre_threshold)
-        self._class_prob = SoftmaxTree(tree, axis=1)
-        self._predictor = SoftmaxTreePrediction(tree, threshold=obj_esc_thresh,
+        self._class_prob = SoftmaxTree(tree, axis=self.class_axis)
+        self._predictor = SoftmaxTreePrediction(tree, threshold=pred_thresh,
                                                 append_max=True, output_tree_path=True)
 
     def class_probability(self, x):

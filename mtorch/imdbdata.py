@@ -68,7 +68,7 @@ class ImdbData(data.Dataset):
         if isinstance(sample, dict):  # typical for training
             return sample[IMAGE], sample[LABEL]
         if self.predict_phase:  # typical for prediction
-            return sample, key, imdb.image_key(key), h, w
+            return sample, imdb.uid(key), imdb.image_key(key), h, w
         return sample
 
     def __len__(self):
