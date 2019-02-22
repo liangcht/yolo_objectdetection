@@ -68,7 +68,7 @@ def load_model():
     """creates a yolo model for evaluation"""
     model = torch.nn.DataParallel(
         yolo(darknet_layers(), weights_file=args['model'], caffe_format_weights=True).cuda()
-        )
+    )
     model.eval()
     return model
 
@@ -110,7 +110,7 @@ def main():
     log.console("Loading model")
     model = load_model()
     yolo_predictor = get_predictor(len(cmap))
- 
+
     batch_time = AverageMeter()
     data_time = AverageMeter()
     tic = time.time()
@@ -154,8 +154,8 @@ def main():
                        'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t' \
                        'Data {data_time.val:.3f} ({data_time.avg:.3f})'.format(
                         i, len(test_loader), speed=speed, batch_time=batch_time, data_time=data_time)
-            print(info_str)
-            tic = time.time()        
+            log.verbose(info_str)
+            tic = time.time()
 
     log.console("Prediction is done, saving results")
     write_predict(args["output"], results)

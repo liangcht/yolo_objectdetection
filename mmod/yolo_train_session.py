@@ -44,7 +44,7 @@ def to_python_float(t):
 
 
 def get_parser():
-    """prespares parser of input parameters"""
+    """pre pares parser of input parameters"""
 
     parser = argparse.ArgumentParser(description='Run Yolo training')
     parser.add_argument('-d', '--train', type=str, metavar='TRAINDATA_PATH',
@@ -151,7 +151,8 @@ def snapshot(model, criterion, losses, epoch, snapshot_prefix, optimizer=None):
     is not reqired for testing
     """
     snapshot_dir = op.dirname(snapshot_prefix)
-    os.makedirs(snapshot_dir, exist_ok=True)
+    if not op.exists(snapshot_dir):
+        os.makedirs(snapshot_dir)
 
     if op.basename(snapshot_prefix) != "model":
         snapshot_prefix = op.join(snapshot_dir, "model")
