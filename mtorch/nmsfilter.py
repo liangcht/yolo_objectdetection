@@ -28,7 +28,7 @@ class NMSFilter(nn.Module):
     """Applies Non-Maximal Suppression filter to bounding box confidence values
     Each class (and each batch) will be filtered independently
     """
-    def __init__(self, nms_threshold=0.45, classes=1, pre_threshold=-1.0, first_class=0):
+    def __init__(self, nms_threshold=0.45, classes=-1, pre_threshold=-1.0, first_class=0):
         """NMSFilter
         :param nms_threshold: NMS threshold
         :param classes: number of classes to filter (-1 to filter all classes independently)

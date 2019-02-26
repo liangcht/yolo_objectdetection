@@ -91,10 +91,10 @@ def yolo(backbone_model, weights_file=None, caffe_format_weights=False, map_loca
     :param weights_file:  weights to initialize the network
     :param caffe_format_weights: boolean, if the provided weights come from Caffe format
     :param map_location: 
-    :param kwargs: any parameters to the network
+    :param kwargs: any parameters to the network (num_classes, num_extra_convs etc.)
     :return: model based on Yolo architecture
     """
-    model = Yolo(backbone_model, *kwargs)
+    model = Yolo(backbone_model, **kwargs)
     pretrained = weights_file is not None
 
     if pretrained:

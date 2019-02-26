@@ -239,7 +239,7 @@ def train(trn_loader, model, criterion, optimizer, scheduler, epoch, loss_arr):
                 .format(float(batch_num) / last_batch, epoch, timer.batch_time.val,
                         losses.val, batch_total, scheduler.get_lr())
             log.verbose(output)
-
+    
 
 def main():
     log.console(args)
@@ -252,9 +252,10 @@ def main():
         log.console("Distributed: success ({}/{})".format(args["local_rank"], dist.get_world_size()))
 
     log.console("Loading model")
-
+    cmap = load_labelmap_list(args["labelmap"])
     model = yolo(darknet_layers(), weights_file=args['model'],
-                 caffe_format_weights=args['is_caffemodel']).cuda()
+                caffe_format_weights=args['is_caffemodel'],
+                num_classes=len(cmap), num_extra_convs=3).cuda()
     seen_images = model.seen_images
 
     if args["distributed"]:
@@ -312,7 +313,6 @@ def main():
     start_epoch = last_epoch + 1
     log.console("Training will start from {} epoch".format(start_epoch))
 
-    cmap = load_labelmap_list(args["labelmap"])
     if args["use_treestructure"]:  # TODO: implement YoloLoss with loss_mode as an argument
         log.console("Using tree structure")
         criterion = RegionTargetWithSoftMaxTreeLoss(args["tree"],

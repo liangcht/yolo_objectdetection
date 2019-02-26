@@ -3,14 +3,15 @@ from torchvision import transforms
 from mtorch import Transforms
 from mtorch.predict_transforms import ODImResize
 
-MEANS = (104.0, 117.0, 123.0)
-CANVAS_SIZE = (416, 416)
+MEANS = Transforms.COLOR_MEAN 
+CANVAS_SIZE = Transforms.DEF_CANVAS_SIZE 
 MAX_BOXES = 30
 USE_DARKNET_LIB = True
 NO_FLIP = 0
-RANDOM_FLIP = 0.5
+RANDOM_FLIP = Transforms.FLIP_PROB
 
-__all__ = ['BasicDarknetAugmentation', 'DefaultDarknetAugmentation', 'DarknetAugmentation', 'TestAugmentation']
+__all__ = ['BasicDarknetAugmentation', 'DefaultDarknetAugmentation', 
+           'DarknetAugmentation', 'TestAugmentation']
 
 
 class BasicDarknetAugmentation(object):
@@ -91,7 +92,7 @@ class DefaultDarknetAugmentation(BasicDarknetAugmentation):
         self.jitter = 0.2
         self.means = [int(mean) for mean in MEANS]  # BGR
         self.max_boxes = MAX_BOXES
-        self.flip = NO_FLIP
+        self.flip = RANDOM_FLIP
 
 
 class DarknetAugmentation(BasicDarknetAugmentation):
@@ -142,7 +143,7 @@ class TestAugmentation(object):
         od_resizer = ODImResize()
         self.composed_transforms = Transforms.Compose(
             [Transforms.ToDarknetTensor(), minus_dc, self._permute_whc, self._to_numpy, od_resizer,
-            transforms.functional.to_tensor])
+             transforms.functional.to_tensor])
         return self.composed_transforms
 
     @staticmethod

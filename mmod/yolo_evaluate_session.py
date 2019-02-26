@@ -13,11 +13,8 @@ def get_parser():
     parser = argparse.ArgumentParser(description='PyTorch Yolo Evaluation')
     parser.add_argument('-d', '--dbpath', metavar='dataset_path',
                         help='full path to dataset tsv file', required=True)
-    parser.add_argument('--thresh', default=0, type=float,
-                        help='Threshold to apply')
     parser.add_argument('--predict',
                         help='Prediction file to evaluate')
-    parser.add_argument('-l', '--logdir', help='Log directory, if log info is required', required=False)
     return parser
 
 
@@ -33,8 +30,6 @@ def main():
     )
     db = ImageDatabase(in_path)
 
-    # threshold
-    thresh = args['thresh'] or 0
     predict_file = args["predict"]
     if predict_file:
         assert predict_file and op.isfile(predict_file), "{} does not exist".format(predict_file)
@@ -42,7 +37,7 @@ def main():
     # evaluation
     exp = Experiment(db, input_range=xrange(len(db)), predict_path=predict_file)
     err_map = run_eval(exp, ovthresh=None)
-    print(err_map)
+    print("mAP@0.3", err_map)
 
 
 if __name__ == '__main__':

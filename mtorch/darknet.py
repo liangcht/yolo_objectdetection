@@ -85,7 +85,7 @@ def darknet_layers(weights_file=None, caffe_format_weights=False, map_location=N
     :param kwargs: any parameters to the network
     :return: nn.Sequential with Darknet layers
     """
-    model = DarknetLayers(*kwargs)
+    model = DarknetLayers(**kwargs)
     pretrained = weights_file is not None
 
     if pretrained:
