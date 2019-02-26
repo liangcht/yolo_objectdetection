@@ -50,7 +50,7 @@ def get_parser():
     parser.add_argument('-b', '--batch-size', default=8, type=int,
                         metavar='BATCH_SIZE', help='mini-batch size (default: 8)')
     parser.add_argument('--thresh', type=float, metavar='N',
-                        help='threshold for final prediction')
+                        help='confidence threshold for final prediction')
     parser.add_argument('--obj_thresh', type=float, metavar='N',
                         help='objectness threshold for final prediction')
     parser.add_argument('--output', type=str, metavar='PATH',
@@ -70,11 +70,16 @@ else:
     import logging as log
 
 
-def load_model():
-    """creates a yolo model for evaluation"""
+def load_model(num_classes, num_extra_convs=3):
+    """creates a yolo model for evaluation
+    :param num_classes: int, number of classes to detect
+    :param num_extra_convs: int, number of extra convolutional layers to add to featurizer (default=3)
+    :return model: nn.Sequential or nn.Module
+    """
     model = torch.nn.DataParallel(
         yolo(darknet_layers(), weights_file=args['model'],
-             caffe_format_weights=args['is_caffemodel']).cuda()
+            caffe_format_weights=args['is_caffemodel'],
+            num_classes=num_classes, num_extra_convs=num_extra_convs).cuda()
     )
     model.eval()
     return model
@@ -102,6 +107,10 @@ def write_predict(outtsv_file, results):
 
 
 def get_predictor(num_classes):
+    """creates a yolo model for evaluation
+    :param num_classes, int, number of classes to detect
+    :return model: nn.Sequential or nn.Module
+    """
     if args["use_treestructure"]:
         return TreePredictor(args['tree'], num_classes=num_classes).cuda()
     else:
@@ -119,7 +128,7 @@ def main():
     cmap = load_labelmap_list(args["labelmap"])
 
     log.console("Loading model")
-    model = load_model()
+    model = load_model(len(cmap))
     yolo_predictor = get_predictor(len(cmap))
 
     batch_time = AverageMeter()

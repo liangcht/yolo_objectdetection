@@ -2,6 +2,8 @@ import math
 import torch
 from torch.utils.data.distributed import DistributedSampler
 
+__all__ = ['DistributedSequentialWrappingSampler', 'DistributedRandomWrappingSampler']
+
 
 class DistributedWrappingSampler(DistributedSampler):
     """Sampler that restricts data loading to a subset of the dataset.

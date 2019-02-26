@@ -10,6 +10,7 @@ DEFAULT_BIASES = [1.08, 1.19, 3.42, 4.41, 6.63, 11.38, 9.42, 5.11, 16.62, 10.52]
 SLICE_POINTS = [10, 20, 25]
 OBJECTNESS_DIM = 1
 
+__all__ = ['RegionTargetWithSoftMaxLoss', 'RegionTargetWithSoftMaxTreeLoss']
 
 class RegionTargetLoss(nn.Module):
     """Abstract class for constructing different kinds of RegionTargetLosses

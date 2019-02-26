@@ -10,6 +10,12 @@ from mtorch.tbox_utils import Labeler
 from mtorch.augmentation import DefaultDarknetAugmentation, TestAugmentation
 from mtorch.distributed_samplers import DistributedSequentialWrappingSampler, DistributedRandomWrappingSampler
 
+__all__ = ['yolo_train_data_loader', 'yolo_test_data_loader']
+
+WRAPPING = True
+SEQUENTIAL_SAMPLER = True
+RANDOM_SAMPLER = not SEQUENTIAL_SAMPLER
+
 
 def _list_collate(batch):
     """ Function that collates lists or tuples together into one list (of lists/tuples).
@@ -34,12 +40,31 @@ def yolo_train_data_loader(datafile, batch_size=16, num_workers=2, distributed=T
                                  labeler=Labeler())
 
     total_batch_size = batch_size * env_world_size()
-    full_epoch_dataset_length = int(np.ceil(float(len(augmented_dataset)) / float(total_batch_size))) * total_batch_size
 
-    sampler = DistributedRandomWrappingSampler(augmented_dataset,
-                                               full_epoch_dataset_length,
-                                               num_replicas=env_world_size() if distributed else 1,
-                                               rank=env_rank() if distributed else 0)
+    if WRAPPING:
+        full_epoch_dataset_length = int(np.ceil(float(len(augmented_dataset)) / float(total_batch_size))) \
+                                    * \
+                                    total_batch_size
+        if SEQUENTIAL_SAMPLER:
+            sampler = DistributedSequentialWrappingSampler(
+                augmented_dataset,
+                full_epoch_dataset_length,
+                num_replicas=env_world_size() if distributed else 1,
+                rank=env_rank() if distributed else 0
+            )
+        else:  # use RANDOM_SAMPLER
+            sampler = DistributedRandomWrappingSampler(
+                augmented_dataset,
+                full_epoch_dataset_length,
+                num_replicas=env_world_size() if distributed else 1,
+                rank=env_rank() if distributed else 0
+            )
+    else:  # use native PyTorch Distributed Sampler
+        sampler = DistributedSampler(
+            augmented_dataset,
+            num_replicas=env_world_size() if distributed else 1,
+            rank=env_rank() if distributed else 0
+        )
 
     return DataLoader(augmented_dataset, batch_size=batch_size,
                       sampler=sampler, num_workers=num_workers, pin_memory=True)

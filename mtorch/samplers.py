@@ -1,6 +1,8 @@
 import random
 from torch.utils.data import Sampler
 
+__all__ = ['SequentialWrappingSampler', 'RandomWrappingSampler']
+
 
 class WrappingSampler(Sampler):
     """Abstract Class Wrapping Sampler
