@@ -12,7 +12,11 @@ def prep_dict(init_net_dict, net_dict, switch_bn2scale=True):
     """
     layer_names = net_dict.keys()
     init_weights = []
-    add_token = ""
+    init_layer_names = init_net_dict.keys()
+    if "module" in init_layer_names[0]:
+        add_token = "module."
+    else:
+        add_token = ""
     for layer_name in layer_names:
         token = _set_token(layer_name)
         init_layer_name = add_token + token + layer_name.split(token)[-1]

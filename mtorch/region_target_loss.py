@@ -9,8 +9,27 @@ from mtorch.softmaxtree import SoftmaxTree
 DEFAULT_BIASES = [1.08, 1.19, 3.42, 4.41, 6.63, 11.38, 9.42, 5.11, 16.62, 10.52]
 SLICE_POINTS = [10, 20, 25]
 OBJECTNESS_DIM = 1
+DEFAULT_NUM_CLASSES = 20  # for voc20
+DEFAULT_NUM_ANCHORS = 5
+BBOX_DIM = 4
+# Normalization types:
+VALID = 'valid'
+BATCH = 'batch'
+NORM_SOFTMAX = VALID
+NORM_SOFTMAXTREE = VALID
+# Scales for different losses:
+OBJ_SC = 5.0  # objectness loss
+NO_OBJ_SC = 1.0  # no objectness loss
+XY_SC = 1.0  # xy loss
+WH_SC = 1.0  # wh loss
+CL_SC_SOFTMAX = 1.0  # classification loss
+CL_SC_SOFTMAXTREE = 1.0  # classification loss 
+# Other parameters
+OBJ_ESC_THRESH = 0.6
+NUM_IMAGES_WARM = 12800
 
-__all__ = ['RegionTargetWithSoftMaxLoss', 'RegionTargetWithSoftMaxTreeLoss']
+__all__ = ['RegionTargetWithSoftMaxLoss', 'RegionTargetWithSoftMaxTreeLoss', 'NUM_IMAGES_WARM']
+
 
 class RegionTargetLoss(nn.Module):
     """Abstract class for constructing different kinds of RegionTargetLosses
@@ -31,10 +50,11 @@ class RegionTargetLoss(nn.Module):
         seen_images: int, number of images seen by the model
     """
 
-    def __init__(self, num_classes=20, num_anchors=5, biases=DEFAULT_BIASES, coords=4,
-                 obj_esc_thresh=0.6, rescore=True, xy_scale=1.0, wh_scale=1.0,
-                 object_scale=5.0, noobject_scale=1.0, coord_scale=1.0,
-                 anchor_aligned_images=12800, ngpu=1, seen_images=0):
+    def __init__(self, num_classes=DEFAULT_NUM_CLASSES, num_anchors=DEFAULT_NUM_ANCHORS,
+                 biases=DEFAULT_BIASES, coords=BBOX_DIM,
+                 obj_esc_thresh=OBJ_ESC_THRESH, rescore=True, xy_scale=XY_SC, wh_scale=WH_SC,
+                 object_scale=OBJ_SC, noobject_scale=NO_OBJ_SC, coord_scale=1.0,
+                 anchor_aligned_images=NUM_IMAGES_WARM, ngpu=1, seen_images=0):
         super(RegionTargetLoss, self).__init__()
         self.num_classes = num_classes
         self.num_anchors = num_anchors
@@ -43,7 +63,8 @@ class RegionTargetLoss(nn.Module):
         self.slice_region = Slice(1, slice_points)
         self.region_target = RegionTarget(
             biases, rescore=rescore,
-            anchor_aligned_images=anchor_aligned_images, coord_scale=coord_scale,
+            anchor_aligned_images=anchor_aligned_images,
+            coord_scale=coord_scale,
             positive_thresh=obj_esc_thresh,
             gpus_size=ngpu,
             seen_images=seen_images
@@ -79,10 +100,9 @@ class RegionTargetLoss(nn.Module):
 
     @property
     def seen_images(self):
-        """getter to the number of images that were evaluated by model""" 
+        """getter to the number of images that were evaluated by model"""
         return self.region_target.seen_images
-        
-     
+
     def classifier_loss(self, x, label):
         """calculates classification loss (SoftMaxTreeLoss)
         after permuting the dimensions of input features (compatibility to Caffe)
@@ -105,20 +125,11 @@ class RegionTargetLoss(nn.Module):
 class RegionTargetWithSoftMaxLoss(RegionTargetLoss):
     """Extends RegionTargetLosses by calculating classification loss based on SoftMaxLoss"""
 
-    def __init__(self, ignore_label=-1, normalization='VALID',
-                 num_classes=20, num_anchors=5, biases=DEFAULT_BIASES, coords=4,
-                 obj_esc_thresh=0.6, rescore=True, xy_scale=1.0, wh_scale=1.0,
-                 object_scale=5.0, class_scale=1.0, noobject_scale=1.0, coord_scale=1.0,
-                 anchor_aligned_images=12800, ngpu=1, seen_images=0):
-        super(RegionTargetWithSoftMaxLoss, self).__init__(num_classes, num_anchors,
-                                                          biases, coords,
-                                                          obj_esc_thresh, rescore,
-                                                          xy_scale, wh_scale, object_scale,
-                                                          noobject_scale, coord_scale,
-                                                          anchor_aligned_images, ngpu, seen_images)
-
+    def __init__(self, ignore_label=-1, class_scale=CL_SC_SOFTMAX, normalization=NORM_SOFTMAX, **kwargs):
+        super(RegionTargetWithSoftMaxLoss, self).__init__(**kwargs)
+        self.normalization = normalization
         self._classifier_loss = SoftmaxWithLoss(loss_weight=class_scale, ignore_label=ignore_label,
-                                                valid_normalization=(normalization == 'VALID'))
+                                                valid_normalization=(normalization == VALID))
 
     def classifier_loss(self, x, label):
         """calculates classification loss (SoftMaxTreeLoss)
@@ -139,20 +150,13 @@ class RegionTargetWithSoftMaxLoss(RegionTargetLoss):
 
 class RegionTargetWithSoftMaxTreeLoss(RegionTargetLoss):
     """Extends RegionTargetLosses by calculating classification loss based on SoftMaxTreeLoss"""
-    def __init__(self, tree, ignore_label=-1, normalization='VALID',
-                 num_classes=20, num_anchors=5, biases=DEFAULT_BIASES, coords=4,
-                 obj_esc_thresh=0.6, rescore=True, xy_scale=1.0, wh_scale=1.0,
-                 object_scale=5.0, class_scale=1.0, noobject_scale=1.0, coord_scale=1.0,
-                 anchor_aligned_images=12800, ngpu=1, seen_images=0):
-        super(RegionTargetWithSoftMaxTreeLoss, self).__init__(num_classes, num_anchors,
-                                                              biases, coords,
-                                                              obj_esc_thresh, rescore,
-                                                              xy_scale, wh_scale, object_scale,
-                                                              noobject_scale, coord_scale,
-                                                              anchor_aligned_images, ngpu, seen_images)
+
+    def __init__(self, tree, ignore_label=-1, class_scale=CL_SC_SOFTMAXTREE, normalization=NORM_SOFTMAXTREE, **kwargs):
+        super(RegionTargetWithSoftMaxTreeLoss, self).__init__(**kwargs)
+        self.normalization = normalization
         self._classifier_loss = SoftmaxTreeWithLoss(
             tree, ignore_label=ignore_label, loss_weight=class_scale,
-            valid_normalization=(normalization == 'VALID')
+            valid_normalization=(normalization == VALID)
         )
 
     def classifier_loss(self, x, label):

@@ -22,7 +22,8 @@ from mmod.detection import result2bblist
 from mmod.simple_parser import load_labelmap_list
 from mmod.utils import open_with_lineidx
 from mtorch.dataloaders import yolo_test_data_loader
-from mtorch.yolo_predict import PlainPredictor, TreePredictor
+from mtorch.yolo_predict import PlainPredictorSingleClassNMS, PlainPredictorClassSpecificNMS, \
+                                TreePredictorSingleClassNMS, TreePredictorClassSpecificNMS
 from mtorch.yolo_v2 import yolo
 from mtorch.darknet import darknet_layers
 
@@ -39,6 +40,9 @@ def get_parser():
                         required=False)
     parser.add_argument('--labelmap', type=str, metavar='LABELMAP_PATH',
                         help='path to labelmap', required=True)
+    parser.add_argument('--single_class_nms', default=False, action='store_true',
+                        help='if provided, will use single class nms (faster but lower mAP), false by default',
+                        required=False)
     parser.add_argument('--tree', type=str, metavar='TREE_PATH',
                         help='path to a tree structure, it prediction based on tree is required',
                         required=False)
@@ -59,7 +63,6 @@ def get_parser():
     parser.add_argument('--log_interval', default=1, type=int,
                         help='number of itertation to print predict progress')
     return parser
-
 
 args = get_parser().parse_args()
 args = vars(args)
@@ -112,14 +115,20 @@ def get_predictor(num_classes):
     :return model: nn.Sequential or nn.Module
     """
     if args["use_treestructure"]:
-        return TreePredictor(args['tree'], num_classes=num_classes).cuda()
+        if args["single_class_nms"]:
+            return TreePredictorSingleClassNMS(args['tree'], num_classes=num_classes).cuda() 
+        return TreePredictorClassSpecificNMS(args['tree'], num_classes=num_classes).cuda()
     else:
-        return PlainPredictor(num_classes=num_classes).cuda()
+        if args["single_class_nms"]:
+            return PlainPredictorSingleClassNMS(num_classes=num_classes).cuda() 
+        return PlainPredictorClassSpecificNMS(num_classes=num_classes).cuda()
 
 
 def main():
-    if args["output"] is None or not op.isfile(args["output"]):
-        args["output"] = op.join(args["model"] + args["test"].replace('/', '_') + '.predict')
+    add2name = ""
+    if args["output"] is None:
+        add2name += '.single_class_nms' if args["single_class_nms"] else '.class_specific_nms'
+        args["output"] = op.join(args["model"] + args["test"].replace('/', '_') + add2name + '.predict')
 
     log.console("Creating test data loader")
     test_loader = yolo_test_data_loader(args["test"], batch_size=args["batch_size"],

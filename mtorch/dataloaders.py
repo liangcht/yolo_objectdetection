@@ -39,9 +39,8 @@ def yolo_train_data_loader(datafile, batch_size=16, num_workers=2, distributed=T
                                  transform=augmenter(),
                                  labeler=Labeler())
 
-    total_batch_size = batch_size * env_world_size()
-
     if WRAPPING:
+        total_batch_size = batch_size * env_world_size()
         full_epoch_dataset_length = int(np.ceil(float(len(augmented_dataset)) / float(total_batch_size))) \
                                     * \
                                     total_batch_size
