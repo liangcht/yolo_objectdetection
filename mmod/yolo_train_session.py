@@ -29,6 +29,7 @@ from mmod.simple_parser import load_labelmap_list
 
 from mtorch.caffesgd import CaffeSGD
 from mtorch.multifixed_scheduler import MultiFixedScheduler
+from mtorch import dataloaders
 from mtorch.dataloaders import yolo_train_data_loader
 from mtorch.yolo_v2 import yolo
 from mtorch.darknet import darknet_layers
@@ -55,6 +56,8 @@ def get_parser():
     parser.add_argument('-c', '--is_caffemodel', default=False, action='store_true',
                         help='if provided, assumes model weights are derived from caffemodel, false by default',
                         required=False)
+    parser.add_argument('--only_backbone', default=False, action='store_true',
+                        help="if provided, only backbone weights are taken from the model, false by default")
     parser.add_argument('-l', '--logdir', help='Log directory', required=True)
     parser.add_argument('-s', '--solver',
                         help='solver file with training parameters',
@@ -106,7 +109,7 @@ def last_snapshot_path(prefix, max_epoch=None):
     """Find the last checkpoints inside given prefix paths
     Look at the paths in prefixes, and return once found
     :param prefix: str, paths to check for the snapshot
-    :param max_iter: maximum number of iterations that could be found
+    :param max_epoch: maximum number of iterations that could be found
     :exception: ValueError if last snapshot is not a valid path or cannot be retried
     :return: snapshot, str
     """
@@ -239,7 +242,7 @@ def train(trn_loader, model, criterion, optimizer, scheduler, epoch, loss_arr):
                 .format(float(batch_num) / last_batch, epoch, timer.batch_time.val,
                         losses.val, batch_total, scheduler.get_lr())
             log.verbose(output)
-    
+
 
 def main():
     log.console(args)
@@ -253,9 +256,14 @@ def main():
 
     log.console("Loading model")
     cmap = load_labelmap_list(args["labelmap"])
-    model = yolo(darknet_layers(), weights_file=args['model'],
-                caffe_format_weights=args['is_caffemodel'],
-                num_classes=len(cmap), num_extra_convs=3).cuda()
+    if args['only_backbone']:
+        model = yolo(darknet_layers(weights_file=args['model'],
+                                    caffe_format_weights=args['is_caffemodel']),
+                     num_classes=len(cmap), num_extra_convs=3).cuda()
+    else:
+        model = yolo(darknet_layers(), weights_file=args['model'],
+                     caffe_format_weights=args['is_caffemodel'],
+                     num_classes=len(cmap), num_extra_convs=3).cuda()
     seen_images = model.seen_images
 
     if args["distributed"]:
@@ -290,6 +298,8 @@ def main():
     log.console("Creating data loaders")
     data_loader = yolo_train_data_loader(args["train"], batch_size=args["batch_size"],
                                          num_workers=args["workers"], distributed=args["distributed"])
+    log.console("Uses Wrapping Sampler: {}".format(dataloaders.WRAPPING))
+    log.console("Uses Random Sampler: {}".format(dataloaders.RANDOM_SAMPLER))
 
     try:
         num_epochs = int(solver_params["max_epoch"])
@@ -314,13 +324,16 @@ def main():
     log.console("Training will start from {} epoch".format(start_epoch))
 
     if args["use_treestructure"]:  # TODO: implement YoloLoss with loss_mode as an argument
-        log.console("Using tree structure")
         criterion = RegionTargetWithSoftMaxTreeLoss(args["tree"],
                                                     num_classes=len(cmap),
                                                     seen_images=seen_images)
+        log.console("Using tree structure with {} softmax normalization".format(criterion.normalization))
+
     else:
-        log.console("Using plain structure")
-        criterion = RegionTargetWithSoftMaxLoss(num_classes=len(cmap), seen_images=seen_images)
+        criterion = RegionTargetWithSoftMaxLoss(num_classes=len(cmap),
+                                                seen_images=seen_images)
+        log.console("Using plain structure with {} softmax normalization".format(criterion.normalization))
+
     criterion = criterion.cuda()
 
     if args["distributed"]:

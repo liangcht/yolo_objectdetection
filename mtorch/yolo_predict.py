@@ -11,7 +11,8 @@ from mtorch.nmsfilter import NMSFilter
 from mtorch.yoloevalcompat import YoloEvalCompat
 from mtorch.region_prediction import RegionPrediction
 
-__all__ = ['PlainPredictor', 'TreePredictor']
+__all__ = ['PlainPredictorClassSpecificNMS', 'PlainPredictorSingleClassNMS',
+           'TreePredictorClassSpecificNMS', 'TreePredictorSingleClassNMS']
 
 DEFAULT_BIASES = [1.08, 1.19, 3.42, 4.41, 6.63, 11.38, 9.42, 5.11, 16.62, 10.52]
 SLICE_POINTS = [10, 20, 25]
@@ -22,7 +23,7 @@ BBOX_DIM = 4
 # thresholds:
 # PREDICTION:
 PLAIN_PRED_THRESH = 0.005
-TREE_PRED_THRESH = 0.5
+TREE_PRED_THRESH = 0.1
 # NMS filtering
 NMS_THRESHOLD = 0.45
 PRE_THRESHOLD = 0.005
@@ -80,31 +81,28 @@ class YoloPredict(nn.Module):
         :return torch tensor with loss value
         """
         raise NotImplementedError(
-            "Please create an instance of PlainPredictor or TreePredictor")
+            "This is an abstract class, please use either of" + str(__all__))
 
     def top_predictions(self, class_prob, obj):
         raise NotImplementedError(
-            "Please create an instance of PlainPredictor or TreePredictor")
+            "This is an abstract class, please use either of" + str(__all__))
 
     @property
     def shape(self):
         raise NotImplementedError(
-            "Please create an instance of PlainPredictor or TreePredictor")
+            "This is an abstract class, please use either of" + str(__all__))
 
     @property
-    def nms_params():
+    def nms_params(self):
         raise NotImplementedError(
-            "Please create an instance of PlainPredictor or TreePredictor")
+            "This is an abstract class, please use either of" + str(__all__))
 
 
 class PlainPredictor(YoloPredict):
-    """Extends RegionTargetLosses by calculating classification loss based on SoftMaxLoss"""
+    """Extends YoloPredict and performs plain prediction"""
 
-    def __init__(self, num_classes=DEFAULT_NUM_CLASSES, num_anchors=DEFAULT_NUM_ANCHORS,
-                 biases=DEFAULT_BIASES, coords=BBOX_DIM,
-                 pred_thresh=PLAIN_PRED_THRESH, nms_threshold=NMS_THRESHOLD):
-        super(PlainPredictor, self).__init__(num_classes, num_anchors, biases, coords,
-                                             nms_threshold)
+    def __init__(self, pred_thresh=PLAIN_PRED_THRESH, **kwargs):
+        super(PlainPredictor, self).__init__(**kwargs)
         self._class_prob = nn.Softmax(dim=self.class_axis)
         self._predictor = RegionPrediction(thresh=pred_thresh, class_axis=self.class_axis)
 
@@ -135,11 +133,38 @@ class PlainPredictor(YoloPredict):
 
     @property
     def nms_params(self):
+        raise NotImplementedError(
+            "This is an abstract class, please use either of" + str(__all__))
+
+
+class PlainPredictorClassSpecificNMS(PlainPredictor):
+    """Extends PlainPredictor by calculating class specific NMS"""
+
+    def __init__(self, **kwargs):
+        super(PlainPredictorClassSpecificNMS, self).__init__(**kwargs)
+
+    @property
+    def nms_params(self):
         """ which classes to use for nms filtering
         :return: first class, int 
         :return: number of classes, int, starting from the first class
         """
         return [0, self.num_classes]
+
+
+class PlainPredictorSingleClassNMS(PlainPredictor):
+    """Extends PlainPredictor by calculating NMS on max of all classes"""
+
+    def __init__(self, **kwargs):
+        super(PlainPredictorSingleClassNMS, self).__init__(**kwargs)
+
+    @property
+    def nms_params(self):
+        """ which classes to use for nms filtering
+        :return: first class, int 
+        :return: number of classes, int, starting from the first class
+        """
+        return [self.num_classes, 1]
 
 
 class TreePredictor(YoloPredict):
@@ -149,12 +174,8 @@ class TreePredictor(YoloPredict):
         obj_esc_thresh: int, objectness threshold
     """
 
-    def __init__(self, tree, num_classes=DEFAULT_NUM_CLASSES, num_anchors=DEFAULT_NUM_ANCHORS,
-                 biases=DEFAULT_BIASES, coords=BBOX_DIM,
-                 pred_thresh=TREE_PRED_THRESH,
-                 nms_threshold=NMS_THRESHOLD, pre_threshold=PRE_THRESHOLD):
-        super(TreePredictor, self).__init__(num_classes, num_anchors, biases, coords,
-                                            nms_threshold, pre_threshold)
+    def __init__(self, tree, pred_thresh=TREE_PRED_THRESH, **kwargs):
+        super(TreePredictor, self).__init__(**kwargs)
         self._class_prob = SoftmaxTree(tree, axis=self.class_axis)
         self._predictor = SoftmaxTreePrediction(tree, threshold=pred_thresh,
                                                 append_max=True, output_tree_path=True)
@@ -180,6 +201,33 @@ class TreePredictor(YoloPredict):
         :return: list, dimensions for Reshape
         """
         return [self.num_classes, self.num_anchors]
+
+    @property
+    def nms_params(self):
+        raise NotImplementedError(
+            "Please create an instance of PlainPredictor or TreePredictor")
+
+
+class TreePredictorClassSpecificNMS(TreePredictor):
+    """Extends TreePredictor and performs class specific NMS"""
+
+    def __init__(self, *args, **kwargs):
+        super(TreePredictorClassSpecificNMS, self).__init__(*args, **kwargs)
+
+    @property
+    def nms_params(self):
+        """ which classes to use for nms filtering
+        :return: first class, int 
+        :return: number of classes, int, starting from the first class
+        """
+        return [0, self.num_classes]
+
+
+class TreePredictorSingleClassNMS(TreePredictor):
+    """Extends TreePredictor and performs NMS on max of all classes """
+
+    def __init__(self, *args, **kwargs):
+        super(TreePredictorSingleClassNMS, self).__init__(*args, **kwargs)
 
     @property
     def nms_params(self):
