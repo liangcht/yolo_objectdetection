@@ -166,8 +166,11 @@ class CaffeNet(nn.Module):
             ltype = layer['type']
             if 'top' not in layer:
                 continue
+            if ltype == 'Input':
+                continue
             tname = layer['top']
             tnames = tname if type(tname) == list else [tname]
+
             if ltype in ['Data', 'AnnotatedData', 'TsvBoxData', 'HDF5Data']:
                 if self.forward_net_only.item():
                     assert len(inputs) > 1, "no inputs provided for data"
@@ -217,7 +220,7 @@ class CaffeNet(nn.Module):
                     self._blob_size(bnames),
                     self._blob_size(tnames)
                 ))
-        #return self.blobs.get(tname), self.blobs.get('dark6e/conv') #  remove ONLY for debugging yolo and darknet
+        # return self.blobs.get(tname), self.blobs.get('dark6e/conv') #  remove ONLY for debugging yolo and darknet
         # TODO: fix the need in above 
         if self.targets:
             tdatas = [[tname, self.blobs.get(tname)] for tname in self.targets]
@@ -530,6 +533,18 @@ class CaffeNet(nn.Module):
                         self._blob_shape(tname)
                     ))
                 continue
+
+            if ltype == 'Input':
+                self.input_index = i
+                assert len(test_inputs) == len(test_input_shapes) == 0, "Input layer specified with more inputs"
+                input_blob = tname
+                self.input_blobs = [input_blob]
+                shape = [int(d) for d in layer['input_param']['shape']['dim']]
+                # Input layer is test input specified as a layer
+                self.blob_dims[input_blob] = tuple(shape)
+                self.batch_size = shape[0]
+                continue
+
             if ltype in ['Data', 'AnnotatedData', 'HDF5Data']:
                 # rely on caffe to give us dimensions
                 if self.forward_net_only.item() and self.input_index is not None:
@@ -587,12 +602,8 @@ class CaffeNet(nn.Module):
                 stride = int(convolution_param['stride']) if 'stride' in convolution_param else 1
                 pad = int(convolution_param['pad']) if 'pad' in convolution_param else 0
                 group = int(convolution_param['group']) if 'group' in convolution_param else 1
-                dilation = 1
-                if 'dilation' in convolution_param:
-                    dilation = int(convolution_param['dilation'])
-                bias = True
-                if 'bias_term' in convolution_param and convolution_param['bias_term'] == 'false':
-                    bias = False
+                dilation = int(convolution_param.get('dilation', 1))
+                bias = convolution_param.get('bias_term', 'true') != 'false'
                 models[lname] = nn.Conv2d(c, out_filters, kernel_size=kernel_size, stride=stride, padding=pad,
                                           dilation=dilation, groups=group, bias=bias)
                 c = out_filters
@@ -601,7 +612,7 @@ class CaffeNet(nn.Module):
                 self.blob_dims[tname] = n, c, h, w
                 i = i + 1
             elif ltype == 'BatchNorm':
-                momentum = 0.1 # this is in fact PyTorch Default
+                momentum = 0.1  # this is in fact PyTorch Default
                 n, c, h, w = self.blob_dims[bname]
                 models[lname] = nn.BatchNorm2d(c, momentum=momentum, affine=False)
                 self.blob_dims[tname] = self.blob_dims[bname]
@@ -621,17 +632,26 @@ class CaffeNet(nn.Module):
                 self.blob_dims[tname] = self.blob_dims[bname]
                 i = i + 1
             elif ltype == 'Pooling':
-                kernel_size = int(layer['pooling_param']['kernel_size'])
                 stride = int(layer['pooling_param'].get('stride', 1))
                 padding = int(layer['pooling_param'].get('pad', 0))
                 pool_type = layer['pooling_param']['pool']
                 ceil_mode = layer['pooling_param'].get('round_mode', 'CEIL') == 'CEIL'
+                global_pooling = layer['pooling_param'].get('global_pooling', 'false') == 'true'
+
+                n, c, h, w = self.blob_dims[bname]
+                if global_pooling:
+                    assert h == w, "global pooling with h: {} != w: {} is not supported".format(h, w)
+                    assert 'kernel_size' not in layer['pooling_param'], \
+                        "With Global_pooling: true Filter size cannot specified"
+                    assert stride == 1 and padding == 0, "With Global_pooling: true; only pad = 0 and stride = 1"
+                    kernel_size = int(h)
+                else:
+                    kernel_size = int(layer['pooling_param']['kernel_size'])
                 if pool_type == 'MAX':
                     models[lname] = nn.MaxPool2d(kernel_size, stride, padding=padding, ceil_mode=ceil_mode)
                 elif pool_type == 'AVE':
                     models[lname] = nn.AvgPool2d(kernel_size, stride, padding=padding, ceil_mode=ceil_mode)
 
-                n, c, h, w = self.blob_dims[bname]
                 if ceil_mode:
                     new_w = int(math.ceil((w + 2 * padding - kernel_size) / float(stride))) + 1
                     new_h = int(math.ceil((h + 2 * padding - kernel_size) / float(stride))) + 1

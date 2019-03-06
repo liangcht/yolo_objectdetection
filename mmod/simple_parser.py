@@ -58,14 +58,25 @@ def parse_key_value(path, key):
                 return line
 
 
+def _delay_import_caffe_pb2():
+    try:
+        # first try a fresh caffe
+        import caffe
+        import caffe.proto.caffe_pb2 as caffe_pb2
+    except ImportError:
+        # No fresh caffe, use stale
+        # noinspection PyUnresolvedReferences
+        import mmod.proto.caffe_pb2 as caffe_pb2
+    return caffe_pb2
+
+
 def read_model_proto(proto_file_path):
     """Read prototxt file
     :param proto_file_path: path to .prototxt
     """
     from google.protobuf import text_format
-    import caffe
-    # noinspection PyUnresolvedReferences
-    model = caffe.proto.caffe_pb2.NetParameter()
+    caffe_pb2 = _delay_import_caffe_pb2()
+    model = caffe_pb2.NetParameter()
     with open(proto_file_path) as fp:
         text_format.Parse(fp.read(), model)
     return model
@@ -75,9 +86,8 @@ def read_model(caffemodel):
     """Read caffe model file
     :param caffemodel: path to .caffemodel
     """
-    import caffe
-    # noinspection PyUnresolvedReferences
-    model = caffe.proto.caffe_pb2.NetParameter()
+    caffe_pb2 = _delay_import_caffe_pb2()
+    model = caffe_pb2.NetParameter()
     with open(caffemodel, 'rb') as fp:
         model.ParseFromString(fp.read())
     return model
@@ -87,9 +97,8 @@ def read_blob(meanmodel):
     """Read blob
     :param meanmodel: path to mean blob
     """
-    import caffe
-    # noinspection PyUnresolvedReferences
-    mean_blob = caffe.proto.caffe_pb2.BlobProto()
+    caffe_pb2 = _delay_import_caffe_pb2()
+    mean_blob = caffe_pb2.BlobProto()
     with open(meanmodel, 'rb') as fp:
         mean_blob.ParseFromString(fp.read())
     return mean_blob
@@ -102,8 +111,8 @@ def array_to_blobproto(arr, diff=None):
     :type arr: np.ndarray
     :type diff: np.ndarray
     """
-    import caffe
-    blob = caffe.proto.caffe_pb2.BlobProto()
+    caffe_pb2 = _delay_import_caffe_pb2()
+    blob = caffe_pb2.BlobProto()
     blob.shape.dim.extend(arr.shape)
     blob.data.extend(arr.astype(float).flat)
     if diff is not None:
