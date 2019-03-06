@@ -166,8 +166,11 @@ class CaffeNet(nn.Module):
             ltype = layer['type']
             if 'top' not in layer:
                 continue
+            if ltype == 'Input':
+                continue
             tname = layer['top']
             tnames = tname if type(tname) == list else [tname]
+
             if ltype in ['Data', 'AnnotatedData', 'TsvBoxData', 'HDF5Data']:
                 if self.forward_net_only.item():
                     assert len(inputs) > 1, "no inputs provided for data"
@@ -530,6 +533,18 @@ class CaffeNet(nn.Module):
                         self._blob_shape(tname)
                     ))
                 continue
+
+            if ltype == 'Input':
+                self.input_index = i
+                assert len(test_inputs) == len(test_input_shapes) == 0, "Input layer specified with more inputs"
+                input_blob = tname
+                self.input_blobs = [input_blob]
+                shape = [int(d) for d in layer['input_param']['shape']['dim']]
+                # Input layer is test input specified as a layer
+                self.blob_dims[input_blob] = tuple(shape)
+                self.batch_size = shape[0]
+                continue
+
             if ltype in ['Data', 'AnnotatedData', 'HDF5Data']:
                 # rely on caffe to give us dimensions
                 if self.forward_net_only.item() and self.input_index is not None:
