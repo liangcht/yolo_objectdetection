@@ -28,14 +28,6 @@ def _extra_conv_layers(in_planes, num_extra_convs):
 
 class Yolo(nn.Module):
     """captures single-scale Yolo object detection network (aka yolo v2)
-
-    Parameters:
-        backbone_model: nn.Module or nn.Sequential, featurizer (typically Darknet)
-        num_classes: int, number of classes to detect
-        num_extra_convs: int, number of extra blocks of Conv2D
-                          + BtachNorm + LeakyRelu to add to the featurizer
-        num_anchors: int, number of anchors to use for
-        x: Torch tensor that contains the data
     """
     def __init__(self, backbone_model, num_classes=20, num_extra_convs=3, num_anchors=5,
                  backbone_out_planes=None):
@@ -101,19 +93,19 @@ def yolo(backbone_model, weights_file=None, caffe_format_weights=False, map_loca
         
         snapshot = torch.load(weights_file, map_location=map_location)
         orig_dict = snapshot["state_dict"] 
-        #orig_dict = snapshot 
         if caffe_format_weights:
             init_dict = prep_dict(orig_dict, model.state_dict(), switch_bn2scale=True) 
         else:
             init_dict = orig_dict
         model.load_state_dict(init_dict)
+        # noinspection PyBroadException
         try:
             model.seen_images = orig_dict["module.seen_images"]
-        except:
+        except Exception:
+            # noinspection PyBroadException
             try:
                 model.seen_images = orig_dict["seen_images"]
-            except:
+            except Exception:
                 model.seen_images = snapshot["seen_images"]
         
     return model
-

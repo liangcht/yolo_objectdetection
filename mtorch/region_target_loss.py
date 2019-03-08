@@ -1,10 +1,8 @@
-import torch
 import torch.nn as nn
 from mtorch.caffetorch import Slice, SoftmaxWithLoss, EuclideanLoss
 from mtorch.reshape import Reshape
 from mtorch.region_target import RegionTarget
 from mtorch.softmaxtree_loss import SoftmaxTreeWithLoss
-from mtorch.softmaxtree import SoftmaxTree
 
 DEFAULT_BIASES = [1.08, 1.19, 3.42, 4.41, 6.63, 11.38, 9.42, 5.11, 16.62, 10.52]
 SLICE_POINTS = [10, 20, 25]
@@ -51,13 +49,17 @@ class RegionTargetLoss(nn.Module):
     """
 
     def __init__(self, num_classes=DEFAULT_NUM_CLASSES, num_anchors=DEFAULT_NUM_ANCHORS,
-                 biases=DEFAULT_BIASES, coords=BBOX_DIM,
+                 biases=None, coords=BBOX_DIM,
                  obj_esc_thresh=OBJ_ESC_THRESH, rescore=True, xy_scale=XY_SC, wh_scale=WH_SC,
                  object_scale=OBJ_SC, noobject_scale=NO_OBJ_SC, coord_scale=1.0,
                  anchor_aligned_images=NUM_IMAGES_WARM, ngpu=1, seen_images=0):
         super(RegionTargetLoss, self).__init__()
         self.num_classes = num_classes
         self.num_anchors = num_anchors
+        # FIXME: DEFAULT_BIASES depends on num_anchors
+        if biases is None:
+            biases = DEFAULT_BIASES
+        # FIXME: SLICE_POINTS depends on num_anchors
         slice_points = [point for point in SLICE_POINTS]
         slice_points.append((num_classes + coords + OBJECTNESS_DIM) * num_anchors)
         self.slice_region = Slice(1, slice_points)
@@ -161,6 +163,7 @@ class RegionTargetWithSoftMaxTreeLoss(RegionTargetLoss):
 
     def classifier_loss(self, x, label):
         """calculates classification loss (SoftMaxTreeLoss)
+        :param x: torch tensor, features
         :param label: ground truth label
         :return torch tensor with loss value
         """
