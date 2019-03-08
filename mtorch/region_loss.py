@@ -1,6 +1,5 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 from mtorch.regionloss_utils  import region_util
 from mtorch.regionloss_utils.cython_bbox import bbox_ious, bbox_ious_diag, anchor_intersections
@@ -59,7 +58,7 @@ class RegionLoss(nn.Module):
 
         x_res = x.view(batch, -1, self.anchor_num, out_h, out_w).contiguous()
         x_res = x_res.permute(0, 2, 1, 3, 4)
-        #tx, ty, tw, th, to -> sig(tx), sig(ty), exp(tw), exp(th), sig(to)
+        # tx, ty, tw, th, to -> sig(tx), sig(ty), exp(tw), exp(th), sig(to)
         x = self.sigmoid(x_res[:, :, 0, :, :])
         y = self.sigmoid(x_res[:, :, 1, :, :])
         w = x_res[:, :, 2, :, :]
@@ -87,8 +86,7 @@ class RegionLoss(nn.Module):
         coord_mask, conf_mask, tx, ty, tw, th, tconf, tcls = \
             self.build_targets(pred_boxes, target.data, out_h, out_w)
 
-
-        self.loss_xy = self.weighted_MSE(x, tx, coord_mask) + self.weighted_MSE(y, ty, coord_mask) 
+        self.loss_xy = self.weighted_MSE(x, tx, coord_mask) + self.weighted_MSE(y, ty, coord_mask)
         self.loss_wh = self.weighted_MSE(w, tw, coord_mask) + self.weighted_MSE(h, th, coord_mask)
         self.loss_conf = self.weighted_MSE(conf, tconf, conf_mask)
         self.loss_cls = self.cross_ent(clas_prob, tcls) / batch 

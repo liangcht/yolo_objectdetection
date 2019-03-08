@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 from mmod.im_utils import im_rescale
 
-import cv2
+
 class ODImResize(object):
 
     def __init__(self, target_size=416, maintain_ratio=True):
@@ -39,4 +39,3 @@ class ODImResize(object):
         else:
             self.network_input_width = self.target_size
             self.network_input_height = self.target_size
-

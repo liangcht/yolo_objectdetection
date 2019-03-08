@@ -1,9 +1,6 @@
-import torch
 import torch.nn as nn
-from mtorch.caffetorch import Slice, SoftmaxWithLoss, EuclideanLoss
+from mtorch.caffetorch import Slice
 from mtorch.reshape import Reshape
-from mtorch.region_target import RegionTarget
-from mtorch.softmaxtree_loss import SoftmaxTreeWithLoss
 from mtorch.softmaxtree import SoftmaxTree
 from mtorch.softmaxtree_prediction import SoftmaxTreePrediction
 from mtorch.yolobbs import YoloBBs
@@ -30,7 +27,7 @@ PRE_THRESHOLD = 0.005
 
 
 class YoloPredict(nn.Module):
-    """Abstract class for constructing different kinds of RegionTargetLosses
+    """Abstract class for constructing different kinds of Yolo predictions
     Parameters:
         num_classes: int, number of classes for classification
         num_anchors: int, number of anchors for bounding box predictions
