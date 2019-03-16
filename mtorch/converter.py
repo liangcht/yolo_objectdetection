@@ -13,7 +13,7 @@ SUPPORTED_LAYERS = ['Data', 'TsvBoxData', 'AnnotatedData', 'HDF5Data', 'Pooling'
                     'Permute', 'Flatten', 'Slice', 'Concat', 'Softmax', 'SoftmaxWithLoss',
                     'Dropout', 'Reshape', 'Sigmoid', 'EuclideanLoss', 'RegionTarget', 'SoftmaxTreeWithLoss',
                     'Reorg', 'YoloEvalCompat', 'YoloBBs', 'SoftmaxTreePrediction', 'SoftmaxTree', 'NMSFilter',
-                    'RegionLoss', 'Input']
+                    'RegionLoss', 'Input', 'LRN']
 
 
 try:

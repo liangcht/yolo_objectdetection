@@ -617,6 +617,16 @@ class CaffeNet(nn.Module):
                 models[lname] = nn.BatchNorm2d(c, momentum=momentum, affine=False)
                 self.blob_dims[tname] = self.blob_dims[bname]
                 i = i + 1
+            elif ltype == 'LRN':
+                size = int(layer['lrn_param'].get('local_size', 5))
+                alpha = float(layer['lrn_param'].get('alpha', 1.0))
+                beta = float(layer['lrn_param'].get('beta', 0.75))
+                k = float(layer['lrn_param'].get('k', 1.0))
+                assert layer['lrn_param'].get('norm_region', 'ACROSS_CHANNELS') == 'ACROSS_CHANNELS', \
+                    "Only ACROSS_CHANNELS supported"
+                models[lname] = nn.LocalResponseNorm(size, alpha=alpha, beta=beta, k=k)
+                self.blob_dims[tname] = self.blob_dims[bname]
+                i = i + 1
             elif ltype == 'Scale':
                 n, c, h, w = self.blob_dims[bname]
                 models[lname] = Scale(c)
