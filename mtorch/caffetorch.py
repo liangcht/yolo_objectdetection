@@ -131,8 +131,8 @@ class Permute(nn.Module):
         super(Permute, self).__init__()
         self.order = order
         
-    def __repr__(self):
-        return 'Permute({%d}, {%d}, {%d}, {%d})'.format(**self.order)
+    def extra_repr(self):
+        return '{}'.format(*self.order)
 
     def forward(self, x):
         x = x.permute(*self.order).contiguous()

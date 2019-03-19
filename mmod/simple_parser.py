@@ -349,7 +349,8 @@ def format_value(value):
     # Enum values
     if value in [
         'true', 'false', 'MAX', 'SUM', 'AVE', 'TRAIN', 'TEST', 'WARP', 'LINEAR', 'AREA', 'NEAREST',
-        'CUBIC', 'LANCZOS4', 'CENTER', 'LMDB', 'BATCH_SIZE', 'VALID', 'CEIL', 'FLOOR'
+        'CUBIC', 'LANCZOS4', 'CENTER', 'LMDB', 'BATCH_SIZE', 'VALID', 'CEIL', 'FLOOR',
+        'ACROSS_CHANNELS', 'WITHIN_CHANNEL'
     ]:
         return value
     return '\"%s\"' % value
