@@ -6,7 +6,7 @@ from common_network_blocks import conv_bn_relu_block
 from weights_init import msra_init
 from caffenet_weight_converter import prep_dict
 
-__all__ = ['Yolo', 'yolo']
+__all__ = ['Yolo', 'yolo', 'yolo_0extraconv', 'yolo_1extraconv', 'yolo_2extraconv', 'yolo_3extraconv']
 
 BBOX_DIM = 4 
 OBJECTNESS_DIM = 1
@@ -109,3 +109,16 @@ def yolo(backbone_model, weights_file=None, caffe_format_weights=False, map_loca
                 model.seen_images = snapshot["seen_images"]
         
     return model
+  
+def yolo_0extraconv(*args, **kwargs):
+    return yolo(*args, num_extra_convs=0, **kwargs)
+
+def yolo_1extraconv(*args, **kwargs):
+    return yolo(*args, num_extra_convs=1, **kwargs)
+
+def yolo_2extraconv(*args, **kwargs):
+    return yolo(*args, num_extra_convs=2, **kwargs)
+
+def yolo_3extraconv(*args, **kwargs):
+    return yolo(*args, num_extra_convs=3, **kwargs)
+ 

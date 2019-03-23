@@ -31,7 +31,7 @@ from mtorch.caffesgd import CaffeSGD
 from mtorch.multifixed_scheduler import MultiFixedScheduler
 from mtorch import dataloaders
 from mtorch.dataloaders import yolo_train_data_loader
-from mtorch.yolo_v2 import yolo
+from mtorch.yolo_v2 import yolo_2extraconv
 from mtorch.darknet import darknet_layers
 from mtorch.region_target_loss import RegionTargetWithSoftMaxLoss, RegionTargetWithSoftMaxTreeLoss
 
@@ -256,14 +256,15 @@ def main():
 
     log.console("Loading model")
     cmap = load_labelmap_list(args["labelmap"])
+
     if args['only_backbone']:
-        model = yolo(darknet_layers(weights_file=args['model'],
-                                    caffe_format_weights=args['is_caffemodel']),
-                     num_classes=len(cmap), num_extra_convs=3).cuda()
+        model = yolo_2extraconv(darknet_layers(weights_file=args['model'],
+                                caffe_format_weights=args['is_caffemodel']),
+                                num_classes=len(cmap)).cuda()
     else:
-        model = yolo(darknet_layers(), weights_file=args['model'],
-                     caffe_format_weights=args['is_caffemodel'],
-                     num_classes=len(cmap), num_extra_convs=3).cuda()
+        model = yolo_2extraconv(darknet_layers(), weights_file=args['model'],
+                                caffe_format_weights=args['is_caffemodel'],
+                                num_classes=len(cmap)).cuda()
     seen_images = model.seen_images
 
     if args["distributed"]:
@@ -296,7 +297,7 @@ def main():
                          weight_decay=float(solver_params['weight_decay']))
 
     log.console("Creating data loaders")
-    data_loader = yolo_train_data_loader(args["train"], batch_size=args["batch_size"],
+    data_loader = yolo_train_data_loader(args["train"], cmapfile=args["labelmap"], batch_size=args["batch_size"],
                                          num_workers=args["workers"], distributed=args["distributed"])
     log.console("Uses Wrapping Sampler: {}".format(dataloaders.WRAPPING))
     log.console("Uses Random Sampler: {}".format(dataloaders.RANDOM_SAMPLER))
@@ -309,7 +310,7 @@ def main():
         except KeyError:
             num_epochs = MAX_EPOCH
             log.event("Maximal epoch/iteration not specified in solver params, hence set to {}".format(MAX_EPOCH))
-    log.console("Training will maximum {} epochs".format(num_epochs))
+    log.console("Training will have {} epochs".format(num_epochs))
 
     last_epoch = -1
     if args["restore"]:

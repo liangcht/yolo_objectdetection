@@ -15,7 +15,7 @@ __all__ = ['yolo_train_data_loader', 'yolo_test_data_loader']
 WRAPPING = True
 SEQUENTIAL_SAMPLER = True
 RANDOM_SAMPLER = not SEQUENTIAL_SAMPLER
-
+MIN_ITERS_PER_EPOCH = 10  # TODO: read from config (TBD)
 
 def _list_collate(batch):
     """ Function that collates lists or tuples together into one list (of lists/tuples).
@@ -26,7 +26,7 @@ def _list_collate(batch):
     return items
 
 
-def yolo_train_data_loader(datafile, batch_size=16, num_workers=2, distributed=True):
+def yolo_train_data_loader(datafile, cmapfile=None, batch_size=16, num_workers=2, distributed=True):
     """prepares data loader for training
     :param datafile: str, path to file with data
     :param batch_size: int, batch size per GPU
@@ -36,14 +36,15 @@ def yolo_train_data_loader(datafile, batch_size=16, num_workers=2, distributed=T
     """
     augmenter = DefaultDarknetAugmentation()
     augmented_dataset = ImdbData(path=datafile,
+                                 cmapfile=cmapfile,
                                  transform=augmenter(),
                                  labeler=Labeler())
 
     if WRAPPING:
         total_batch_size = batch_size * env_world_size()
-        full_epoch_dataset_length = int(np.ceil(float(len(augmented_dataset)) / float(total_batch_size))) \
-                                    * \
-                                    total_batch_size
+        num_iters_per_epoch = max(MIN_ITERS_PER_EPOCH, 
+                                int(np.ceil(float(len(augmented_dataset)) / float(total_batch_size)))) 
+        full_epoch_dataset_length = num_iters_per_epoch * total_batch_size
         if SEQUENTIAL_SAMPLER:
             sampler = DistributedSequentialWrappingSampler(
                 augmented_dataset,
@@ -69,7 +70,7 @@ def yolo_train_data_loader(datafile, batch_size=16, num_workers=2, distributed=T
                       sampler=sampler, num_workers=num_workers, pin_memory=True)
 
 
-def yolo_test_data_loader(datafile, batch_size=1, num_workers=2):
+def yolo_test_data_loader(datafile, cmapfile=None, batch_size=1, num_workers=2):
     """prepares test data loader
     :param datafile: str, path to file with data
     :param batch_size: int, batch size per GPU
@@ -78,6 +79,7 @@ def yolo_test_data_loader(datafile, batch_size=1, num_workers=2):
     """
     test_augmenter = TestAugmentation()
     augmented_dataset = ImdbData(path=datafile,
+                                 cmapfile=cmapfile,
                                  transform=test_augmenter(),
                                  predict_phase=True)
     sampler = SequentialSampler(augmented_dataset)

@@ -28,7 +28,7 @@ class ImdbData(data.Dataset):
     and returns the sample
     """
 
-    def __init__(self, path,
+    def __init__(self, path, cmapfile=None,
                  transform=None, labeler=None, predict_phase=False):
         """Constructor of ImdbData
         :param path: string - path to the dataset with images and labels
@@ -39,6 +39,7 @@ class ImdbData(data.Dataset):
         self.transform = transform
         self.labeler = labeler
         self.predict_phase = predict_phase
+        self.cmapfile=cmapfile
 
     def __repr__(self):
         return 'ImdbData({}, size={})'.format(self._path, len(self))
@@ -91,7 +92,7 @@ class ImdbData(data.Dataset):
             "" if not opid else "{}->".format(opid),
             pid
         ))
-        imdb = ImageDatabase(self._path)
+        imdb = ImageDatabase(self._path, cmapfile=self.cmapfile)
         assert len(imdb), "No images found in: {}".format(imdb)
         imdb.open_db()
         _cur_data = [pid, imdb]

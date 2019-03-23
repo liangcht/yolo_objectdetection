@@ -24,7 +24,7 @@ from mmod.utils import open_with_lineidx
 from mtorch.dataloaders import yolo_test_data_loader
 from mtorch.yolo_predict import PlainPredictorSingleClassNMS, PlainPredictorClassSpecificNMS, \
                                 TreePredictorSingleClassNMS, TreePredictorClassSpecificNMS
-from mtorch.yolo_v2 import yolo
+from mtorch.yolo_v2 import yolo_2extraconv
 from mtorch.darknet import darknet_layers
 
 
@@ -73,16 +73,16 @@ else:
     import logging as log
 
 
-def load_model(num_classes, num_extra_convs=3):
+def load_model(num_classes, num_extra_convs=2):
     """creates a yolo model for evaluation
     :param num_classes: int, number of classes to detect
     :param num_extra_convs: int, number of extra convolutional layers to add to featurizer (default=3)
     :return model: nn.Sequential or nn.Module
     """
     model = torch.nn.DataParallel(
-        yolo(darknet_layers(), weights_file=args['model'],
-            caffe_format_weights=args['is_caffemodel'],
-            num_classes=num_classes, num_extra_convs=num_extra_convs).cuda()
+        yolo_2extraconv(darknet_layers(), weights_file=args['model'],
+                        caffe_format_weights=args['is_caffemodel'],
+                        num_classes=num_classes).cuda()
     )
     model.eval()
     return model
@@ -131,7 +131,8 @@ def main():
         args["output"] = op.join(args["model"] + args["test"].replace('/', '_') + add2name + '.predict')
 
     log.console("Creating test data loader")
-    test_loader = yolo_test_data_loader(args["test"], batch_size=args["batch_size"],
+    test_loader = yolo_test_data_loader(args["test"], cmapfile=args["labelmap"],
+                                        batch_size=args["batch_size"],
                                         num_workers=args["workers"])
 
     cmap = load_labelmap_list(args["labelmap"])
