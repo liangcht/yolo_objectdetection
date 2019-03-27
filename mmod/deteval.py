@@ -100,6 +100,8 @@ def eval_one(truths, detresults, ovthresh=-1, confs=None, label_to_keys=None):
             c_truths = {key: c_truths[key] for key in c_truths if key in valid_keys}
             c_detects = [(key, conf, bbox) for key, conf, bbox in c_detects if key in valid_keys]
         (c_y_scores, c_y_trues, c_npos) = evaluate_(c_detects, c_truths, ovthresh)
+        c_coverage_ratio = float(np.sum(c_y_trues))/c_npos if c_npos != 0 else 0
+
         if confs and np.sum(c_y_trues):
             precision, recall, thresholds = metrics.precision_recall_curve(c_y_trues, c_y_scores)
             for conf in confs:
@@ -109,7 +111,7 @@ def eval_one(truths, detresults, ovthresh=-1, confs=None, label_to_keys=None):
                 if label not in class_thresh:
                     class_thresh[label] = {}
                 class_thresh[label].update({
-                    conf: (thresholds[indices[0]], recall[indices[0]])
+                    conf: (thresholds[indices[0]], recall[indices[0]] * c_coverage_ratio)
                 })
         if len(c_detects) > 0:
             c_true_sum = np.sum(c_y_trues)

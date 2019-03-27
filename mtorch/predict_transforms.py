@@ -4,8 +4,16 @@ from mmod.im_utils import im_rescale
 
 
 class ODImResize(object):
+    """Resizing transform of an image during inference
+    """
 
-    def __init__(self, target_size=416, maintain_ratio=True):
+    def __init__(self, target_size=(416, 416), maintain_ratio=True):
+        """Constructor of Resizing transform for inference
+        :param target_size: ideal size of an image (height, width) or scalar if height = width
+        :param maintain_ratio: if to maintain aspect ratio while testing
+        """
+        if not isinstance(target_size, tuple):
+            target_size = tuple(target_size, target_size)
         self.target_size = target_size
         self.maintain_ratio = maintain_ratio
 
@@ -25,17 +33,17 @@ class ODImResize(object):
     
     def _set_network_input_size(self, h, w):
         if self.maintain_ratio:
-            alpha = self.target_size / np.sqrt(h * w)
+            alpha = np.sqrt(self.target_size[0] * self.target_size[1]) / np.sqrt(h * w)
             height2 = int(np.round(alpha * h))
             width2 = int(np.round(alpha * w))
             if h > w:
                 self.network_input_height = (height2 + 31) / 32 * 32
-                self.network_input_width = ((self.network_input_height * w + h - 1) / h
-                                       + 31) / 32 * 32
+                self.network_input_width = ((self.network_input_height * w + h - 1) / h +
+                                            31) / 32 * 32
             else:
                 self.network_input_width = (width2 + 31) / 32 * 32
                 self.network_input_height = ((self.network_input_width * h + w - 1) / w +
-                                        31) / 32 * 32
+                                            31) / 32 * 32
         else:
-            self.network_input_width = self.target_size
-            self.network_input_height = self.target_size
+            self.network_input_height = self.target_size[0]
+            self.network_input_width = self.target_size[1]

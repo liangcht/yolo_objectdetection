@@ -4,7 +4,8 @@ from mtorch import Transforms
 from mtorch.predict_transforms import ODImResize
 
 MEANS = Transforms.COLOR_MEAN 
-CANVAS_SIZE = Transforms.DEF_CANVAS_SIZE 
+TRAIN_CANVAS_SIZE = Transforms.DEF_CANVAS_SIZE  # TODO: read from config
+TEST_CANVAS_SIZE = Transforms.DEF_CANVAS_SIZE  # TODO: read from config
 MAX_BOXES = 30
 USE_DARKNET_LIB = True
 NO_FLIP = 0
@@ -38,7 +39,8 @@ class BasicDarknetAugmentation(object):
         box_randomizer = Transforms.RandomizeBBoxes(self.max_boxes)
         random_distorter = Transforms.RandomDistort(hue=self.hue, saturation=self.saturation, exposure=self.exposure)
         random_resizer = Transforms.RandomResizeDarknet(self.jitter, library=Transforms.OPENCV)
-        darknet_random_resize_place = Transforms.DarknetRandomResizeAndPlaceOnCanvas(jitter=self.jitter)
+        darknet_random_resize_place = Transforms.DarknetRandomResizeAndPlaceOnCanvas(canvas_size=TRAIN_CANVAS_SIZE,
+                                                                                     jitter=self.jitter)
         horizontal_flipper = Transforms.RandomHorizontalFlip(self.flip)
         place_on_canvas = Transforms.PlaceOnCanvas()
         to_labels = Transforms.ToDarknetLabels(self.max_boxes)
@@ -140,7 +142,7 @@ class TestAugmentation(object):
 
     def __call__(self, means=MEANS):
         minus_dc = Transforms.SubtractMeans(means)
-        od_resizer = ODImResize()
+        od_resizer = ODImResize(target_size=TEST_CANVAS_SIZE)
         self.composed_transforms = Transforms.Compose(
             [Transforms.ToDarknetTensor(), minus_dc, self._permute_whc, self._to_numpy, od_resizer,
              transforms.functional.to_tensor])

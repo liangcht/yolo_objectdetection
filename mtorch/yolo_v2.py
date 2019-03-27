@@ -2,9 +2,9 @@ import torch
 import torch.nn as nn
 from collections import OrderedDict
 
-from common_network_blocks import conv_bn_relu_block
-from weights_init import msra_init
-from caffenet_weight_converter import prep_dict
+from mtorch.common_network_blocks import conv_bn_relu_block
+from mtorch.weights_init import msra_init
+from mtorch.caffenet_weight_converter import prep_dict
 
 __all__ = ['Yolo', 'yolo', 'yolo_0extraconv', 'yolo_1extraconv', 'yolo_2extraconv', 'yolo_3extraconv']
 

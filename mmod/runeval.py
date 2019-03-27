@@ -195,7 +195,7 @@ def run_eval(exp, ovthresh=None):
 
     overall = result['overall']
     err = None
-    for key in ['0.3', 0.3, '-1', -1]:
+    for key in ['0.5', 0.5, '-1', -1]:
         if key in overall:
             err = overall[key]['map']
             break
