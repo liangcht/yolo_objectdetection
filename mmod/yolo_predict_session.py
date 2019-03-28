@@ -64,14 +64,6 @@ def get_parser():
                         help='number of itertation to print predict progress')
     return parser
 
-args = get_parser().parse_args()
-args = vars(args)
-
-if "logdir" in args:
-    log = FileLogger(args["logdir"], is_master=True, is_rank0=True)
-else:
-    import logging as log
-
 
 def load_model(num_classes, num_extra_convs=2):
     """creates a yolo model for evaluation
@@ -116,15 +108,15 @@ def get_predictor(num_classes):
     """
     if args["use_treestructure"]:
         if args["single_class_nms"]:
-            return TreePredictorSingleClassNMS(args['tree'], num_classes=num_classes).cuda() 
+            return TreePredictorSingleClassNMS(args['tree'], num_classes=num_classes).cuda()
         return TreePredictorClassSpecificNMS(args['tree'], num_classes=num_classes).cuda()
     else:
         if args["single_class_nms"]:
-            return PlainPredictorSingleClassNMS(num_classes=num_classes).cuda() 
+            return PlainPredictorSingleClassNMS(num_classes=num_classes).cuda()
         return PlainPredictorClassSpecificNMS(num_classes=num_classes).cuda()
 
 
-def main():
+def main(args, log):
     add2name = ""
     if args["output"] is None:
         add2name += '.single_class_nms' if args["single_class_nms"] else '.class_specific_nms'
@@ -189,4 +181,12 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    args = get_parser().parse_args()
+    args = vars(args)
+
+    if "logdir" in args:
+        log = FileLogger(args["logdir"], is_master=True, is_rank0=True)
+    else:
+        import logging as log
+
+    main(args, log)

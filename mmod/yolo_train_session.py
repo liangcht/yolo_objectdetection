@@ -93,17 +93,7 @@ def get_parser():
                         help='dist_url')
     return parser
 
-
 MAX_EPOCH = 128
-
-args = get_parser().parse_args()
-args = vars(args)
-args["local_rank"] = dist_utils.env_rank()  # this may be different on a different machine
-
-is_master = (not args["distributed"]) or (dist_utils.env_rank() == 0)
-is_rank0 = args["local_rank"] == 0
-log = FileLogger(args["logdir"], is_master=is_master, is_rank0=is_rank0)
-
 
 def last_snapshot_path(prefix, max_epoch=None):
     """Find the last checkpoints inside given prefix paths
@@ -148,8 +138,8 @@ def snapshot(model, criterion, losses, epoch, snapshot_prefix, optimizer=None):
     :param model: model to snapshot
     :param criterion: loss - required for saving seen_images
     :param losses: list of losses
-    :param epoch: int, epoch reached so far 
-    :param snapshot_prefix: str, file to save the current 
+    :param epoch: int, epoch reached so far
+    :param snapshot_prefix: str, file to save the current
     :param optimizer: torch.optim.SGD - required to continue training properly,
     is not reqired for testing
     """
@@ -193,13 +183,14 @@ def restore_state(model, optimizer, latest_snapshot):
     return checkpoint['seen_images'], checkpoint['epochs']
 
 
-def train(trn_loader, model, criterion, optimizer, scheduler, epoch, loss_arr):
+def train(trn_loader, model, criterion, optimizer, scheduler, epoch, loss_arr,
+        iterations_left):
     """
     :param trn_loader: utils.data.DataLoader, data loader for training
     :param model: torch.nn.Module or nn.Sequential, model
-    :param criterion: torch.nn.Module, loss 
-    :param optimizer: torch.optim, optimizer to update model 
-    :param scheduler: torch.optim.lr_scheduler, takes care of weight decay and learning rate updates  
+    :param criterion: torch.nn.Module, loss
+    :param optimizer: torch.optim, optimizer to update model
+    :param scheduler: torch.optim.lr_scheduler, takes care of weight decay and learning rate updates
     :param epoch: int, current epoch
     :param loss_arr: list, stores all the losses
      """
@@ -242,9 +233,12 @@ def train(trn_loader, model, criterion, optimizer, scheduler, epoch, loss_arr):
                 .format(float(batch_num) / last_batch, epoch, timer.batch_time.val,
                         losses.val, batch_total, scheduler.get_lr())
             log.verbose(output)
+        if iterations_left is not None:
+            iterations_left = iterations_left - 1
+            if iterations_left <= 0:
+                break
 
-
-def main():
+def main(args, log):
     log.console(args)
     if args["distributed"]:
         log.console('Distributed initializing process group')
@@ -269,12 +263,16 @@ def main():
 
     if args["distributed"]:
         model = dist_utils.DDP(model, device_ids=[args['local_rank']], output_device=args['local_rank'])
-
-    solver_params = parse_prototxt(args['solver'])
+    if args['solver'].endswith('.prototxt'):
+        solver_params = parse_prototxt(args['solver'])
+    else:
+        assert args['solver'].endswith('.yaml')
+        from mmod.io_utils import load_from_yaml_file
+        solver_params = load_from_yaml_file(args['solver'])
     lrs = get_lrs(solver_params)
     steps = get_steps(solver_params)
 
-    # code below sets caffe compatible learning rate and weight decay hyper parameters 
+    # code below sets caffe compatible learning rate and weight decay hyper parameters
     decay, no_decay, lr2 = [], [], []
     for name, param in model.named_parameters():
         if not param.requires_grad:
@@ -351,9 +349,13 @@ def main():
 
     loss_arr = []
     epoch = start_epoch
+    iterations_left = int(float(solver_params["max_iter"]))
+    if iterations_left == 0:
+        iterations_left = None
     for epoch in range(start_epoch, num_epochs):
         data_loader.sampler.set_epoch(epoch)
-        train(data_loader, model, criterion, optimizer, scheduler, epoch, loss_arr)
+        train(data_loader, model, criterion, optimizer, scheduler, epoch,
+                loss_arr, iterations_left)
         time_diff = (datetime.now() - start_time).total_seconds() / 3600.0
         log.event('{}\t {}\n'.format(epoch, time_diff))
         if args["local_rank"] == 0 and epoch % float(solver_params["snapshot"]) == 0:
@@ -365,10 +367,18 @@ def main():
 
 
 if __name__ == '__main__':
+    args = get_parser().parse_args()
+    args = vars(args)
+    args["local_rank"] = dist_utils.env_rank()  # this may be different on a different machine
+
+    is_master = (not args["distributed"]) or (dist_utils.env_rank() == 0)
+    is_rank0 = args["local_rank"] == 0
+    log = FileLogger(args["logdir"], is_master=is_master, is_rank0=is_rank0)
+
     try:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", category=UserWarning)
-            main()
+            main(args, log)
     except Exception as e:
         exc_type, exc_value, exc_traceback = sys.exc_info()
         log.event(e)
