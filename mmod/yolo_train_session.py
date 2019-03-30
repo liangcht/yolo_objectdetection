@@ -95,7 +95,7 @@ def get_parser():
 
 MAX_EPOCH = 128
 
-def last_snapshot_path(prefix, max_epoch=None):
+def last_snapshot_path(prefix, max_epoch=None, args=None):
     """Find the last checkpoints inside given prefix paths
     Look at the paths in prefixes, and return once found
     :param prefix: str, paths to check for the snapshot
@@ -103,7 +103,7 @@ def last_snapshot_path(prefix, max_epoch=None):
     :exception: ValueError if last snapshot is not a valid path or cannot be retried
     :return: snapshot, str
     """
-    if args["latest_snapshot"] is not None and op.isfile(args["latest_snapshot"]):
+    if args and args["latest_snapshot"] is not None and op.isfile(args["latest_snapshot"]):
         return args["latest_snapshot"]
 
     last_epoch = -1
@@ -132,8 +132,12 @@ def last_snapshot_path(prefix, max_epoch=None):
 
     return snapshot_path
 
+def get_snapshot(snapshot_prefix, epoch):
+    snapshot_pt = snapshot_prefix + "_epoch_{}".format(epoch + 1) + '.pt'
+    return snapshot_pt
 
-def snapshot(model, criterion, losses, epoch, snapshot_prefix, optimizer=None):
+def snapshot(model, criterion, losses, epoch, snapshot_prefix,
+        log, optimizer=None):
     """Takes a snapshot of training procedure
     :param model: model to snapshot
     :param criterion: loss - required for saving seen_images
@@ -150,7 +154,7 @@ def snapshot(model, criterion, losses, epoch, snapshot_prefix, optimizer=None):
     if op.basename(snapshot_prefix) != "model":
         snapshot_prefix = op.join(snapshot_dir, "model")
 
-    snapshot_pt = snapshot_prefix + "_epoch_{}".format(epoch) + '.pt'
+    snapshot_pt = get_snapshot(snapshot_prefix, epoch)
     snapshot_losses_pt = snapshot_prefix + "_losses.pt"
 
     state = {
@@ -168,7 +172,6 @@ def snapshot(model, criterion, losses, epoch, snapshot_prefix, optimizer=None):
     torch.save(state, snapshot_pt)
     torch.save(losses, snapshot_losses_pt)
 
-
 def restore_state(model, optimizer, latest_snapshot):
     """restores the latest state of training from a snapshot
     :param model: will update model weights from latest state_dict
@@ -184,7 +187,7 @@ def restore_state(model, optimizer, latest_snapshot):
 
 
 def train(trn_loader, model, criterion, optimizer, scheduler, epoch, loss_arr,
-        iterations_left):
+        args, iterations_left, log):
     """
     :param trn_loader: utils.data.DataLoader, data loader for training
     :param model: torch.nn.Module or nn.Sequential, model
@@ -229,8 +232,9 @@ def train(trn_loader, model, criterion, optimizer, scheduler, epoch, loss_arr,
         loss_arr.append(torch.tensor(reduced_loss))
         should_print = (args["display"] and batch_num % args["display"] == 0) or batch_num == last_batch
         if should_print:
-            output = "{:.2f} Epoch {}: Time per iter =  {:.4f}s), loss = {:.4f},batch_total = {}, lr = {}" \
+            output = "{:.2f} Epoch {}: Time per iter = {:.4f}s, Time left = {:.2f}h), loss = {:.4f}, batch_total = {}, lr = {}" \
                 .format(float(batch_num) / last_batch, epoch, timer.batch_time.val,
+                        (timer.batch_time.val * iterations_left) / 3600.,
                         losses.val, batch_total, scheduler.get_lr())
             log.verbose(output)
         if iterations_left is not None:
@@ -313,7 +317,8 @@ def main(args, log):
     last_epoch = -1
     if args["restore"]:
         try:
-            latest_snapshot = last_snapshot_path(solver_params["snapshot_prefix"], num_epochs)
+            latest_snapshot = last_snapshot_path(solver_params["snapshot_prefix"],
+                    num_epochs, args)
         except ValueError as exp:
             log.event("Cannot restore from latest snapshot " + exp)
         else:
@@ -355,15 +360,19 @@ def main(args, log):
     for epoch in range(start_epoch, num_epochs):
         data_loader.sampler.set_epoch(epoch)
         train(data_loader, model, criterion, optimizer, scheduler, epoch,
-                loss_arr, iterations_left)
+                loss_arr, args, iterations_left, log)
         time_diff = (datetime.now() - start_time).total_seconds() / 3600.0
         log.event('{}\t {}\n'.format(epoch, time_diff))
         if args["local_rank"] == 0 and epoch % float(solver_params["snapshot"]) == 0:
-            snapshot(model, criterion, loss_arr, epoch, solver_params["snapshot_prefix"], optimizer=optimizer)
+            snapshot(model, criterion, loss_arr, epoch, solver_params["snapshot_prefix"],
+                    optimizer=optimizer, log=log)
 
     log.console("Snapshoting final model")
     if args["local_rank"] == 0:
-        snapshot(model, criterion, loss_arr, epoch, solver_params["snapshot_prefix"], optimizer=optimizer)
+        snapshot(model, criterion, loss_arr, epoch, solver_params["snapshot_prefix"],
+                optimizer=optimizer, log=log)
+
+    return get_snapshot(solver_params['snapshot_prefix'], epoch)
 
 
 if __name__ == '__main__':

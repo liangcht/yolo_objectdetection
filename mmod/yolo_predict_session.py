@@ -65,7 +65,7 @@ def get_parser():
     return parser
 
 
-def load_model(num_classes, num_extra_convs=2):
+def load_model(num_classes, args, num_extra_convs=2):
     """creates a yolo model for evaluation
     :param num_classes: int, number of classes to detect
     :param num_extra_convs: int, number of extra convolutional layers to add to featurizer (default=3)
@@ -101,7 +101,7 @@ def write_predict(outtsv_file, results):
         log.event(e)
 
 
-def get_predictor(num_classes):
+def get_predictor(num_classes, args):
     """creates a yolo model for evaluation
     :param num_classes, int, number of classes to detect
     :return model: nn.Sequential or nn.Module
@@ -130,8 +130,8 @@ def main(args, log):
     cmap = load_labelmap_list(args["labelmap"])
 
     log.console("Loading model")
-    model = load_model(len(cmap))
-    yolo_predictor = get_predictor(len(cmap))
+    model = load_model(len(cmap), args)
+    yolo_predictor = get_predictor(len(cmap), args)
 
     batch_time = AverageMeter()
     data_time = AverageMeter()
