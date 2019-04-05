@@ -246,9 +246,12 @@ def main(args, log):
     log.console(args)
     if args["distributed"]:
         log.console('Distributed initializing process group')
-        torch.cuda.set_device(args['local_rank'])  # probably local_rank = 0
-        dist.init_process_group(backend='nccl', init_method=args["dist_url"], rank=dist_utils.env_rank(),
-                                world_size=dist_utils.env_world_size())
+        if not dist.is_initialized():
+            torch.cuda.set_device(args['local_rank'])  # probably local_rank = 0
+            dist.init_process_group(backend='nccl', init_method=args["dist_url"], rank=dist_utils.env_rank(),
+                                    world_size=dist_utils.env_world_size())
+        else:
+            assert torch.cuda.current_device() == args['local_rank']
         assert (dist_utils.env_world_size() == dist.get_world_size())  # check if there are
         log.console("Distributed: success ({}/{})".format(args["local_rank"], dist.get_world_size()))
 
@@ -257,12 +260,15 @@ def main(args, log):
 
     if args['only_backbone']:
         model = yolo_2extraconv(darknet_layers(weights_file=args['model'],
-                                caffe_format_weights=args['is_caffemodel']),
+                                               caffe_format_weights=args['is_caffemodel'],
+                                               map_location=lambda storage, loc: storage.cuda(args['local_rank'])),
                                 num_classes=len(cmap)).cuda()
     else:
-        model = yolo_2extraconv(darknet_layers(), weights_file=args['model'],
-                                caffe_format_weights=args['is_caffemodel'],
-                                num_classes=len(cmap)).cuda()
+        model = yolo_2extraconv(darknet_layers(),
+                weights_file=args['model'],
+                caffe_format_weights=args['is_caffemodel'],
+                num_classes=len(cmap),
+                map_location=lambda storage, loc: storage.cuda(args['local_rank'])).cuda()
     seen_images = model.seen_images
 
     if args["distributed"]:
