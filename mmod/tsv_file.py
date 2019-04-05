@@ -15,7 +15,7 @@ class TsvFile(object):
     _IGNORE_DICTS = {'_offsets', '_label_offsets', '_inverted_offsets', '_cache',
                      '_is_open', '_shuffle'}
 
-    def __init__(self, sources, labels=None, cmapfiles=None):
+    def __init__(self, sources, labels=None, cmapfiles=None, shuffle_file=None):
         self._len = 0
         self._is_open = False  # if the index is full open
         self._sources = {}
@@ -30,7 +30,7 @@ class TsvFile(object):
         self._cache = None  # type: FileCache
         self._sources_type = {}
         self._inverted_file = None
-        self._shuffle_file = None
+        self._shuffle_file = shuffle_file
         self._is_composite = False
         self._shuffle = None
         self._cmapfile = None
@@ -148,6 +148,10 @@ class TsvFile(object):
         # key is flat index
         if key < 0:
             key += self._len
+        if self._shuffle_file:
+            source_idx, lidx = self._shuffle[key]
+            source = self._idx_sources[source_idx]
+            return self[(source, lidx)]
         for source, (lrng, rng) in self._sources.iteritems():
             if key in rng:
                 key -= rng[0]
@@ -194,6 +198,11 @@ class TsvFile(object):
         return -self._len <= key < self._len
 
     def __iter__(self):
+        if self._shuffle_file:
+            for source_idx, lidx in self._shuffle:
+                source = self._idx_sources[source_idx]
+                yield self[(source, lidx)]
+            return
         for source, (lrng, rng) in self._sources.iteritems():
             for idx in rng:
                 idx -= rng[0]
@@ -249,7 +258,11 @@ class TsvFile(object):
             if labels:
                 self._labels[source] = label_file
             last_idx += count
-        self._len = last_idx
+        if self._shuffle_file:
+            self._shuffle = self._chached_shuffle()
+            self._len = len(self._shuffle)
+        else:
+            self._len = last_idx
 
     def _composite_sources(self, source, labels=None):
         """Return sources from potentially composite source (list of other sources)
@@ -270,14 +283,18 @@ class TsvFile(object):
                 labels = [None] * len(sources)
             self._is_composite = True
             # composite sources also could have a single inverted file
-            inverted_file = splitfilename(source, 'inverted.label', is_composite=True)
-            shuffle_file = splitfilename(source, 'shuffle.txt', is_composite=True, keep_ext=False)
-            if op.isfile(inverted_file) and op.isfile(shuffle_file):
-                self._inverted_file = inverted_file
-                self._shuffle_file = shuffle_file
-            cmapfile = op.join(op.dirname(source), "labelmap.txt")
-            if op.isfile(cmapfile):
-                self._cmapfile = cmapfile
+            if self._inverted_file is None:
+                inverted_file = splitfilename(source, 'inverted.label', is_composite=True)
+                if op.isfile(inverted_file):
+                    self._inverted_file = inverted_file
+            if self._shuffle_file is None:
+                shuffle_file = splitfilename(source, 'shuffle.txt', is_composite=True, keep_ext=False)
+                if op.isfile(shuffle_file):
+                    self._shuffle_file = shuffle_file
+            if self._cmapfile is None:
+                cmapfile = op.join(op.dirname(source), "labelmap.txt")
+                if op.isfile(cmapfile):
+                    self._cmapfile = cmapfile
 
             return sources, labels
 
@@ -373,8 +390,15 @@ class TsvFile(object):
     def _filter_shuffle_lines(source_idx, lines, shuffle):
         return [shuffle[idx][1] for idx in lines if shuffle[idx][0] == source_idx]
 
+    def _chached_shuffle(self):
+        if self._shuffle is not None:
+            return self._shuffle
+        with open(self._shuffle_file) as fp:
+            return [[int(l) for l in line.split()] for line in fp.readlines() if line]
+
     def _iter_inverted(self, class_label, source=None, tax=None, cache=None):
-        """Iterate over inverted file and its offset for a class label
+        """Iterate over inverted file and its offset for a class label.
+        Composite inverted files index shuffle files, not the actual db
         :param class_label: class label to find in the index
         :type class_label: str
         :param source: source data source to limit the labels from
@@ -389,11 +413,6 @@ class TsvFile(object):
             source = op.normpath(source).replace("\\", "/")
             assert source in self._sources, "{} is not a valid data source".format(source)
             sources = [source]
-        # with shuffle file we have to read the entire list because we cannot seek to a file
-        if self._shuffle is None:
-            with open(self._shuffle_file) as fp:
-                self._shuffle = [[int(l) for l in line.split()] for line in fp.readlines()]
-
         inverted_file = self._inverted_file
         offsets = self._cached_inverted_offsets(inverted_file, cache=cache)
         if not tax:
@@ -473,7 +492,7 @@ class TsvFile(object):
         :rtype: tuple[str, int, int]
         """
         class_label = class_label.lower()  # we cache and search the lower form
-        if self._shuffle_file:
+        if self._inverted_file and self._shuffle_file:
             with file_cache() as cache:
                 for source, lines in self._iter_inverted(
                         class_label, source=source, tax=tax, cache=cache

@@ -20,7 +20,7 @@ class ImageDatabase(object):
     _DB_TYPE_TSV = 3        # a TSV file
     _DB_TYPE_IMAGE = 4      # a single image file
 
-    def __init__(self, path, raise_error=False, name=None, cmapfile=None):
+    def __init__(self, path, raise_error=False, name=None, cmapfile=None, shuffle_file=None):
         self._index = None  # type: TsvFile or list
         self._cache = None  # type: FileCache
         self._type = None
@@ -51,15 +51,16 @@ class ImageDatabase(object):
         elif self._type == self._DB_TYPE_PROTOTXT:
             model = parse_prototxt(path)
             self._tax_path = softmax_tree_path(model)
-            sources, labels = tsv_data_sources(model)
+            sources, labels, _shuffle_file = tsv_data_sources(model)
             if not self._cmapfile:
                 self._cmapfile = parse_key_value(path, 'labelmap')
 
             self._index = TsvFile(sources,
                                   labels=labels,
-                                  cmapfiles=self._cmapfile)
+                                  cmapfiles=self._cmapfile,
+                                  shuffle_file=shuffle_file or _shuffle_file)
         elif self._type == self._DB_TYPE_TSV:
-            self._index = TsvFile(path)
+            self._index = TsvFile(path, shuffle_file=shuffle_file)
 
         assert self._index, "No images found for {}".format(self)
 

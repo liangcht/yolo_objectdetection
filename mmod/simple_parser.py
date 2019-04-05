@@ -145,8 +145,10 @@ def softmax_tree_path(model):
 def tsv_data_sources(model):
     """Find TSV data sources
     :param model: caffe prototxt model or net info dict
-    :return: list of paths to sources, and optionally list of paths to labels for those sources
-    :rtype: (list, list)
+    :return: list of paths to sources,
+             and optionally list of paths to labels for those sources
+             and optionally the shuffle file
+    :rtype: (list, list, str)
     """
     if isinstance(model, dict):
         for layer in model['layers']:
@@ -158,10 +160,12 @@ def tsv_data_sources(model):
                 labels = param.get('source_label', [])
                 if not isinstance(labels, list):
                     labels = [labels]
-                return sources, labels or None
+                source_shuffle = param.get('source_shuffle')
+                return sources, labels or None, source_shuffle
         return [], None
     labels = []
     sources = []
+    source_shuffle = None
     n_layer = len(model.layer)
     for i in range(n_layer):
         layer = model.layer[i]
@@ -170,7 +174,9 @@ def tsv_data_sources(model):
                 sources += layer.tsv_data_param.source
             if layer.tsv_data_param.source_label:
                 labels += layer.tsv_data_param.source_label
-    return sources, labels or None
+            if layer.tsv_data_param.source_shuffle:
+                source_shuffle = layer.tsv_data_param.source_shuffle
+    return sources, labels or None, source_shuffle
 
 
 def lift_hier(parents):
