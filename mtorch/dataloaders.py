@@ -25,6 +25,12 @@ def _list_collate(batch):
     items = list(zip(*batch))
     return items
 
+def create_imdb_dataset(path, cmapfile, transform, labeler=None, **kwargs):
+    if '$' in path:
+        from mtorch.imdbtsvdata import ImdbTSVData
+        return ImdbTSVData(path, cmapfile, transform, labeler, **kwargs)
+    else:
+        return ImdbData(path, cmapfile, transform, labeler, **kwargs)
 
 def yolo_train_data_loader(datafile, cmapfile=None, batch_size=16, num_workers=2, distributed=True):
     """prepares data loader for training
@@ -35,15 +41,13 @@ def yolo_train_data_loader(datafile, cmapfile=None, batch_size=16, num_workers=2
     :return: data loader
     """
     augmenter = DefaultDarknetAugmentation()
-    augmented_dataset = ImdbData(path=datafile,
-                                 cmapfile=cmapfile,
-                                 transform=augmenter(),
-                                 labeler=Labeler())
+    augmented_dataset = create_imdb_dataset(datafile,
+            cmapfile, augmenter(), Labeler())
 
     if WRAPPING:
         total_batch_size = batch_size * env_world_size()
-        num_iters_per_epoch = max(MIN_ITERS_PER_EPOCH, 
-                                int(np.ceil(float(len(augmented_dataset)) / float(total_batch_size)))) 
+        num_iters_per_epoch = max(MIN_ITERS_PER_EPOCH,
+                                int(np.ceil(float(len(augmented_dataset)) / float(total_batch_size))))
         full_epoch_dataset_length = num_iters_per_epoch * total_batch_size
         if SEQUENTIAL_SAMPLER:
             sampler = DistributedSequentialWrappingSampler(
@@ -78,10 +82,11 @@ def yolo_test_data_loader(datafile, cmapfile=None, batch_size=1, num_workers=2):
     :return: data loader
     """
     test_augmenter = TestAugmentation()
-    augmented_dataset = ImdbData(path=datafile,
+    augmented_dataset = create_imdb_dataset(path=datafile,
                                  cmapfile=cmapfile,
                                  transform=test_augmenter(),
                                  predict_phase=True)
+
     sampler = SequentialSampler(augmented_dataset)
 
     return DataLoader(augmented_dataset, batch_size=batch_size,
