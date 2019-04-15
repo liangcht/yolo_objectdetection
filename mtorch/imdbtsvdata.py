@@ -33,16 +33,16 @@ class ImdbTSVData(TSVSplit):
 
         self.transform = transform
         self.labeler = labeler
-        assert labeler is None
         self.predict_phase = predict_phase
         self.cmapfile=cmapfile
-        self.cmap = None
+        self._cmap = None
 
-    def get_cmap(self):
-        if self.cmap is None:
+    @property
+    def cmap(self):
+        if self._cmap is None:
             from qd.qd_common import load_list_file
-            self.cmap = load_list_file(self.cmapfile)
-        return self.cmap
+            self._cmap = load_list_file(self.cmapfile)
+        return self._cmap
 
     def __repr__(self):
         return '{}, {}, version = {}'.format(self.data, self.split,
