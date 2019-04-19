@@ -59,12 +59,8 @@ class Scale(nn.Module):
         return 'Scale(channels = %d)' % self.channels
 
     def forward(self, x):
-        n_b = x.size(0)
         n_c = x.size(1)
-        n_h = x.size(2)
-        n_w = x.size(3)
-        x = x * self.weight.view(1, n_c, 1, 1).expand(n_b, n_c, n_h, n_w) + \
-            self.bias.view(1, n_c, 1, 1).expand(n_b, n_c, n_h, n_w)
+        x = x * self.weight.view(1, n_c, 1, 1) + self.bias.view(1, n_c, 1, 1)
         return x
 
 

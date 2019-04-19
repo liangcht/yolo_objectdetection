@@ -37,8 +37,10 @@ class CaffeNet(nn.Module):
                  local_gpus_size=1,
                  world_size=1,
                  seen_images=0, batch_size=None,
+                 targets=None,
                  phase='TRAIN'):
         super(CaffeNet, self).__init__()
+        self.manual_targets = targets is not None
         self.phase = phase
         self.blobs = None
         self.output = None
@@ -75,7 +77,7 @@ class CaffeNet(nn.Module):
         if 'mean_file' in self.net_info['props']:
             self.has_mean = True
             self.mean_file = self.net_info['props']['mean_file']
-        self.targets = self.get_targets()
+        self.targets = self.get_targets(targets)
 
     def _blob_shape(self, btname):
         if not isinstance(btname, list):
@@ -225,8 +227,13 @@ class CaffeNet(nn.Module):
         if self.targets:
             tdatas = [[tname, self.blobs.get(tname)] for tname in self.targets]
             odatas = [d[1] for d in tdatas if d[1] is not None]
-            # stack the outputs if all are loss values, otherwise return a dict
+            # stack the outputs if all are loss values, otherwise return a dict or list
             if len(odatas) > 1:
+                if self.manual_targets:
+                    tdatas = {
+                        d[0]: d[1] for d in tdatas if d[1] is not None
+                    }
+                    return [tdatas[d] for d in self.targets if tdatas[d] is not None]
                 for d in odatas:
                     if d.numel() != 1:
                         return {
@@ -234,8 +241,9 @@ class CaffeNet(nn.Module):
                         }
             return torch.stack(odatas).squeeze()
 
-    def get_targets(self):
+    def get_targets(self, manual_targets=None):
         """Automaticlly get the set of network outputs
+        :param manual_targets: manual targets
         :rtype: set
         """
         layers = self.net_info['layers']
@@ -247,6 +255,11 @@ class CaffeNet(nn.Module):
             tname = layer['top']
             tnames = tname if type(tname) == list else [tname]
             targets.update(tnames)
+
+        if manual_targets:
+            for t in manual_targets:
+                assert t in targets, "Target: {} is not valid".format(t)
+            return manual_targets
 
         bottoms = set()
         for layer in layers:

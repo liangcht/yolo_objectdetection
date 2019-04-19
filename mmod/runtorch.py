@@ -16,7 +16,7 @@ from torch.utils.data.distributed import DistributedSampler
 try:
     # indirect import of matplotlib (e.g. by caffe) may try to load non-existent X
     import matplotlib
-    matplotlib.use('Agg')
+    matplotlib.use('Agg', warn=False)
 except ImportError:
     matplotlib = None
 

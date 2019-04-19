@@ -19,7 +19,7 @@ SUPPORTED_LAYERS = ['Data', 'TsvBoxData', 'AnnotatedData', 'HDF5Data', 'Pooling'
 try:
     # indirect import of matplotlib (e.g. by caffe) may try to load non-existent X
     import matplotlib
-    matplotlib.use('Agg')
+    matplotlib.use('Agg', warn=False)
 except ImportError:
     matplotlib = None
 
