@@ -101,6 +101,14 @@ def recursive_files_list(path, ext_list=None, ignore_prefixes=None):
     return file_list
 
 
+def limit_value(v, lim):
+    if v < lim[0]:
+        v = lim[0]
+    if v > lim[1]:
+        v = lim[1]
+    return v
+
+
 def tile_rects(db, keys, key_rects, target_size, label, jpg_path):
     """Create single inverted file for a db
     :param db: the imdb to create
@@ -124,10 +132,19 @@ def tile_rects(db, keys, key_rects, target_size, label, jpg_path):
     for key, rect in zip(keys, key_rects):
         im = db.image(key)
         left, top, right, bot = rect
+
+        top = limit_value(top, [0, im.shape[0] - 1])
+        bot =  limit_value(left, [0, im.shape[0] - 1])
+
+        left = limit_value(left, im.shape[1] - 1)
+        right = limit_value(right, im.shape[1] - 1)
+
         if bot <= top or right <= left:
             logging.error("Ignore Invalid ROI: {} for label: {} key: {}".format(rect, label, key))
             continue
+
         roi = im_rescale(im[top:bot, left:right], target_size)
+
         h, w = roi.shape[:2]
         x2 = x + w
         y2 = y + h
