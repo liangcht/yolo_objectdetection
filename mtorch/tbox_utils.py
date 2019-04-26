@@ -1,6 +1,13 @@
 import numpy as np
+import torch
 
 BBOX_DIM = 4
+
+__all__ = ['Labeler', 'RegionCropper' ,'ClassLabeler']
+
+
+def _to_bbox(truth):
+    return [float(val) for val in truth['rect']]
 
 
 class Labeler(object):
@@ -14,8 +21,7 @@ class Labeler(object):
         pass
     
     def __call__(self, truth_list, cmap, filter_difficult=True):
-        """
-        Constructs bounding boxes according to the following format:
+        """Constructs bounding boxes according to the following format:
         x for left, y for top, x for right, y for bottom, class
         :param truth_list: bounding boxes
         :param cmap: the map the converts between the class string labels
@@ -28,8 +34,7 @@ class Labeler(object):
 
     @staticmethod
     def create_bounding_boxes(truth, cmap, filter_difficult):
-        """
-        Create bounding boxes
+        """Create bounding boxes
         :param truth: bounding boxes
         :param cmap: class to numeric value conversion map
         :param filter_difficult: boolean, if true filters difficult labels,
@@ -49,3 +54,46 @@ class Labeler(object):
         return bboxs
 
 
+class ClassLabeler(object):
+    """Creates labels in a format of top left bottom right corners of bounding box
+    Attaches class per each label
+    """
+
+    def __init__(self, cond):
+        """Constructor of Labeler Class
+        :param cond: any condition that a valid bounding box should follow
+        """
+        self.condition = cond
+    
+    def __call__(self, bbox, cmap):
+        """Constructs label according to the following format:
+        x for left, y for top, x for right, y for bottom, class
+        :param bbox: bounding box
+        :param cmap: the map the converts between the class string labels
+        and corresponding numeric labels
+        :return: number of boxes x 5 numpy array of float32
+        """
+        if self.condition(bbox):
+            label = cmap.index(bbox['class']) 
+        else:
+            label = len(cmap)
+        label = torch.from_numpy(np.array(label, dtype=np.int))
+  
+        return label
+     
+
+class RegionCropper(object):
+    """Crops regions from provided ground truth based on conditions
+    """
+    def __init__(self, conds):
+        """Constructor of RegionCropper
+        :param conds: conditions that valid boxes should follow
+        """
+        self.conds = conds
+
+    def __call__(self, truths):
+        filtered = truths
+        for cond in self.conds:
+            filtered = [truth for truth in filtered if cond(_to_bbox(truth))]
+
+        return filtered

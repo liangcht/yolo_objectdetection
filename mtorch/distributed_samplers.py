@@ -1,6 +1,7 @@
 import math
 import torch
 from torch.utils.data.distributed import DistributedSampler
+from mtorch.classifier_train_utils import get_labels_hist
 
 __all__ = ['DistributedSequentialWrappingSampler', 'DistributedRandomWrappingSampler']
 
@@ -144,3 +145,61 @@ class DistributedRandomWrappingSampler(DistributedWrappingSampler):
         indexes = [ind % len(self.dataset) for ind in range(self._start, self._stop)]
         random_inds = torch.randperm(len(indexes), generator=g).tolist()
         return [indexes[random_ind] for random_ind in random_inds]
+
+class DistributedBalancedSampler(DistributedSampler):
+    """Sequential Sampler that restricts data loading to a subset of the dataset.
+
+    It is especially useful in conjunction with
+    :class:`torch.nn.parallel.DistributedDataParallel`. In such case, each
+    process can pass a DistributedSampler instance as a DataLoader sampler,
+    and load a subset of the original dataset that is exclusive to it.
+
+    To ensure compatibility with caffe:
+    It wraps around the dataset to ensure equal size batches within an epoch
+    and per GPU/nodes/process (see also WrappingSampler if distribution is not required).
+
+    Parameters:
+        dataset: Dataset used for sampling.
+        required_epoch_length: int, the required length of dataset to ensure
+        equally sized batches within
+        num_replicas (optional): Number of processes participating in
+            distributed training.
+        rank (optional): Rank of the current process within num_replicas.
+    """
+
+    def __init__(self, data_source, required_epoch_length, num_replicas=None, rank=None):
+        """ Constructs the object of DistributedSequentialWrappingSampler
+        :param dataset:  the dataset to sample
+        :param required_epoch_length: required number of samples in epoch
+        :param num_replicas: number of GPUs/nodes/processes
+        :param rank: rank of this particular GPU/node/process
+        """
+        super(DistributedBalancedSampler, self).__init__(data_source, 
+                                                        num_replicas=num_replicas, rank=rank)
+        self.labels_hist = get_labels_hist(data_source)
+        self.imdb = data_source.imdb
+        self.num_images_per_label = int(required_epoch_length / float(len(self.labels_hist)))
+    
+    def __iter__(self):
+        """iterator
+        :return: indexes per replica
+        """
+        indexes = self._subsample(self._choose_indexes())
+        return iter(indexes)
+
+    def _subsample(self, indexes):
+        """helper to subsample indexes"""
+        return indexes[self.rank: self._length: self.num_replicas]
+
+    def _choose_indexes(self):
+        """helper to subsample indexes"""
+        g = torch.Generator()
+        g.manual_seed(self.epoch)
+        indexes = [] 
+        for label in self.imdb.iter_cmap():
+            keys = list(self.imdb.iter_label(label))
+            label_indexs = [key[2] for key in keys]
+            rand_samples = torch.randint(low=0, high=len(label_indexs), size=(self.num_images_per_label, )).tolist()
+            indexes.extend(label_indexs[rand_samples])
+        #permuted_indexes = torch.randperm(len(indexes), generator=g).tolist()
+        return indexes

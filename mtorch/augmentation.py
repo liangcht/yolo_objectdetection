@@ -12,7 +12,7 @@ NO_FLIP = 0
 RANDOM_FLIP = Transforms.FLIP_PROB
 
 __all__ = ['BasicDarknetAugmentation', 'DefaultDarknetAugmentation', 
-           'DarknetAugmentation', 'TestAugmentation']
+           'DarknetAugmentation', 'TestAugmentation', 'ClassifierTrainAugmentation', 'ClassifierTestAugmentation']
 
 
 class BasicDarknetAugmentation(object):
@@ -157,6 +157,48 @@ class TestAugmentation(object):
         return x.permute((1, 2, 0))
 
 
+class ClassifierTrainAugmentation(object):
+
+    def __init__(self):
+        self._set_augmentation_params()
+    
+    def __call__(self):
+        normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                 std=[0.229, 0.224, 0.225])
+        return transforms.Compose([
+            transforms.Resize(256),
+            transforms.RandomResizedCrop(224, scale=self.scale),
+            transforms.RandomAffine(degrees=self.rotation_upto_deg),
+            transforms.ColorJitter(brightness=self.exposure, saturation=self.saturation, hue=self.hue),
+            transforms.RandomHorizontalFlip(self.flip),
+            transforms.ToTensor(),
+            normalize,
+        ])
+
+    def _set_augmentation_params(self):
+        self.hue = 0
+        self.saturation = 1
+        self.exposure = 1
+        self.rotation_upto_deg = 180 
+        self.scale = (0.25, 2)
+        self.flip = RANDOM_FLIP
+
+
+class ClassifierTestAugmentation(object):
+    def __init__(self):
+        pass
+
+    def __call__(self):
+        normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                 std=[0.229, 0.224, 0.225])
+
+        return transforms.Compose([
+            transforms.Resize(256),
+            transforms.CenterCrop(224),
+            transforms.ToTensor(),
+            normalize])
+
+
 class _DebugAugmentation(object):
     """Debug augmentation
     Currently not used
@@ -173,3 +215,6 @@ class _DebugAugmentation(object):
         self.composed_transforms = Transforms.Compose(
             [crop300, to_labels, to_tensor, minus_dc])
         return self.composed_transforms
+
+
+ 

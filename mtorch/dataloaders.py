@@ -3,19 +3,18 @@ import numpy as np
 from torch.utils.data import DataLoader
 from torch.utils.data.distributed import DistributedSampler
 from torch.utils.data import SequentialSampler
+from torch.utils.data.dataloader import default_collate
 
 from mmod.dist_utils import env_world_size, env_rank
 from mtorch.imdbdata import ImdbData
-from mtorch.tbox_utils import Labeler
-from mtorch.augmentation import DefaultDarknetAugmentation, TestAugmentation
-from mtorch.distributed_samplers import DistributedSequentialWrappingSampler, DistributedRandomWrappingSampler
+from mtorch.imdbregions import ImdbRegions
+from mtorch.tbox_utils import Labeler, ClassLabeler, RegionCropper
+from mtorch.augmentation import DefaultDarknetAugmentation, TestAugmentation, ClassifierTrainAugmentation, ClassifierTestAugmentation
+from mtorch.distributed_samplers import DistributedSequentialWrappingSampler, DistributedRandomWrappingSampler, DistributedBalancedSampler
+from mtorch.region_conditions import HasConfAbove, HasHeightAbove, HasWidthAbove
 
 __all__ = ['yolo_train_data_loader', 'yolo_test_data_loader']
 
-WRAPPING = True
-SEQUENTIAL_SAMPLER = True
-RANDOM_SAMPLER = not SEQUENTIAL_SAMPLER
-MIN_ITERS_PER_EPOCH = 10  # TODO: read from config (TBD)
 
 def _list_collate(batch):
     """ Function that collates lists or tuples together into one list (of lists/tuples).
@@ -25,6 +24,7 @@ def _list_collate(batch):
     items = list(zip(*batch))
     return items
 
+
 def create_imdb_dataset(path, cmapfile, transform, labeler=None, **kwargs):
     if '$' in path:
         from mtorch.imdbtsvdata import ImdbTSVData
@@ -32,24 +32,49 @@ def create_imdb_dataset(path, cmapfile, transform, labeler=None, **kwargs):
     else:
         return ImdbData(path, cmapfile, transform, labeler, **kwargs)
 
-def yolo_train_data_loader(datafile, cmapfile=None, batch_size=16, num_workers=2, distributed=True):
+
+def yolo_train_data_loader(args):
     """prepares data loader for training
-    :param datafile: str, path to file with data
-    :param batch_size: int, batch size per GPU
-    :param num_workers: int, number of workers per GPU
-    :param distributed: bool, if distributed training is used
+    :param args: dict, of input arguments
     :return: data loader
     """
+    datafile = args["train"]
+    cmapfile = args["labelmap"]
+    try:
+        batch_size = args["batch_size"]
+    except KeyError:
+        batch_size = 16
+    try:
+        num_workers = args["workers"]
+    except KeyError:
+        num_workers = 2
+    try:
+        distributed = args["distributed"]
+    except KeyError:
+        distributed = False
+    try:
+        use_wrap_sampler = args["wrap"]
+    except KeyError:
+        use_wrap_sampler = True
+    try:
+        use_random_sampler = args["random"]
+    except KeyError:
+        use_random_sampler = False
+    try:
+        min_iters_per_epoch = args["min_iters_in_epoch"]
+    except KeyError:
+        min_iters_per_epoch = 4 * 70
+
     augmenter = DefaultDarknetAugmentation()
     augmented_dataset = create_imdb_dataset(datafile,
             cmapfile, augmenter(), Labeler())
 
-    if WRAPPING:
+    if use_wrap_sampler:
         total_batch_size = batch_size * env_world_size()
-        num_iters_per_epoch = max(MIN_ITERS_PER_EPOCH,
-                                int(np.ceil(float(len(augmented_dataset)) / float(total_batch_size))))
+        num_iters_per_epoch = max(min_iters_per_epoch,
+                                int(np.ceil(float(len(augmented_dataset)) / float(total_batch_size)))) 
         full_epoch_dataset_length = num_iters_per_epoch * total_batch_size
-        if SEQUENTIAL_SAMPLER:
+        if not use_random_sampler:  # use SEQUENTIAL SAMPLER
             sampler = DistributedSequentialWrappingSampler(
                 augmented_dataset,
                 full_epoch_dataset_length,
@@ -92,3 +117,4 @@ def yolo_test_data_loader(datafile, cmapfile=None, batch_size=1, num_workers=2):
     return DataLoader(augmented_dataset, batch_size=batch_size,
                       sampler=sampler, num_workers=num_workers, pin_memory=True,
                       collate_fn=_list_collate)
+

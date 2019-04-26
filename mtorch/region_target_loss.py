@@ -91,6 +91,7 @@ class RegionTargetLoss(nn.Module):
         obj = sig(obj)
         conf = self.reshape_conf(conf)
         t_xy, t_wh, t_xywh_weight, t_o_obj, t_o_noobj, t_label = self.region_target(xy, wh, obj, label)
+
         loss = (
                 self.xy_loss(xy, t_xy, t_xywh_weight) +
                 self.wh_loss(wh, t_wh, t_xywh_weight) +

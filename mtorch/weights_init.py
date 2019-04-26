@@ -20,3 +20,11 @@ def msra_init(net):
                 m.weight.data.fill_(1)  # as opposed to uniform initialization by default
             if m.bias is not None:
                 m.bias.data.zero_()  # as opposed to uniform initialization by default
+
+
+def dense_layers_init(net):
+    """initializes dense layers - """
+    for m in net.modules():
+        if isinstance(m, nn.Linear):
+            nn.init.normal_(m.weight, 0, 0.01)
+            nn.init.constant_(m.bias, 0)
