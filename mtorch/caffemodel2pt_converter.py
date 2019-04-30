@@ -1,6 +1,18 @@
 import argparse
 import torch
-import caffe
+import sys
+import os.path as op
+
+try:
+    this_file = __file__
+except NameError:
+    this_file = sys.argv[0]
+this_file = op.abspath(this_file)
+
+if __name__ == '__main__':
+    # When run as script, modify path assuming absolute import
+    sys.path.append(op.join(op.dirname(this_file), '..'))
+
 from mtorch.caffenet import CaffeNet
 from mtorch.region_target_loss import NUM_IMAGES_WARM
 
