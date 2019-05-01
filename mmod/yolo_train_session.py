@@ -104,6 +104,8 @@ def get_parser():
     parser.add_argument('--display', default=False, action='store_true',
                         help='input False if you do NOT want to print progress (default=True)',
                         required=False)
+    parser.add_argument('--display_freq', default=1, type=int,
+                        help='display frequency in batches (default: 1)')
     parser.add_argument('-r', '--restore', default=False, action='store_true',
                         help='specify if the model should be restored from latest_snapshot, default is false',
                         required=False)
@@ -300,7 +302,7 @@ def train(trn_loader, model, criterion, optimizer, scheduler, epoch, loss_arr,
         losses.update(reduced_loss, batch_total)
         loss_arr.append(torch.tensor(reduced_loss))
 
-        should_print = (args["display"] and batch_num % args["display"] == 0) or batch_num == last_batch
+        should_print = (args["display"] and batch_num % args["display_freq"] == 0) or batch_num == last_batch
         if should_print:
             if iterations_left:
                 output = "{:.2f} Epoch {}: Time per iter = {:.4f}s, Time left = {:.2f}h), loss = {:.4f}, batch_total = {}, lr = {}" \
