@@ -4,7 +4,7 @@ import torch.nn as nn
 def _set_bn_eval(m):
     """sets BatchNorm modules to evaluation state"""
     if isinstance(m, nn.BatchNorm2d):
-        m.track_running_stats = False
+        m.eval()
 
 
 def _freeze_all_modules(model):

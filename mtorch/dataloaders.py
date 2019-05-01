@@ -3,15 +3,12 @@ import numpy as np
 from torch.utils.data import DataLoader
 from torch.utils.data.distributed import DistributedSampler
 from torch.utils.data import SequentialSampler
-from torch.utils.data.dataloader import default_collate
 
 from mmod.dist_utils import env_world_size, env_rank
 from mtorch.imdbdata import ImdbData
-from mtorch.imdbregions import ImdbRegions
-from mtorch.tbox_utils import Labeler, ClassLabeler, RegionCropper
-from mtorch.augmentation import DefaultDarknetAugmentation, TestAugmentation, ClassifierTrainAugmentation, ClassifierTestAugmentation
-from mtorch.distributed_samplers import DistributedSequentialWrappingSampler, DistributedRandomWrappingSampler, DistributedBalancedSampler
-from mtorch.region_conditions import HasConfAbove, HasHeightAbove, HasWidthAbove
+from mtorch.tbox_utils import Labeler
+from mtorch.augmentation import DefaultDarknetAugmentation, TestAugmentation
+from mtorch.distributed_samplers import DistributedSequentialWrappingSampler, DistributedRandomWrappingSampler
 
 __all__ = ['yolo_train_data_loader', 'yolo_test_data_loader']
 
@@ -67,12 +64,12 @@ def yolo_train_data_loader(args):
 
     augmenter = DefaultDarknetAugmentation()
     augmented_dataset = create_imdb_dataset(datafile,
-            cmapfile, augmenter(), Labeler())
+                                            cmapfile, augmenter(), Labeler())
 
     if use_wrap_sampler:
         total_batch_size = batch_size * env_world_size()
         num_iters_per_epoch = max(min_iters_per_epoch,
-                                int(np.ceil(float(len(augmented_dataset)) / float(total_batch_size)))) 
+                                  int(np.ceil(float(len(augmented_dataset)) / float(total_batch_size))))
         full_epoch_dataset_length = num_iters_per_epoch * total_batch_size
         if not use_random_sampler:  # use SEQUENTIAL SAMPLER
             sampler = DistributedSequentialWrappingSampler(
@@ -102,15 +99,16 @@ def yolo_train_data_loader(args):
 def yolo_test_data_loader(datafile, cmapfile=None, batch_size=1, num_workers=2):
     """prepares test data loader
     :param datafile: str, path to file with data
+    :param cmapfile: str, path to
     :param batch_size: int, batch size per GPU
     :param num_workers: int, number of workers
     :return: data loader
     """
     test_augmenter = TestAugmentation()
     augmented_dataset = create_imdb_dataset(path=datafile,
-                                 cmapfile=cmapfile,
-                                 transform=test_augmenter(),
-                                 predict_phase=True)
+                                            cmapfile=cmapfile,
+                                            transform=test_augmenter(),
+                                            predict_phase=True)
 
     sampler = SequentialSampler(augmented_dataset)
 
