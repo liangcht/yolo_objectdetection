@@ -1,5 +1,6 @@
 import os.path as op
 import argparse
+import six
 from mmod.experiment import Experiment
 from mmod.imdb import ImageDatabase
 from mmod.runeval import run_eval
@@ -31,7 +32,7 @@ def evaluate_prediction(predict_filename, dataset_filename):
         assert predict_file and op.isfile(predict_file), "{} does not exist".format(predict_file)
 
     # evaluation
-    exp = Experiment(db, input_range=xrange(len(db)), predict_path=predict_file)
+    exp = Experiment(db, input_range=six.moves.range(len(db)), predict_path=predict_file)
     err_map = run_eval(exp, ovthresh=None)
 
     if not err_map:

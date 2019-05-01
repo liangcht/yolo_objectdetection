@@ -3,6 +3,7 @@ import os
 import os.path as op
 import argparse
 import numpy as np
+import six
 import math
 import logging
 import torch
@@ -46,6 +47,7 @@ class CaffeNet(nn.Module):
         self.output = None
         self.height = None
         self.width = None
+        self.seen_images = None
         self.local_gpus_size = local_gpus_size  # local number of GPUs
         self.world_size = world_size
         self.gpus_size = local_gpus_size * world_size
@@ -330,7 +332,7 @@ class CaffeNet(nn.Module):
             self.register_buffer('mean_img', torch.zeros(channels, height, width))
             self.mean_img.copy_(mean_img)
 
-        if isinstance(caffemodel, basestring):
+        if isinstance(caffemodel, six.string_types):
             model = read_model(caffemodel)
         else:
             model = caffemodel
@@ -944,7 +946,7 @@ class CaffeNet(nn.Module):
                 self.blob_dims[tname] = self.blob_dims[bname[1]]
                 i = i + 1
             elif ltype == 'RegionLoss':
-                models[lname] = RegionLoss() # TODO: add arguments based on prototxt
+                models[lname] = RegionLoss()  # TODO: add arguments based on prototxt
                 self.blob_dims[tname] = self.blob_dims[bname[0]] 
                 i = i + 1
             else:

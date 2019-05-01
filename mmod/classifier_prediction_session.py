@@ -131,8 +131,7 @@ def write_predict(outtsv_file, results):
     :param outtsv_file: str, file to write results to
     :param results: str, results to write
     """
-    with open_with_lineidx(outtsv_file, with_temp=True) as fp, \
-                open_with_lineidx(outtsv_file + ".keys", with_temp=True) as kfp:
+    with open_with_lineidx(outtsv_file, with_temp=True) as fp, open_with_lineidx(outtsv_file + ".keys", with_temp=True) as kfp:
             for (uid, image_key, result) in results:
                 tell = fp.tell()
                 fp.write("{}\t{}\n".format(

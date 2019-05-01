@@ -6,6 +6,7 @@ import sys
 import argparse
 import json
 import logging
+import six
 import numpy as np
 import torch
 from torch.optim import Adam
@@ -244,7 +245,7 @@ class TorchSession(object):
             module = model.module
             # remove "module." from state
             state_dict = {
-                k[7:]: v for (k, v) in state_dict.iteritems()
+                k[7:]: v for (k, v) in six.iteritems(state_dict)
             }
         assert isinstance(module, CaffeNet)
         snapshot_caffe = snapshot_file + '.caffemodel'
@@ -264,6 +265,7 @@ class TorchSession(object):
         
         optimizer.zero_grad()
 
+        # noinspection PyCallingNonCallable
         loss = model(data, labels)
         crit = torch.sum(loss) / len(self.gpus)
         
@@ -349,7 +351,8 @@ class TorchSession(object):
                          batch_size=self.batch_size)
 
         # Load from caffemodel, before cuda()
-        if snapshot_model and (not isinstance(snapshot_model, basestring) or snapshot_model.endswith(".caffemodel")):
+        if snapshot_model and (not isinstance(snapshot_model, six.string_types)
+                               or snapshot_model.endswith(".caffemodel")):
             logging.info("Finetuning from weights")
             model.load_weights(snapshot_model)
             snapshot_model = None
@@ -433,9 +436,11 @@ class TorchSession(object):
         scheduler = None
         initial_lr = np.max(lrs) if self.opt == 'adam' else lrs[0]
         #  TODO: param_groups should be fully inferred from prototxt in a helper method
-        param_groups = [{'params': no_decay, 'weight_decay': 0., 'initial_lr': initial_lr, 'lr_mult': 1.},
-                 {'params': decay, 'weight_decay': self.weight_decay, 'initial_lr': initial_lr, 'lr_mult': 1.},
-                 {'params': lr2, 'weight_decay': 0., 'initial_lr': initial_lr * 2., 'lr_mult': 2.}]
+        param_groups = [
+            {'params': no_decay, 'weight_decay': 0., 'initial_lr': initial_lr, 'lr_mult': 1.},
+            {'params': decay, 'weight_decay': self.weight_decay, 'initial_lr': initial_lr, 'lr_mult': 1.},
+            {'params': lr2, 'weight_decay': 0., 'initial_lr': initial_lr * 2., 'lr_mult': 2.}
+        ]
         if self.opt == 'adam':
             optimizer = Adam(param_groups, lr=initial_lr, weight_decay=self.weight_decay)
         else:

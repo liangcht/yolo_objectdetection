@@ -3,6 +3,7 @@ import logging
 import base64
 import json
 import numpy as np
+import six
 from contextlib import contextmanager
 
 from mmod.simple_parser import tsv_data_sources, parse_prototxt, softmax_tree_path, parse_key_value, \
@@ -75,7 +76,7 @@ class ImageDatabase(object):
     def __getstate__(self):
         return {
             key: val if key not in self._IGNORE_ATTRS else None
-            for key, val in self.__dict__.iteritems()
+            for key, val in six.iteritems(self.__dict__)
         }
 
     def __getitem__(self, key):
@@ -215,7 +216,7 @@ class ImageDatabase(object):
         :type source: str
         :rtype: (str, str, list[int])
         """
-        for label, truth in self.all_truths(cache_truth=True).iteritems():
+        for label, truth in six.iteritems(self.all_truths(cache_truth=True)):
             source_lines = {}
             for uid in truth:
                 src, line = json.loads(uid)
@@ -224,7 +225,7 @@ class ImageDatabase(object):
                 if src not in source_lines:
                     source_lines[src] = []
                 source_lines[src].append(line)
-            for src, lines in source_lines.iteritems():
+            for src, lines in six.iteritems(source_lines):
                 yield label, src, lines
 
     def iter_label(self, class_label, source=None, tax=None):
@@ -426,7 +427,7 @@ class ImageDatabase(object):
         if self.is_directory or self.is_image:
             if key not in self:
                 raise KeyError("{} file not in the db".format(key))
-            if isinstance(key, basestring):
+            if isinstance(key, six.string_types):
                 return key
         return self._index[key]
 

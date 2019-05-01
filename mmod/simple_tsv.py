@@ -1,10 +1,15 @@
 import logging
 import os.path as op
-from itertools import izip
+import six
 from contextlib import contextmanager
 try:
-    from cStringIO import StringIO
+    try:
+        # noinspection PyCompatibility
+        from cStringIO import StringIO
+    except ImportError:
+        from io import StringIO
 except ImportError:
+    # noinspection PyCompatibility
     from StringIO import StringIO
 
 
@@ -46,7 +51,7 @@ class SimpleTsv(object):
             with open(self._path, 'r') as fp, open(self._index_path, 'wb') as wfp:
                 for _ in iter(fp.readline, ""):
                     self._len += 1
-                    wfp.write("{}\n".format(offset))
+                    wfp.write(b"%d\n" % offset)
                     offset = fp.tell()
             return self._index_path
         except (IOError, OSError) as e:
@@ -83,7 +88,7 @@ class SimpleTsv(object):
             # read indices while excluding the deleted ones
             with self.open_index() as fp, open(self._label_path, 'r') as fp_label:
                 offsets = []
-                for index, label in izip(fp, fp_label):
+                for index, label in six.moves.zip(fp, fp_label):
                     if label.startswith('d\t'):
                         continue
                     offsets.append(int(index))

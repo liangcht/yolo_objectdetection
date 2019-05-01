@@ -1,6 +1,7 @@
 import os.path as op
 import numpy as np
 import json
+import six
 import logging
 from contextlib import contextmanager
 from collections import OrderedDict
@@ -38,11 +39,11 @@ class TsvFile(object):
 
         self._check_keys = False
 
-        if isinstance(sources, basestring):
+        if isinstance(sources, six.string_types):
             sources, labels = self._composite_sources(sources, labels=labels)
 
         if labels:
-            if isinstance(labels, basestring):
+            if isinstance(labels, six.string_types):
                 labels = [labels]
         else:
             # find the labels for sources
@@ -58,7 +59,7 @@ class TsvFile(object):
         assert self._len, "Index file is empty"
 
         if cmapfiles:
-            if isinstance(cmapfiles, basestring):
+            if isinstance(cmapfiles, six.string_types):
                 cmapfiles = [cmapfiles] * len(sources)
         else:
             cmapfiles = []
@@ -83,7 +84,7 @@ class TsvFile(object):
 
     def __repr__(self):
         if len(self._sources) == 1:
-            source = self._sources.keys()[0]
+            source = next(iter(self._sources.keys()))
             stype = self.label_type(source)
             return 'TsvFile(size: {}, source: {}, type: {})'.format(
                 len(self), tail_path(source), stype
@@ -100,7 +101,7 @@ class TsvFile(object):
     def __getstate__(self):
         return {
             key: val if key not in self._IGNORE_DICTS else {}
-            for key, val in self.__dict__.iteritems()
+            for key, val in six.iteritems(self.__dict__)
         }
 
     def __getitem__(self, key):
@@ -115,7 +116,8 @@ class TsvFile(object):
         if isinstance(key, tuple):
             if len(key) == 2:
                 key_source, lidx = key
-                if not isinstance(key_source, basestring) or not isinstance(lidx, (int, long, np.integer)) or lidx < 0:
+                if not isinstance(key_source, six.string_types) or \
+                        not isinstance(lidx, (int, long, np.integer)) or lidx < 0:
                     raise ValueError("{} is not valid".format(key))
                 if key_source not in self._sources:
                     raise KeyError("{} is not in the index".format(key))
@@ -127,7 +129,7 @@ class TsvFile(object):
             if self._check_keys and key not in self:
                 raise KeyError("{} is not in the index".format(key))
             return key
-        if isinstance(key, basestring):
+        if isinstance(key, six.string_types):
             key = key.strip()
             if not key.startswith('['):  # fast check
                 raise ValueError("{} is not valid".format(key))
@@ -152,7 +154,7 @@ class TsvFile(object):
             source_idx, lidx = self._shuffle[key]
             source = self._idx_sources[source_idx]
             return self[(source, lidx)]
-        for source, (lrng, rng) in self._sources.iteritems():
+        for source, (lrng, rng) in six.iteritems(self._sources):
             if key in rng:
                 key -= rng[0]
                 # source file, line number, non-deleted item number
@@ -183,7 +185,7 @@ class TsvFile(object):
             if not rng:
                 return False
             return idx + rng[0] in rng and is_in_sorted(lrng, lidx)
-        if isinstance(key, basestring):
+        if isinstance(key, six.string_types):
             key = key.strip()
             if not key.startswith('['):  # fast check
                 # key is a list
@@ -203,7 +205,7 @@ class TsvFile(object):
                 source = self._idx_sources[source_idx]
                 yield self[(source, lidx)]
             return
-        for source, (lrng, rng) in self._sources.iteritems():
+        for source, (lrng, rng) in six.iteritems(self._sources):
             for idx in rng:
                 idx -= rng[0]
                 yield source, int(lrng[idx]), idx
@@ -248,9 +250,9 @@ class TsvFile(object):
                         count -= deleted_lines
                         lrng = np.array(lrng)
 
-            rng = xrange(last_idx, last_idx + count)
+            rng = six.moves.range(last_idx, last_idx + count)
             if not deleted_lines:
-                lrng = xrange(count)
+                lrng = six.moves.range(count)
             source = op.normpath(source).replace("\\", "/")
             self._sources[source] = lrng, rng  # Line range, and Index range both of count length
             self._sources_idx[source] = source_idx
@@ -266,7 +268,7 @@ class TsvFile(object):
 
     def _composite_sources(self, source, labels=None):
         """Return sources from potentially composite source (list of other sources)
-        :type source: basestring
+        :type source: six.string_types
         :type labels: list
         :rtype: (list, list)
         """
@@ -311,7 +313,7 @@ class TsvFile(object):
         """Iterate data sources and their line range
         :rtype: str
         """
-        for source, (lrng, _) in self._sources.iteritems():
+        for source, (lrng, _) in six.iteritems(self._sources):
             yield source, lrng
 
     @property

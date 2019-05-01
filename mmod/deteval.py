@@ -206,7 +206,7 @@ def print_reports(reports, precths=None, report_file_table=None):
                     data += list(pr)
                 data = tuple(['{}'.format(round(x, 4)) for x in data])
                 table += [data]
-            note = ('Results on %s objects (%d)' % (key, mv_report[mv_report.keys()[0]]['npos']))
+            note = ('Results on %s objects (%d)' % (key, mv_report[next(iter(mv_report.keys()))]['npos']))
             logging.info(note)
             fp.write(note + '\n')
             line = '\t'.join(headings) + '\n'

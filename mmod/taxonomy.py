@@ -1,5 +1,6 @@
 import os
 import os.path as op
+import six
 from ete2 import Tree
 from mmod.io_utils import load_from_yaml_file
 
@@ -55,7 +56,7 @@ class Taxonomy(object):
     def __getstate__(self):
         return {
             key: val if key not in self._IGNORE_ATTRS else None
-            for key, val in self.__dict__.iteritems()
+            for key, val in six.iteritems(self.__dict__)
         }
 
     def __contains__(self, label):
@@ -91,7 +92,7 @@ class Taxonomy(object):
             datasource: {} for datasource in trans
         }
         for datasource in self._inverted_translation:
-            for label, values in trans[datasource].iteritems():
+            for label, values in six.iteritems(trans[datasource]):
                 if not values:
                     continue
                 for v in values:
@@ -108,7 +109,7 @@ class Taxonomy(object):
 
         trans = self.global_translation
         self._inverted_global_translation = {}
-        for k, vals in trans.iteritems():
+        for k, vals in six.iteritems(trans):
             for v in vals:
                 if v not in self._inverted_global_translation:
                     self._inverted_global_translation[v] = []
@@ -298,7 +299,7 @@ class Taxonomy(object):
             else:
                 assert 'name' in one, one
                 name = one['name']
-            assert isinstance(name, basestring), "{} in {} not string".format(name, root)
+            assert isinstance(name, six.string_types), "{} in {} not string".format(name, root)
             child_subgroups = getattr(root, 'child_subgroups', -1)
             if name.startswith('__'):
                 # just increase the subgroups count of the root
@@ -313,7 +314,7 @@ class Taxonomy(object):
                 v = one[k]
                 if type(v) is not list and k != 'name':
                     feats[k] = v
-                    if v and (not isinstance(v, basestring) or '/' in v):
+                    if v and (not isinstance(v, six.string_types) or '/' in v):
                         continue
                     if self._translation is None:
                         self._translation = {}

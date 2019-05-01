@@ -1,6 +1,7 @@
 import os
 import os.path as op
 import torch
+import six
 import numpy as np
 import logging
 import argparse
@@ -45,10 +46,10 @@ def save_caffemodel(ptmodel, caffemodel, protofile,
     :param verbose: if should print verbose outputs
     """
     state = ptmodel
-    if isinstance(ptmodel, basestring):
+    if isinstance(ptmodel, six.string_types):
         state = torch.load(ptmodel)["state_dict"]
         state = {
-            _filter_module(k): v for (k, v) in state.iteritems()
+            _filter_module(k): v for (k, v) in six.iteritems(state)
         }
 
     if net_info is None:

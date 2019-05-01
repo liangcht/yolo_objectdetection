@@ -1,6 +1,7 @@
 import logging
 import cv2
 import base64
+import six
 import os
 import os.path as op
 import numpy as np
@@ -68,7 +69,7 @@ def recursive_files_list(path, ext_list=None, ignore_prefixes=None):
     :rtype: list
     """
     assert op.isdir(path), "{} is not a directory".format(path)
-    if isinstance(ignore_prefixes, basestring):
+    if isinstance(ignore_prefixes, six.string_types):
         ignore_prefixes = [ignore_prefixes]
     if ext_list is None:
         ext_list = VALID_IMAGE_TYPES
@@ -134,7 +135,7 @@ def tile_rects(db, keys, key_rects, target_size, label, jpg_path):
         left, top, right, bot = rect
 
         top = limit_value(top, [0, im.shape[0] - 1])
-        bot =  limit_value(left, [0, im.shape[0] - 1])
+        bot = limit_value(left, [0, im.shape[0] - 1])
 
         left = limit_value(left, im.shape[1] - 1)
         right = limit_value(right, im.shape[1] - 1)

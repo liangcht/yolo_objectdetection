@@ -1,6 +1,7 @@
 import logging
 import numpy as np
 import os.path as op
+import six
 import json
 from mmod.imdb import ImageDatabase
 from mmod.experiment import Experiment
@@ -221,7 +222,7 @@ def resample_db(db, input_range, out_path, basename='resampled_test'):
 
 
 def _sample_rects(db, keys, labels, max_label):
-    if isinstance(labels, basestring):
+    if isinstance(labels, six.string_types):
         labels = [labels] * len(keys)
         multi_label = False
     else:
@@ -246,12 +247,12 @@ def _sample_rects(db, keys, labels, max_label):
     new_rects = []
     while label_keys and len(new_keys) < max_label:
         to_remove_label = []
-        for label, key_rects in label_keys.iteritems():
+        for label, key_rects in six.iteritems(label_keys):
             if not multi_label:
                 keys = key_rects
             else:
                 # each time we see the same label, shuffle the keys
-                keys = key_rects.keys()
+                keys = list(key_rects.keys())
                 np.random.shuffle(keys)
             to_remove = []
             for key in keys:

@@ -1,10 +1,10 @@
 import sys
 import numpy as np
-import random
 import os.path as op
 import logging
 import os as os
 import json
+import six
 
 try:
     this_file = __file__
@@ -24,7 +24,7 @@ def add_path(path):
         sys.path.insert(0, path)
 
 def _sample_rects(db, keys, labels, max_label):
-    if isinstance(labels, basestring):
+    if isinstance(labels, six.string_types):
         labels = [labels] * len(keys)
         multi_label = False
     else:
@@ -50,7 +50,7 @@ def _sample_rects(db, keys, labels, max_label):
     new_rects = []
     while label_keys and len(new_keys) < max_label:
         to_remove_label = []
-        for label, key_rects in label_keys.iteritems():
+        for label, key_rects in six.iteritems(label_keys):
             if not multi_label:
                 keys = key_rects
             else:
@@ -80,7 +80,7 @@ def _sample_rects(db, keys, labels, max_label):
             label_keys.pop(label, None)
     return new_keys, new_rects
 
-def parseDSName(a):
+def parse_ds_name(a):
     return a[a.find("/")+1: a.rfind("/")]
 
 def load_list_file(fname):
@@ -174,7 +174,7 @@ def main():
             else:
                 keys, key_rects = _sample_rects(db, keys, label, max_label)
             
-            dsName = parseDSName(source_link)
+            dsName = parse_ds_name(source_link)
 
             if keys:
                 jpg_path = op.join(path, "{}_{}.jpg".format(label.replace(" ", "_"), dsName))

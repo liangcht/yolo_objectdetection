@@ -1,6 +1,7 @@
 import logging
 import os.path as op
 import re
+import six
 
 from mmod.utils import makedirs, open_file
 from mmod.simple_parser import parse_key_value, load_labelmap_list, parse_truth
@@ -25,7 +26,7 @@ class Experiment(object):
         :type cmapfile: str
         :type predict_path: str
         :param input_range: range of inputs to in this experiment
-        :type input_range: xrange
+        :type input_range: six.moves.range
         :param root: root folder of the experiment output
         :type root: str
         :param data: root folder of the experiment data
@@ -112,13 +113,13 @@ class Experiment(object):
     @property
     def input_range(self):
         if self._input_range is None:
-            return xrange(0, len(self.imdb))
+            return six.moves.range(0, len(self.imdb))
         return self._input_range
 
     @input_range.setter
     def input_range(self, value):
         """Experiment root
-        :type value: xrange
+        :type value: six.moves.range
         """
         self._input_range = value
         # invalidate the automatic name

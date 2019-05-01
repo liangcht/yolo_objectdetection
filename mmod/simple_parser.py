@@ -1,6 +1,7 @@
 from __future__ import print_function
 from collections import OrderedDict
 import json
+import six
 import numpy as np
 
 from mmod.utils import open_file, is_number
@@ -36,7 +37,7 @@ def parse_truth(truth):
 def load_labelmap_list(filename):
     labelmap = []
     with open(filename) as fin:
-        labelmap += [unicode(line.rstrip()) for line in fin]
+        labelmap += [six.text_type(line.rstrip()) for line in fin]
     return labelmap
 
 
@@ -210,7 +211,7 @@ def read_softmax_tree(tree_file):
     sub_groups = 0
     size = 0
     n = 0
-    with open(tree_file, 'r') if isinstance(tree_file, basestring) else open_file(tree_file) as f:
+    with open(tree_file, 'r') if isinstance(tree_file, six.string_types) else open_file(tree_file) as f:
         for line in f.readlines():
             tokens = [t for t in line.split(' ') if t]
             assert len(tokens) == 2 or len(tokens) == 3, "invalid tree: {} node: {} line: {}".format(
@@ -420,7 +421,7 @@ def save_prototxt(net_info, protofile):
     """
     with open(protofile, 'w') as fp:
         print_prototxt(net_info, fp=fp)
-        for k, vals in net_info.iteritems():
+        for k, vals in six.iteritems(net_info):
             if k in ['layers', 'props']:
                 continue
             if isinstance(vals, list):

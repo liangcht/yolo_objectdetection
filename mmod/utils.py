@@ -1,6 +1,7 @@
 import sys
 import os
 import shutil
+import six
 import os.path as op
 from contextlib import contextmanager
 import subprocess
@@ -174,7 +175,7 @@ def get_gpus_nocache():
         with run_and_terminate_process(cmds,
                                        stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                        bufsize=1) as process:
-            return [line.strip() for line in iter(process.stdout.readline, "")]
+            return [line.strip() for line in iter(process.stdout.readline, b"")]
     except RuntimeError:
         return
 
@@ -210,7 +211,7 @@ def gpu_indices(divisible=True):
                 gpu_count, local_size
             ))
     else:
-        gpus = np.array_split(xrange(gpu_count), local_size)[local_rank]
+        gpus = np.array_split(six.moves.range(gpu_count), local_size)[local_rank]
     return gpus
 
 
@@ -277,7 +278,7 @@ def tsv_multi_column(f, bufsize=1024):
     :param bufsize: the chunk size to read the file (should not be small fo performance reasons)
     :rtype: bool
     """
-    with open(f, 'r') if isinstance(f, basestring) else open_file(f) as fp:
+    with open(f, 'r') if isinstance(f, six.string_types) else open_file(f) as fp:
         while True:
             s = fp.read(bufsize)
             if not s:
@@ -335,7 +336,7 @@ def search_in_sorted(a, v):
     :type v: int
     :rtype: int
     """
-    if isinstance(a, xrange):
+    if isinstance(a, six.moves.range):
         a_min = a[0]
         a_max = a[-1]
         if v < a_min or v > a_max:
@@ -351,11 +352,11 @@ def search_in_sorted(a, v):
 
 def is_in_sorted(a, v):
     """Return if v is in sorted a
-    :type a: xrange | numpy.ndarray | list
+    :type a: six.moves.range | numpy.ndarray | list
     :type v: int
     :rtype: bool
     """
-    if isinstance(a, xrange):
+    if isinstance(a, six.moves.range):
         return v in a
     idx = np.searchsorted(a, v)
     if idx >= len(a):
@@ -369,14 +370,14 @@ def search_both_sorted(a, vs):
     """Search a for values in vs and yield the indices for both
     Both a and v must be sorted. If only a is sorted we can just use np.searchsorted(a, vs)
     :param a: array to search into
-    :type a: xrange | numpy.ndarray | list
+    :type a: six.moves.range | numpy.ndarray | list
     :param vs: array to search for
     :type vs: list[int] | numpy.ndarray
     :returns index and value
     :rtype: int, int
     """
     # go from both sides and narrow down the search
-    if isinstance(a, xrange):
+    if isinstance(a, six.moves.range):
         a_min = a[0]
         a_max = a[-1]
         if vs[-1] < a_min:
@@ -517,8 +518,8 @@ def open_with_lineidx(path, with_temp=False):
             def write(self, buf):
                 """Write the buffer to file
                 """
-                fp.write(buf)
-                fpidx.write("{}\n".format(self._offset))
+                fp.write(buf.encode())
+                fpidx.write(b"%d\n" % self._offset)
                 self._offset += len(buf)
 
             def tell(self):
@@ -536,10 +537,10 @@ def range_split(rng, sections):
     """Split a contigious range to given number
     The last split may have a longer length
     :param rng: range or array
-    :type rng: xrange
+    :type rng: six.moves.range
     :param sections: number of sections to split rng to
     :type sections: int
-    :rtype: list[xrange]
+    :rtype: list[six.moves.range]
     """
     _min = int(rng[0])
     _max = int(rng[-1])
@@ -548,9 +549,9 @@ def range_split(rng, sections):
     assert _max - _min > sections, "too many sections in {} to divide {}".format(sections, rng)
     step = int(len(rng) / sections)
 
-    rngs = [xrange(a, a + step) for a in xrange(_min, _max, step)]
+    rngs = [six.moves.range(a, a + step) for a in six.moves.range(_min, _max, step)]
     last = rngs[-1]
     if last[-1] != _max + 1:
-        rngs[-1] = xrange(last[0], _max + 1)
+        rngs[-1] = six.moves.range(last[0], _max + 1)
 
     return rngs

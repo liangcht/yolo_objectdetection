@@ -39,7 +39,7 @@ _gpu_lock = threading.RLock()
 def read_image(imdb, input_range, out_queue):
     """Save prediction results to tsv file
     :type imdb: mmod.imdb.ImageDatabase
-    :type input_range: xrange
+    :type input_range: six.moves.range
     :type out_queue: loky.backend.queues.Queue
     """
     global _logger

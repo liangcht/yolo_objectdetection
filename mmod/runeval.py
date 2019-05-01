@@ -3,6 +3,7 @@ import os
 import time
 import os.path as op
 import sys
+import six
 import argparse
 import logging
 import json
@@ -109,7 +110,7 @@ def run_detect(gpus=None, caffenet=None, caffemodel=None,
     logging.info("Detection Experiment {}".format(exp))
 
     if input_range is None:
-        input_range = xrange(len(imdb))
+        input_range = six.moves.range(len(imdb))
     else:
         assert input_range[0] >= 0, "Invalid range: {} in {}".format(input_range, imdb)
         if input_range[-1] >= len(imdb):
@@ -289,7 +290,7 @@ def main():
             raise RuntimeError("Eval path {} does not exist".format(eval_path))
     input_range = args['range']
     if input_range:
-        input_range = xrange(input_range[0], input_range[1])
+        input_range = six.moves.range(input_range[0], input_range[1])
 
     use_lock = not args["use_lock"]
     prev_log_parent = get_log_parent(get_arg(args['prev']) or get_arg(args['prevmodelpath']))
@@ -380,7 +381,7 @@ def main():
                     if not all_tests:
                         logging.info("No test found for {}".format(solver_path))
                     for test_data in all_tests:
-                        assert isinstance(test_data, basestring)
+                        assert isinstance(test_data, six.string_types)
                         exp = run_detect(gpus, caffenet, caffemodel,
                                          test_data=test_data,
                                          logger=logger, interval=interval, iterations=iterations,
