@@ -9,7 +9,6 @@ from torchvision.transforms.functional import crop
 READ_WITH_OPENCV = True
 if READ_WITH_OPENCV:
     import numpy as np
-    import cv2
 
 _cur_data = None
 _cur_regions = None
@@ -53,7 +52,7 @@ def _get_upsampling_factor(imdb):
     max_num = max(labels_hist)
     upsample_factor = []
     for count in labels_hist:
-        upsample_factor.append(int(ceil(float(max_num) / float(count))) if count > 0 else 1)
+        upsample_factor.append(int(np.ceil(float(max_num) / float(count))) if count > 0 else 1)
 
     return upsample_factor
 
@@ -89,10 +88,10 @@ class ImdbRegions(data.Dataset):
         regions = self.regions
         key = regions[index]["key"]
         bbox = regions[index]["region"]
-        crop_box =  [float(val) for val in bbox['rect']]
+        crop_box = [float(val) for val in bbox['rect']]
         if READ_WITH_OPENCV:
             img = imdb.image(key)
-            correct_img = img[:, :, (2, 1, 0)] # BGR to RGB 
+            correct_img = img[:, :, (2, 1, 0)]  # BGR to RGB
             img = Image.fromarray(correct_img, mode='RGB')  # save in PIL format
             
         else:

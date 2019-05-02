@@ -89,7 +89,7 @@ def get_parser():
     parser.add_argument('--prefix', default=None, type=str,
                         help='model prefix (default: same with model names)')
     # Optimization setting
-    parser.add_argument('--balance', default=False, action='store_true',
+    parser.add_argument('--balance', action='store_true',
                         help='balance cross entropy weights')
     parser.add_argument('--lr-policy', default='STEP', type=str,
                         help='learning rate decay policy: STEP, MULTISTEP, EXPONENTIAL, PLATEAU, CONSTANT '
@@ -118,6 +118,13 @@ def get_parser():
 def main():
 
     args = get_parser().parse_args()
+
+    if args.balance:  # TODO: implement
+        raise NotImplementedError("Currently balance is not supported")
+
+    if args.finetune:  # TODO: implement
+        raise NotImplementedError("Currently fintune is not supported")
+
     if args.distributed:
         args.local_rank = dist_utils.env_rank()
 
@@ -141,7 +148,7 @@ def main():
         logger.info('called with arguments: {}'.format(args))
 
     imdb = ImageDatabase(args.data)  # this might need change for different application
-    if args.balance:
+    if args.balance:  # TODO: this is beginning of balance implementation, balance is not supported yet
         # creating inverted file (if does not exit)
         # this is useful for histogram calculation
         inverted_file_path = imdb.inverted_path
@@ -200,10 +207,8 @@ def main():
                                                 cmapfile=args.labelmap,
                                                 batch_size=args.batch_size, num_workers=args.workers,
                                                 distributed=True)
-    if args.balance:
-        raise NotImplementedError("Currently balance is not supported")
 
-    criterion_no_weighted = get_criterion(args.is_multi_label, args.neg_weight_file, cross_entropy_weights=None)
+    criterion = get_criterion(args.is_multi_label, args.neg_weight_file, cross_entropy_weights=None)
 
     optimizer = get_optimizer(model, args)
     scheduler = get_scheduler(optimizer, args)
@@ -225,15 +230,12 @@ def main():
     if args.distributed:
         dist_utils.sum_tensor(torch.tensor([1.0]).float().cuda())
 
-    args.epochs = 121
     for epoch in range(args.start_epoch, args.epochs):
         epoch_tic = time.time()
         if args.distributed:
             data_loader.sampler.set_epoch(epoch)
 
         scheduler.step()
-
-        criterion = criterion_no_weighted
 
         train(args, data_loader, model, criterion, optimizer, epoch, logger)
 
