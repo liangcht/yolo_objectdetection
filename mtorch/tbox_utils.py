@@ -59,7 +59,7 @@ class ClassLabeler(object):
     Attaches class per each label
     """
 
-    def __init__(self, cond):
+    def __init__(self, cond=None):
         """Constructor of Labeler Class
         :param cond: any condition that a valid bounding box should follow
         """
@@ -73,7 +73,7 @@ class ClassLabeler(object):
         and corresponding numeric labels
         :return: number of boxes x 5 numpy array of float32
         """
-        if self.condition(bbox):
+        if not self.condition or self.condition(bbox):
             label = cmap.index(bbox['class']) 
         else:
             label = len(cmap)

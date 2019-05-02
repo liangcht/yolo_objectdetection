@@ -67,11 +67,4 @@ class HasHeightAbove(BboxCondition):
         return _height(bbox) > self.thresh
 
 
-class HasConfAbove(object):
-
-    def __init__(self, conf):
-        self.thresh = conf
-
-    def __call__(self, bbox):    
-        return bbox['conf'] > self.thresh
 

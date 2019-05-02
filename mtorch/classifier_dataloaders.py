@@ -11,7 +11,7 @@ from mtorch.imdbregions import ImdbRegions
 from mtorch.tbox_utils import Labeler, ClassLabeler, RegionCropper
 from mtorch.augmentation import ClassifierTrainAugmentation, ClassifierTestAugmentation
 from mtorch.distributed_samplers import DistributedSequentialWrappingSampler, DistributedRandomWrappingSampler
-from mtorch.region_conditions import HasConfAbove, HasHeightAbove, HasWidthAbove
+from mtorch.region_conditions import HasHeightAbove, HasWidthAbove
 
 __all__ = ['region_classifier_data_loader', 'region_classifier_test_data_loader']
 
@@ -86,7 +86,7 @@ def region_classifier_data_loader(datafile, pos_conf=0.1,
                                     region_cropper=region_cropper,
                                     cmapfile=cmapfile,
                                     transform=augmenter(),
-                                    labeler=ClassLabeler(HasConfAbove(pos_conf)))
+                                    labeler=ClassLabeler())
 
     sampler = _get_train_sampler(augmented_dataset, batch_size, distributed)
 

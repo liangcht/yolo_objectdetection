@@ -69,8 +69,7 @@ def get_optimizer(model, args):
 
     init_lr = get_init_lr(args)
     print('initial learning rate: %f' % init_lr)
-    args.lr = 0.01
-    args.weight_decay = 0.001
+
     if args.start_epoch > 0:
         groups = [dict(params=list(model.parameters()), initial_lr=init_lr)]
     else:
@@ -197,16 +196,6 @@ def get_labels_hist(imdb, normalize=False):
             labels_hist[i] /= float(total_labels) 
    
     return labels_hist
-
-
-def get_upsampling_factor(imdb):
-    labels_hist = get_labels_hist(imdb)
-    max_num = max(labels_hist)
-    upsample_factor = []
-    for count in labels_hist:
-        upsample_factor.append(int(ceil(float(max_num) / float(count))) if count > 0 else 1)
-
-    return upsample_factor
 
 
 def get_balance_weights(imdb):
