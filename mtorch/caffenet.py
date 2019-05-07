@@ -47,7 +47,6 @@ class CaffeNet(nn.Module):
         self.output = None
         self.height = None
         self.width = None
-        self.seen_images = None
         self.local_gpus_size = local_gpus_size  # local number of GPUs
         self.world_size = world_size
         self.gpus_size = local_gpus_size * world_size
@@ -241,6 +240,8 @@ class CaffeNet(nn.Module):
                         return {
                             d[0]: d[1] for d in tdatas if d[1] is not None
                         }
+            if len(odatas) == 1:
+                return odatas[0]
             return torch.stack(odatas).squeeze()
 
     def get_targets(self, manual_targets=None):
