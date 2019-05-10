@@ -1,13 +1,5 @@
-import os
-import os.path as op
-import sys
-import time
-import json
-import argparse
 import torch
-import numpy as np
 from PIL import Image
-from torch.utils.data import SequentialSampler
 
 from mtorch.yolo_v2 import yolo_2extraconv
 from mtorch.darknet import darknet_layers
@@ -18,7 +10,7 @@ from mmod.detection import result2bblist
 
 
 def load_model(path_model, num_classes, is_caffemodel=False):
-    """creates a yolo model for evaluation
+    """Creates a yolo model for evaluation
     :param path_model, str, path to latest checkpoint
     :param num_classes: int, number of classes to detect
     :param is_caffemodel, bool, if provided, assumes model weights are derived from caffemodel, false by default
@@ -34,7 +26,7 @@ def load_model(path_model, num_classes, is_caffemodel=False):
     return model
 
 def get_predictor(num_classes, tree=None):
-    """creates a yolo model for evaluation
+    """Creates a yolo model for evaluation
     :param num_classes, int, number of classes to detect
     :param tree, str, path to a tree structure (if any)
     :return model: nn.Sequential or nn.Module
@@ -66,11 +58,10 @@ class YoloDetector(object):
         self.transform = TestAugmentation()
 
     def prepare_image(self, image, transform=None):
-        """
+        """Convert the image to the required format and apply necessary transforms to the image
         :param image, numpy arr, image to be transformed
         :param transform, augmentations to perform, if any
         :return transformed image
-        Convert the image to the required format and apply necessary transforms to the image
         """
         img = image
         img = img[:, :, ::-1] # BGR to RGB
@@ -85,7 +76,7 @@ class YoloDetector(object):
         return sample, h, w
 
     def detect(self, image):
-        """
+        """Returns the YOLO predictions on the given image
         :param: image, numpy arr, input image
         :return predictions of the yolo network
         """
