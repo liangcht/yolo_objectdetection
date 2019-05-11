@@ -13,7 +13,6 @@ from mtorch.yolo_v2 import yolo_2extraconv
 from mtorch.darknet import darknet_layers
 from mtorch.yolo_predict import PlainPredictorClassSpecificNMS, TreePredictorClassSpecificNMS
 from mtorch.augmentation import TestAugmentation
-
 from mmod.simple_parser import load_labelmap_list
 from mmod.detection import result2bblist
 
