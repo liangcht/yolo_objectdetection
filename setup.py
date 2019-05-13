@@ -46,7 +46,7 @@ setup(
         Extension(
             "mtorch.regionloss_utils.cython_bbox",
             ["mtorch/regionloss_utils/bbox.pyx"],
-            extra_compile_args=["-Wno-cpp", "-Wno-unused-function"],
+            extra_compile_args=["-Wno-cpp", "-Wno-unused-function"] if os.name != 'nt' else None,
             include_dirs=[numpy_include]
         ),
         CUDAExtension('region_target_cuda', [
