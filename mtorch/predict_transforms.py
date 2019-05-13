@@ -22,10 +22,10 @@ class ODImResize(object):
         im_resized = im_rescale(im.astype(np.float32, copy=True), 
                                 max(self.network_input_width, self.network_input_height))
         new_h, new_w = im_resized.shape[0:2]
-        left = (self.network_input_width - new_w) / 2
-        right = self.network_input_width - new_w - left
-        top = (self.network_input_height - new_h) / 2
-        bottom = self.network_input_height - new_h - top
+        left = int(np.round((self.network_input_width - new_w) / 2))
+        right = int(np.round(self.network_input_width - new_w - left))
+        top = int(np.round((self.network_input_height - new_h) / 2))
+        bottom = int(np.round((self.network_input_height - new_h - top)))
         im_squared = cv2.copyMakeBorder(im_resized, top=top, bottom=bottom, left=left, right=right,
                                     borderType=cv2.BORDER_CONSTANT, value=[0, 0, 0])
  

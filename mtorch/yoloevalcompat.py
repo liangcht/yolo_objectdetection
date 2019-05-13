@@ -14,7 +14,7 @@ class YoloEvalCompat(nn.Module):
         :param x: torch tensor of b x c x a x h x w  or b x c x h x w
         """ 
         assert len(x.shape) >= 4, "invalid nuber of axises for x {}, expected >= {}".format(len(x.shape), 4)
-        orig_order = range(x.dim())
+        orig_order = list(range(x.dim()))
         new_order = [orig_order[0]] + orig_order[2:] + [orig_order[1]]
         return x.permute(new_order)
 

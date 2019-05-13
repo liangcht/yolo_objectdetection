@@ -2,9 +2,9 @@ import torch
 import torch.nn as nn
 from collections import OrderedDict
 
-from common_network_blocks import bn_relu_block, conv_bn_relu_block, conv_bn_relu_maxpool_block
-from caffenet_weight_converter import prep_dict
-from weights_init import msra_init
+from mtorch.common_network_blocks import bn_relu_block, conv_bn_relu_block, conv_bn_relu_maxpool_block
+from mtorch.caffenet_weight_converter import prep_dict
+from mtorch.weights_init import msra_init
 
 __all__ = ['DarknetLayers', 'darknet_layers']
 

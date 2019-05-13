@@ -3,8 +3,13 @@ import multiprocessing as mp
 from PIL import Image
 
 try:
-    from cStringIO import StringIO
+    try:
+        # noinspection PyCompatibility
+        from cStringIO import StringIO
+    except ImportError:
+        from io import StringIO
 except ImportError:
+    # noinspection PyCompatibility
     from StringIO import StringIO
 
 from mmod.imdb import ImageDatabase

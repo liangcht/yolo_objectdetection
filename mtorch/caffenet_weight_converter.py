@@ -68,9 +68,9 @@ def prep_dict(init_net_dict, model_state_dict, switch_bn2scale=True):
     :param switch_bn2scale: boolean, 
            if to switch to BatchNormalization to Scale when searching for a weight
     """
-    layer_names = model_state_dict.keys()
+    layer_names = list(model_state_dict.keys())
     init_weights = []
-    init_layer_names = init_net_dict.keys()
+    init_layer_names = list(init_net_dict.keys())
     if "module" in init_layer_names[0]:
         add_token = "module."
     elif init_layer_names[0].startswith("backbone"):

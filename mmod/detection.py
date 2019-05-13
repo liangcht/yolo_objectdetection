@@ -115,10 +115,10 @@ def result2bblist(hw, probs, boxes, class_map, thresh=None, obj_thresh=None, cla
             bot = min(bot, im_h - 1)
 
             crect = dict()
-            crect['rect'] = map(float, [left, top, right, bot])
+            crect['rect'] = list(map(float, [left, top, right, bot]))
             crect['class'] = label
-            crect['conf'] = max(round(probs[i, j], 4), 0.00001)
-            crect['obj'] = max(round(probs[i, -1], 4), 0.00001)
+            crect['conf'] = float(max(round(probs[i, j], 4), 0.00001))
+            crect['obj'] = float(max(round(probs[i, -1], 4), 0.00001))
             det_results.append(crect)
 
     return det_results

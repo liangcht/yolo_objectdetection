@@ -3,7 +3,6 @@ The API is almost identical to respective torchvsion transforms (with option to 
 Important notes - differently from torchvision, the image size is assumed to be a tuple with (WIDTH, HEIGHT).
 This is similar to the convention of image size in PIL.Image and also fits bounding box coordinate order (x,y)
 """
-import transform_boxes as tbox
 import numpy as np
 import cv2
 import torch
@@ -13,6 +12,8 @@ import random
 from skimage import transform
 import logging
 import darkresize
+
+from mtorch import transform_boxes as tbox
 
 # Dictionary key
 IMAGE = "image"  # TODO: change to get that as parameter from prototxt
@@ -477,7 +478,7 @@ class RandomResizeDarknet(ImageBoxAugmentation):
             except Exception as err:
                 raise ValueError(err)
         elif isinstance(self.scale, float):
-            sc = self.scale
+            sc = np.float32(self.scale)
         return sc
 
     def __get_rand_output_size(self):
@@ -485,13 +486,13 @@ class RandomResizeDarknet(ImageBoxAugmentation):
         dw = self.jitter * self.w
         dh = self.jitter * self.h
         scale_factor = self.__get_random_scale()
-        new_aspect_ratio = float(self.w + random.uniform(-dw, dw)) / float(self.h + random.uniform(-dh, dh))
+        new_aspect_ratio = np.float32(self.w + random.uniform(-dw, dw)) / np.float32(self.h + random.uniform(-dh, dh))
         if new_aspect_ratio < 1:
             new_h = scale_factor * self.output_size_limit[1]
             new_w = new_h * new_aspect_ratio
         else:
             new_w = scale_factor * self.output_size_limit[0]
-            new_h = float(new_w) / new_aspect_ratio
+            new_h = np.float32(new_w) / new_aspect_ratio
         return new_w, new_h
 
     @property

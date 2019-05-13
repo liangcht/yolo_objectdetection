@@ -117,7 +117,7 @@ class TsvFile(object):
             if len(key) == 2:
                 key_source, lidx = key
                 if not isinstance(key_source, six.string_types) or \
-                        not isinstance(lidx, (int, long, np.integer)) or lidx < 0:
+                        not isinstance(lidx, (int, six.integer_types, np.integer)) or lidx < 0:
                     raise ValueError("{} is not valid".format(key))
                 if key_source not in self._sources:
                     raise KeyError("{} is not in the index".format(key))
