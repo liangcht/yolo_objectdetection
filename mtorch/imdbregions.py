@@ -2,8 +2,8 @@ import torch.utils.data as data
 import multiprocessing as mp
 from PIL import Image
 
+from mtorch.tbox_utils import region_crop
 from mmod.imdb import ImageDatabase
-from torchvision.transforms.functional import crop
 
 
 READ_WITH_OPENCV = True
@@ -12,26 +12,6 @@ if READ_WITH_OPENCV:
 
 _cur_data = None
 _cur_regions = None
-
-
-def _set_box_into_bounds(bbox, bounds):
-    w, h = bounds
-    bbox[0] = max(0, bbox[0])
-    bbox[1] = max(0, bbox[1])
-    bbox[2] = min(w, bbox[2])
-    bbox[3] = min(h, bbox[3])
-    return bbox 
-
-
-def _region_crop(img, crop_box):
-    crop_box = _set_box_into_bounds(crop_box, img.size)
-        
-    upper = int(round(crop_box[1]))
-    left = int(round(crop_box[0]))
-    height = int(round(crop_box[3])) - upper
-    width = int(round(crop_box[2])) - left
-        
-    return crop(img, i=upper, j=left, h=height, w=width)
 
 
 def _get_labels_hist(imdb, normalize=False):
@@ -92,14 +72,14 @@ class ImdbRegions(data.Dataset):
         if READ_WITH_OPENCV:
             img = imdb.image(key)
             correct_img = img[:, :, (2, 1, 0)]  # BGR to RGB
-            img = Image.fromarray(correct_img, mode='RGB')  # save in PIL format
-            
+            img = Image.fromarray(correct_img, mode='RGB')  # save in PIL format            
         else:
             raw = imdb.raw_image(index)
             img = Image.open(StringIO(raw)).convert('RGB')
         w, h = img.size
 
-        region = _region_crop(img, crop_box)
+        region = region_crop(img, crop_box)
+
         if self.transform is not None:
             region = self.transform(region)
 

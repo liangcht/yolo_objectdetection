@@ -1,5 +1,6 @@
 import numpy as np
 import torch
+from torchvision.transforms.functional import crop
 
 BBOX_DIM = 4
 
@@ -8,6 +9,34 @@ __all__ = ['Labeler', 'RegionCropper' ,'ClassLabeler']
 
 def _to_bbox(truth):
     return [float(val) for val in truth['rect']]
+
+def set_box_into_bounds(bbox, bounds):
+    """Set the given coordinates within the min/max bounds
+    :param bbox, list of coordinates [x1, y1, x2, y2]
+    :param bounds, maximum width and height
+    :return list of coordinates after setting boundaries
+    """
+    w, h = bounds
+    bbox[0] = max(0, bbox[0])
+    bbox[1] = max(0, bbox[1])
+    bbox[2] = min(w, bbox[2])
+    bbox[3] = min(h, bbox[3])
+    return bbox 
+
+def region_crop(img, crop_box):
+    """Crops the given image based on the given coordinates
+    :param img, numpy arr, image to be transformed
+    :param crop_box, list of coordinates [x1, y1, x2, y2]
+    :return cropped image
+    """
+    crop_box = set_box_into_bounds(crop_box, img.size)
+        
+    upper = int(round(crop_box[1]))
+    left = int(round(crop_box[0]))
+    height = int(round(crop_box[3])) - upper
+    width = int(round(crop_box[2])) - left
+        
+    return crop(img, i=upper, j=left, h=height, w=width)
 
 
 class Labeler(object):
