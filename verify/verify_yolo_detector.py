@@ -1,15 +1,18 @@
 import os
-import cv2
 import time
+
+import cv2
 import numpy as np
-#os.environ['CUDA_VISIBLE_DEVICES'] = "4"
 
-from mtorch.yolo_detctor import YoloDetector
+from mtorch.yolo_detector import YoloDetector
 
-path_model = '/home/t-apsi/github/objectdetection/test/files/model_epoch_36.pt'
-path_labelmap = '/home/t-apsi/github/objectdetection/test/files/labelmap0.txt'
+os.environ['CUDA_VISIBLE_DEVICES'] = "4"
 
-path_images  = '/home/t-apsi/github/objectdetection/test/images'
+
+path_model = '/home/t-apsi/apar/test/files/model_epoch_36.pt'
+path_labelmap = '/home/t-apsi/apar/test/files/labelmap0.txt'
+
+path_images  = '/home/t-apsi/apar/test/images'
 
 detector = YoloDetector(path_model, path_labelmap, thresh=0, obj_thresh=0)
 for f, filename in enumerate(os.listdir(path_images)):
