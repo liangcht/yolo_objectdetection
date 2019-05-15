@@ -6,8 +6,8 @@ def ltwh_to_ltrb(rect):
     """
     if not rect:
         return
-    x, y = rect.get('x', rect['left']), rect.get('y', rect['top'])
-    w, h = rect.get('w', rect['width']), rect.get('h', rect['height'])
+    x, y = rect['x'] if 'x' in rect else rect['left'], rect['y'] if 'y' in rect else rect['top']
+    w, h = rect['w'] if 'w' in rect else rect['width'], rect['h'] if 'h' in rect else rect['height']
     return [x, y, x + w, y + h]
 
 

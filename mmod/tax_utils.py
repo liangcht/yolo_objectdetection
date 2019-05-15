@@ -163,7 +163,7 @@ def create_db_from_predict(db, predict_file, class_thresh, out_path, basename='t
     :rtype: mmod.imdb.ImageDatabase
     """
     exp = Experiment(db)
-    all_det = exp.load_detections(predict_file, class_thresh, group_by_label=False)
+    all_det = exp.load_detections(predict_file, thresh=class_thresh, group_by_label=False)
     new_label_file = op.join(out_path, basename + "0.tsv").replace("\\", "/")
     with open_with_lineidx(new_label_file) as fp:
         with db.open():
