@@ -1225,9 +1225,9 @@ class SubtractMeans(object):
         :return: sample with IMAGE after subtraction and normalization (LABEL is unaltered)
         """
         if isinstance(sample, dict):
-            transforms.functional.normalize(sample[IMAGE], self.mean, self.norm)
+            sample[IMAGE] = transforms.functional.normalize(sample[IMAGE], self.mean, self.norm)
         else:
-            transforms.functional.normalize(sample, self.mean, self.norm)
+            sample = transforms.functional.normalize(sample, self.mean, self.norm)
         return sample
 
 

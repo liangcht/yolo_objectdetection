@@ -10,6 +10,7 @@ MAX_BOXES = 30
 USE_DARKNET_LIB = True
 NO_FLIP = 0
 RANDOM_FLIP = Transforms.FLIP_PROB
+SCALE_RANGE = Transforms.DEF_SCALE_RANGE
 
 __all__ = ['BasicDarknetAugmentation', 'DefaultDarknetAugmentation', 
            'DarknetAugmentation', 'TestAugmentation', 'ClassifierTrainAugmentation', 'ClassifierTestAugmentation']
@@ -40,28 +41,32 @@ class BasicDarknetAugmentation(object):
         random_distorter = Transforms.RandomDistort(hue=self.hue, saturation=self.saturation, exposure=self.exposure)
         random_resizer = Transforms.RandomResizeDarknet(self.jitter, library=Transforms.OPENCV)
         darknet_random_resize_place = Transforms.DarknetRandomResizeAndPlaceOnCanvas(canvas_size=TRAIN_CANVAS_SIZE,
-                                                                                     jitter=self.jitter)
+                                                                                     jitter=self.jitter,
+                                                                                     scale=self.scale,
+                                                                                     fixed_offset=self.fixed_offset)
         horizontal_flipper = Transforms.RandomHorizontalFlip(self.flip)
         place_on_canvas = Transforms.PlaceOnCanvas()
         to_labels = Transforms.ToDarknetLabels(self.max_boxes)
         to_tensor = Transforms.ToDarknetTensor()
         minus_dc = Transforms.SubtractMeans(self.means)
-
+    
         if USE_DARKNET_LIB:
             self.composed_transforms = Transforms.Compose(
                 [set_inrange, box_randomizer, darknet_random_resize_place, random_distorter,
-                 horizontal_flipper, to_labels, to_tensor, minus_dc])
+                horizontal_flipper, to_labels, to_tensor, minus_dc])
         else:
             self.composed_transforms = Transforms.Compose(
                 [set_inrange, box_randomizer, random_resizer, place_on_canvas, random_distorter,
-                 horizontal_flipper, to_labels, to_tensor, minus_dc])
+                horizontal_flipper, to_labels, to_tensor, minus_dc])
         return self.composed_transforms
 
     def _set_augmentation_params(self):
-        self.hue = 0
-        self.saturation = 1
-        self.exposure = 1
-        self.jitter = 0
+        self.hue = 0.0
+        self.saturation = 1.0
+        self.exposure = 1.0
+        self.jitter = 0.0
+        self.scale = 1.0
+        self.fixed_offset = True
         self.means = [int(mean) for mean in MEANS]  # BGR
         self.max_boxes = MAX_BOXES
         self.flip = NO_FLIP
@@ -92,6 +97,8 @@ class DefaultDarknetAugmentation(BasicDarknetAugmentation):
         self.saturation = 1.5
         self.exposure = 1.5
         self.jitter = 0.2
+        self.scale = SCALE_RANGE
+        self.fixed_offset = False
         self.means = [int(mean) for mean in MEANS]  # BGR
         self.max_boxes = MAX_BOXES
         self.flip = RANDOM_FLIP
@@ -132,6 +139,8 @@ class DarknetAugmentation(BasicDarknetAugmentation):
                       int(float(self.params['transform_param']['mean_value'][2]))]  # R
         self.max_boxes = int(self.params['box_data_param']['max_boxes'])
         self.flip = RANDOM_FLIP
+        self.scale = SCALE_RANGE
+        self.fixed_offset = False
 
 
 class TestAugmentation(object):
