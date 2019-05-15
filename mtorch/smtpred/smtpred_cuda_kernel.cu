@@ -11,7 +11,7 @@
 
 namespace {
 
-__device__ void stack_push(double* __restrict__ parent_p_data, int* __restrict__ parent_argmax_data, int* __restrict__ g_data,
+__device__ void stack_push(double* parent_p_data, int* parent_argmax_data, int* g_data,
                            int& stack_size,
                            double p, int argmax, int g) {
     parent_p_data[stack_size] = p;
@@ -20,7 +20,7 @@ __device__ void stack_push(double* __restrict__ parent_p_data, int* __restrict__
     stack_size++;
 }
 
-__device__ void stack_pop(const double* __restrict__ parent_p_data, const int* __restrict__ parent_argmax_data, const int* __restrict__ g_data,
+__device__ void stack_pop(const double* parent_p_data, const int* parent_argmax_data, const int* g_data,
                           int& stack_size,
                           double& p, int& argmax, int& g) {
     assert(stack_size > 0);
@@ -35,9 +35,9 @@ __device__ void predict_tree_stack(
     int outer_num, int channels, int inner_num,
     bool append_max,
     float threshold,
-    const int* __restrict__ group_offset_data, const int* __restrict__ group_size_data, const int* __restrict__ child_data, const int* __restrict__ child_size_data,
-    double* __restrict__ parent_p_data, int* __restrict__ parent_argmax_data, int* __restrict__ g_data,
-    const scalar_t* __restrict__ obj_data, const scalar_t* __restrict__ prob_data,
+    const int* group_offset_data, const int* group_size_data, const int* child_data, const int* child_size_data,
+    double* parent_p_data, int* parent_argmax_data, int* g_data,
+    const scalar_t* obj_data, const scalar_t* prob_data,
     int max_stack_size, int n, int s, int g,
     scalar_t* top_data,
     bool output_tree_path) {
@@ -125,11 +125,11 @@ __global__ void kernel_smt_prediction(
     int outer_num, int channels, int inner_num, int root_size,
     bool append_max,
     float threshold,
-    const int* __restrict__ group_offset_data, const int* __restrict__ group_size_data, const int* __restrict__ child_data, const int* __restrict__ child_size_data,
-    double* __restrict__ parent_p_data, int* __restrict__ parent_argmax_data, int* __restrict__ g_data,
-    const scalar_t* __restrict__ obj_data, const scalar_t* __restrict__ prob_data,
+    const int* group_offset_data, const int* group_size_data, const int* child_data, const int* child_size_data,
+    double* parent_p_data, int* parent_argmax_data, int* g_data,
+    const scalar_t* obj_data, const scalar_t* prob_data,
     int max_stack_size,
-    scalar_t* __restrict__ top_data,
+    scalar_t* top_data,
     bool output_tree_path) {
     CUDA_KERNEL_LOOP(index, outer_num * root_size * inner_num) {
         const int s = index % inner_num;

@@ -1,4 +1,4 @@
-#include <torch/torch.h>
+#include <torch/extension.h>
 
 #include <vector>
 #include <numeric>
@@ -10,7 +10,7 @@ namespace {
 
 // sort the values in p in descending order and keep the index in result
 template <typename scalar_t>
-void sort_nms_idx(const scalar_t* __restrict__ p,
+void sort_nms_idx(const scalar_t* p,
                   std::vector<int>& result) {
     std::iota(result.begin(), result.end(), 0);
     std::sort(result.begin(), result.end(),
@@ -21,7 +21,7 @@ void sort_nms_idx(const scalar_t* __restrict__ p,
 template <typename scalar_t>
 void pre_filter(int outer_num, int channels, int inner_num, int classes, int first_class,
                 float thresh,
-                scalar_t* __restrict__ top_conf_data) {
+                scalar_t* top_conf_data) {
     for (int index = 0; index < outer_num * classes * inner_num; ++index) {
         const int s = index % inner_num;
         const int c = (index / inner_num) % classes + first_class;
@@ -33,10 +33,10 @@ void pre_filter(int outer_num, int channels, int inner_num, int classes, int fir
 }
 
 template <typename scalar_t>
-void nms_filter(const scalar_t* __restrict__ bbs_data,
+void nms_filter(const scalar_t* bbs_data,
                 int outer_num, int channels, int inner_num, int classes, int first_class,
                 float thresh,
-                scalar_t* __restrict__ top_conf_data) {
+                scalar_t* top_conf_data) {
 
     for (int index = 0; index < outer_num * classes; ++index) {
         int c = index % classes + first_class;

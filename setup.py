@@ -7,7 +7,12 @@ import os.path as op
 from setuptools import find_packages, setup
 import numpy as np
 from distutils.extension import Extension
-from torch.utils.cpp_extension import BuildExtension, CUDAExtension, CppExtension
+from torch.utils.cpp_extension import BuildExtension, CppExtension
+try:
+    from torch.utils.cpp_extension import CUDAExtension
+except ImportError:
+    CUDAExtension = None
+    print("No CUDA was detected, building without CUDA")
 
 # change directory to this module path
 try:
@@ -33,9 +38,36 @@ def readme(fname):
     return open(op.join(script_dir, fname)).read()
 
 
+if CUDAExtension is None:
+    cuda_extensions = []
+else:
+    cuda_extensions = [
+        CUDAExtension('region_target_cuda', [
+            'mtorch/rt/rt_cuda.cpp',
+            'mtorch/rt/rt_cuda_kernel.cu',
+        ], include_dirs=include_dirs),
+        CUDAExtension('smt_cuda', [
+            'mtorch/smt/smt_cuda.cpp',
+            'mtorch/smt/smt_cuda_kernel.cu',
+        ], include_dirs=include_dirs),
+        CUDAExtension('smtl_cuda', [
+            'mtorch/smtl/smtl_cuda.cpp',
+            'mtorch/smtl/smtl_cuda_kernel.cu',
+        ], include_dirs=include_dirs),
+        CUDAExtension('nmsfilt_cuda', [
+            'mtorch/nmsfilt/nmsfilt_cuda.cpp',
+            'mtorch/nmsfilt/nmsfilt_cuda_kernel.cu',
+        ], include_dirs=include_dirs),
+        CUDAExtension('smtpred_cuda', [
+            'mtorch/smtpred/smtpred_cuda.cpp',
+            'mtorch/smtpred/smtpred_cuda_kernel.cu',
+        ], include_dirs=include_dirs),
+    ]
+
+
 setup(
     name="Microsoft Massive Object Detection",
-    version="0.0.2",
+    version="0.0.3",
     author="ehazar",
     author_email="ehazar@microsoft.com",
     url='',
@@ -49,20 +81,8 @@ setup(
             extra_compile_args=["-Wno-cpp", "-Wno-unused-function"] if os.name != 'nt' else None,
             include_dirs=[numpy_include]
         ),
-        CUDAExtension('region_target_cuda', [
-            'mtorch/rt/rt_cuda.cpp',
-            'mtorch/rt/rt_cuda_kernel.cu',
-        ], include_dirs=include_dirs),
         CppExtension('region_target_cpu', [
             'mtorch/rt/rt_cpu.cpp',
-        ], include_dirs=include_dirs),
-        CUDAExtension('smt_cuda', [
-            'mtorch/smt/smt_cuda.cpp',
-            'mtorch/smt/smt_cuda_kernel.cu',
-        ], include_dirs=include_dirs),
-        CUDAExtension('smtl_cuda', [
-            'mtorch/smtl/smtl_cuda.cpp',
-            'mtorch/smtl/smtl_cuda_kernel.cu',
         ], include_dirs=include_dirs),
         CppExtension('smtl_cpu', [
             'mtorch/smtl/smtl_cpu.cpp',
@@ -70,16 +90,8 @@ setup(
         CppExtension('smt_cpu', [
             'mtorch/smt/smt_cpu.cpp',
         ], include_dirs=include_dirs),
-        CUDAExtension('nmsfilt_cuda', [
-            'mtorch/nmsfilt/nmsfilt_cuda.cpp',
-            'mtorch/nmsfilt/nmsfilt_cuda_kernel.cu',
-        ], include_dirs=include_dirs),
         CppExtension('nmsfilt_cpu', [
             'mtorch/nmsfilt/nmsfilt_cpu.cpp',
-        ], include_dirs=include_dirs),
-        CUDAExtension('smtpred_cuda', [
-            'mtorch/smtpred/smtpred_cuda.cpp',
-            'mtorch/smtpred/smtpred_cuda_kernel.cu',
         ], include_dirs=include_dirs),
         CppExtension('smtpred_cpu', [
             'mtorch/smtpred/smtpred_cpu.cpp',
@@ -88,7 +100,7 @@ setup(
             'mtorch/darkresize/dark_resize.cpp',
         ], include_dirs=include_dirs),
 
-    ],
+    ] + cuda_extensions,
     cmdclass={
         'build_ext': BuildExtension
     },

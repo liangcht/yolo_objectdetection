@@ -2,7 +2,10 @@ import torch
 import torch.nn as nn
 from torch.autograd import Function
 
-import nmsfilt_cuda
+try:
+    import nmsfilt_cuda
+except ImportError:
+    nmsfilt_cuda = None
 import nmsfilt_cpu
 
 

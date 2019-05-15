@@ -12,10 +12,10 @@ namespace {
 template <typename scalar_t>
 __global__ void smtl_cuda_forward_kernel(
     const int nthreads,
-    const int* __restrict__ parent_data, const scalar_t* __restrict__ prob_data, const scalar_t* __restrict__ label,
+    const int* parent_data, const scalar_t* prob_data, const scalar_t* label,
     const int dim, const int spatial_dim,
     const bool has_ignore_label, const int ignore_label,
-    scalar_t* __restrict__ loss_data, scalar_t* __restrict__ counts) {
+    scalar_t* loss_data, scalar_t* counts) {
     CUDA_KERNEL_LOOP(index, nthreads) {
         // index == n * spatial_dim + s
         const int n = index / spatial_dim;
@@ -39,8 +39,8 @@ __global__ void smtl_cuda_forward_kernel(
 template <typename scalar_t>
 __global__ void smtl_cuda_backward_kernel(
     const int nthreads,
-    const int* __restrict__ parent_data, const int* __restrict__ group_offset_data, const int* __restrict__ group_size_data, const int* __restrict__ group_data,
-    const scalar_t* __restrict__ label, const scalar_t* __restrict__ prob_data, scalar_t* __restrict__ bottom_diff,
+    const int* parent_data, const int* group_offset_data, const int* group_size_data, const int* group_data,
+    const scalar_t* label, const scalar_t* prob_data, scalar_t* bottom_diff,
     const int dim, const int spatial_dim,
     const bool has_ignore_label, const int ignore_label) {
     CUDA_KERNEL_LOOP(index, nthreads) {

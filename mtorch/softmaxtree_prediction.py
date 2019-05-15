@@ -5,7 +5,10 @@ from torch.autograd import Function
 
 from mmod.simple_parser import read_softmax_tree
 
-import smtpred_cuda
+try:
+    import smtpred_cuda
+except ImportError:
+    smtpred_cuda = None
 import smtpred_cpu
 
 

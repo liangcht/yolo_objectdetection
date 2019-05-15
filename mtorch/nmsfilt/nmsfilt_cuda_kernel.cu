@@ -12,7 +12,7 @@ namespace {
 template <typename scalar_t>
 __device__ void bottom_up_argmerge(const scalar_t* p,
                                    int left, int right, int end,
-                                   const int* __restrict__ src, int* __restrict__ dst) {
+                                   const int* src, int* dst) {
     int i = left;
     int j = right;
     // Merge 2 already sorted lists
@@ -31,8 +31,8 @@ template <typename scalar_t>
 __global__ void kernel_channel_argmergesort(
     int outer_num, int channels, int inner_num, int classes, int first_class,
     int width, int chunks,
-    const scalar_t* __restrict__ data,
-    int* __restrict__ src, int* __restrict__ dst) {
+    const scalar_t* data,
+    int* src, int* dst) {
     CUDA_KERNEL_LOOP(index, outer_num * classes * chunks) {
         const int i = index % chunks;
         const int c_idx = (index / chunks) % classes;
@@ -61,7 +61,7 @@ template <typename scalar_t>
 __global__ void kernel_pre_filter(
     int outer_num, int channels, int inner_num, int classes, int first_class,
     float thresh,
-    scalar_t* __restrict__ top_conf_data) {
+    scalar_t* top_conf_data) {
     CUDA_KERNEL_LOOP(index, outer_num * classes * inner_num) {
         const int s = index % inner_num;
         const int c = (index / inner_num) % classes + first_class;
@@ -75,9 +75,9 @@ __global__ void kernel_pre_filter(
 template <typename scalar_t>
 __global__ void kernel_nms_filter(
     int outer_num, int channels, int inner_num, int classes, int first_class,
-    const int* __restrict__ idx,
-    const scalar_t* __restrict__ bbs_data, float thresh,
-    scalar_t* __restrict__ top_conf_data) {
+    const int* idx,
+    const scalar_t* bbs_data, float thresh,
+    scalar_t* top_conf_data) {
     CUDA_KERNEL_LOOP(index, outer_num * classes) {
         const int c_idx = index % classes;
         const int c = c_idx + first_class;

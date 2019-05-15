@@ -11,7 +11,7 @@ namespace {
 
 template <typename scalar_t>
 __global__ void kernel_subtract_max(const int num, const int channels, const int spatial_dim, const int groups,
-                                    const int* __restrict__ group_offset_data, const int* __restrict__ group_size_data, scalar_t* __restrict__ data) {
+                                    const int* group_offset_data, const int* group_size_data, scalar_t* data) {
     CUDA_KERNEL_LOOP(index, num * groups * spatial_dim) {
         int s = index % spatial_dim;
         int g = (index / spatial_dim) % groups;
@@ -32,7 +32,7 @@ __global__ void kernel_subtract_max(const int num, const int channels, const int
 
 template <typename scalar_t>
 __global__ void kernel_div_sum(const int num, const int channels, const int spatial_dim, const int groups,
-                               const int* __restrict__ group_offset_data, const int* __restrict__ group_size_data, scalar_t* __restrict__ data) {
+                               const int* group_offset_data, const int* group_size_data, scalar_t* data) {
     CUDA_KERNEL_LOOP(index, num * groups * spatial_dim) {
         int s = index % spatial_dim;
         int g = (index / spatial_dim) % groups;
@@ -52,7 +52,7 @@ __global__ void kernel_div_sum(const int num, const int channels, const int spat
 template <typename scalar_t>
 __global__ void kernel_subtract_dot(const int num, const int channels, const int spatial_dim, const int groups,
                                     const int* group_offset_data, const int* group_size_data, 
-                                    const scalar_t* __restrict__ data_1, const scalar_t* __restrict__ data_2, scalar_t* __restrict__ out) {
+                                    const scalar_t* data_1, const scalar_t* data_2, scalar_t* out) {
     CUDA_KERNEL_LOOP(index, num * groups * spatial_dim) {
         int s = index % spatial_dim;
         int g = (index / spatial_dim) % groups;

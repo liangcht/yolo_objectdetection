@@ -11,7 +11,7 @@ namespace {
 
 template <typename scalar_t>
 __global__ void ExtractBoundingBox(int total, int num_anchor, int height, int width, 
-        scalar_t* __restrict__ bbs_data, const scalar_t* __restrict__ blob_xy_data, const scalar_t* __restrict__ blob_wh_data,
+        scalar_t* bbs_data, const scalar_t* blob_xy_data, const scalar_t* blob_wh_data,
         const scalar_t* biases) {
   CUDA_KERNEL_LOOP(index, total) {
       int b = index / (num_anchor * height * width);
@@ -33,8 +33,8 @@ __global__ void ExtractBoundingBox(int total, int num_anchor, int height, int wi
 }
 
 template <typename scalar_t>
-__global__ void CalculateIOU(int total, scalar_t* __restrict__ iou_data, const scalar_t* __restrict__ bbs_data, const scalar_t* __restrict__ truth_data, int num_anchor, int height, int width, int max_gt,
-                             scalar_t positive_thresh, const scalar_t* __restrict__ blob_obj_data, scalar_t* __restrict__ target_obj_noobj_data) {
+__global__ void CalculateIOU(int total, scalar_t* iou_data, const scalar_t* bbs_data, const scalar_t* truth_data, int num_anchor, int height, int width, int max_gt,
+                             scalar_t positive_thresh, const scalar_t* blob_obj_data, scalar_t* target_obj_noobj_data) {
   CUDA_KERNEL_LOOP(index, total) {
       int b = index / (num_anchor * height * width * max_gt);
       int left = index % (num_anchor * height * width * max_gt);
@@ -71,8 +71,8 @@ __global__ void CalculateIOU(int total, scalar_t* __restrict__ iou_data, const s
 
 template <typename scalar_t>
 __global__ void GroundTruthTarget(int total, int max_gt,
-        const scalar_t* __restrict__ truth_data, int num_anchor, int height, int width,
-        const scalar_t* __restrict__ biases, int* __restrict__ gt_target_data) {
+        const scalar_t* truth_data, int num_anchor, int height, int width,
+        const scalar_t* biases, int* gt_target_data) {
     CUDA_KERNEL_LOOP(index, total) {
         int b = index / max_gt;
         int t = index % max_gt;
@@ -107,7 +107,7 @@ __global__ void GroundTruthTarget(int total, int max_gt,
 }
 
 template <typename scalar_t>
-__global__ void RemoveDuplicateTarget(int total, int* __restrict__ gt_target_data, int max_gt) {
+__global__ void RemoveDuplicateTarget(int total, int* gt_target_data, int max_gt) {
     CUDA_KERNEL_LOOP(index, total) {
         int b = index / (max_gt * max_gt);
         int left_index = index % (max_gt * max_gt);
@@ -147,12 +147,12 @@ __global__ void RemoveDuplicateTarget(int total, int* __restrict__ gt_target_dat
 }
 
 template <typename scalar_t>
-__global__ void AlignGroudTruth(int total, const int* __restrict__ gt_target_data, int max_gt,
-        const scalar_t* __restrict__ truth_data, scalar_t* __restrict__ target_xy_data, scalar_t* __restrict__ target_wh_data,
-        scalar_t* __restrict__ target_xywh_weight_data, scalar_t coord_scale,
-        int num_anchor, int height, int width, bool rescore, scalar_t* __restrict__ target_obj_obj_data,
-        const scalar_t* __restrict__ iou_data, scalar_t* __restrict__ target_obj_noobj_data, scalar_t* __restrict__ target_class_data,
-        const scalar_t* __restrict__ biases, const scalar_t* __restrict__ blob_obj_data) {
+__global__ void AlignGroudTruth(int total, const int* gt_target_data, int max_gt,
+        const scalar_t* truth_data, scalar_t* target_xy_data, scalar_t* target_wh_data,
+        scalar_t* target_xywh_weight_data, scalar_t coord_scale,
+        int num_anchor, int height, int width, bool rescore, scalar_t* target_obj_obj_data,
+        const scalar_t* iou_data, scalar_t* target_obj_noobj_data, scalar_t* target_class_data,
+        const scalar_t* biases, const scalar_t* blob_obj_data) {
     CUDA_KERNEL_LOOP(index, total) {
         int b = index / max_gt;
         int t = index % max_gt;

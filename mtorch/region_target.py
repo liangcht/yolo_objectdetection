@@ -3,7 +3,10 @@ import torch
 import torch.nn as nn
 from torch.autograd import Function
 
-import region_target_cuda
+try:
+    import region_target_cuda
+except ImportError:
+    region_target_cuda = None
 import region_target_cpu
 
 
