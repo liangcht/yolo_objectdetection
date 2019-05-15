@@ -45,10 +45,7 @@ def main():
     parser.add_argument('--seed', help='Random seed', type=int, default=7889)
     parser.add_argument('--thresh', '--class_thresh',
                         help='Class threshold file to use in sampling from predictions (or a single threshod)',
-                        default=0.6)
-    parser.add_argument('--obj_thresh', '--objthresh',
-                        help='Objectness threshold to sample from predictions',
-                        default=0.2)
+                        default=0.0)
     parser.add_argument('--predict',
                         help='Prediction file to use (to avoid prediction step)')
     parser.add_argument('--auth',
@@ -66,15 +63,13 @@ def main():
         in_path
     )
 
-    obj_thresh = args['obj_thresh']
-    assert obj_thresh >= 0, "obj_thresh: {} < 0".format(obj_thresh)
-    thresh = args['thresh']
-    if is_number(thresh, float):
-        class_thresh = float(thresh)
+    class_thresh = args['thresh']
+    if is_number(class_thresh, float):
+        class_thresh = float(class_thresh)
         logging.info("No per-class threshold file given")
     else:
-        assert op.isfile(thresh), 'threshold file: {} does not exist'.format(thresh)
-        with open(thresh) as f:
+        assert op.isfile(class_thresh), 'threshold file: {} does not exist'.format(class_thresh)
+        with open(class_thresh) as f:
             class_thresh = {l[0]: float(l[1].rstrip()) for l in
                             [line.split('\t') for line in f.readlines()]}
 
@@ -139,7 +134,7 @@ def main():
             result = convert_api_od(json.loads(res.content)['objects'])
             result = [
                 crect for crect in result
-                if crect['conf'] >= (class_thresh[crect['class']] if class_thresh else thresh)
+                if crect['conf'] >= (class_thresh[crect['class']] if isinstance(class_thresh, dict) else class_thresh)
             ]
             tell = fp.tell()
             fp.write("{}\t{}\n".format(
