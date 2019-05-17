@@ -37,13 +37,13 @@ class ODImResize(object):
             height2 = int(np.round(alpha * h))
             width2 = int(np.round(alpha * w))
             if h > w:
-                self.network_input_height = (height2 + 31) / 32 * 32
-                self.network_input_width = ((self.network_input_height * w + h - 1) / h +
-                                            31) / 32 * 32
+                self.network_input_height = (height2 + 31) // 32 * 32
+                self.network_input_width = ((self.network_input_height * w + h - 1) // h +
+                                            31) // 32 * 32
             else:
-                self.network_input_width = (width2 + 31) / 32 * 32
-                self.network_input_height = ((self.network_input_width * h + w - 1) / w +
-                                            31) / 32 * 32
+                self.network_input_width = (width2 + 31) // 32 * 32
+                self.network_input_height = ((self.network_input_width * h + w - 1) // w +
+                                            31) // 32 * 32
         else:
             self.network_input_height = self.target_size[0]
             self.network_input_width = self.target_size[1]
