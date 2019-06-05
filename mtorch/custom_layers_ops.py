@@ -21,6 +21,7 @@ def _freeze_till(model, layer_name):
     # gradient will not be tracked
     freeze_stopped = False
     for name, param in model.named_parameters():
+        print("layer {} is freeze".format(name))
         if layer_name in name:
             freeze_stopped = True
             break

@@ -264,12 +264,15 @@ def train(trn_loader, model, criterion, optimizer, scheduler, epoch, loss_arr,
     losses = AverageMeter()
 
     last_batch = len(trn_loader)
+    print("last_batch {}".format(last_batch))
+    print("epoch_number {}".format(epoch))
     for i, inputs in enumerate(trn_loader):
         if iterations_left and iterations_left == 0:
             break
         batch_num = i + 1
+        print("batch_num {}".format(batch_num))
         data, labels = inputs[0].cuda(), inputs[1].cuda().float()
-
+        torch.save([data, labels], './test/debug_batch_input')
         scheduler.step()
         timer.batch_start()
         optimizer.zero_grad()

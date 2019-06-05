@@ -123,6 +123,48 @@ def result2bblist(hw, probs, boxes, class_map, thresh=None, obj_thresh=None, cla
 
     return det_results
 
+def result2bbIRIS(hw, probs, boxes, class_map, thresh=None, obj_thresh=None, class_thresh=None):
+    if thresh is None:
+        thresh = 0
+    if obj_thresh is None:
+        obj_thresh = 0
+    class_num = probs.shape[1] - 1  # the last one is obj_score * max_prob
+
+    det_results = []
+    for i, box in enumerate(boxes):
+        if probs[i, -1] <= obj_thresh:
+            continue
+        if probs[i, 0:-1].max() <= thresh:
+            continue
+        for j in range(class_num):
+            if probs[i, j] <= thresh:
+                continue
+            label = class_map[j]
+            if class_thresh and probs[i, j] <= class_thresh[label]:
+                continue
+
+            x, y, w, h = box
+
+            im_h, im_w = hw
+            left = (x - w / 2.)
+            right = (x + w / 2.)
+            top = (y - h / 2.)
+            bot = (y + h / 2.)
+
+            left = max(left, 0)
+            left = min(left, im_w - 1)
+            right = max(right, 0)
+            right = min(right, im_w - 1)
+            top = max(top, 0)
+            top = min(top, im_h - 1)
+            bot = max(bot, 0)
+            bot = min(bot, im_h - 1)
+
+            conf = float(max(round(probs[i, j], 4), 0.00001))       
+            
+            det_results.append([j, conf, left, top, right, bot])
+
+    return det_results
 
 def result2json(*args, **kwargs):
     return json.dumps(result2bblist(*args, **kwargs), separators=(',', ':'))

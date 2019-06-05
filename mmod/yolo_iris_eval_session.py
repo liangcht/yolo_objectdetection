@@ -19,7 +19,7 @@ if __name__ == '__main__':
 
 from mmod.file_logger import FileLogger
 from mmod.meters import AverageMeter
-from mmod.detection import result2bblist
+from mmod.detection import result2bbIRIS
 from mmod.simple_parser import load_labelmap_list
 from mmod.utils import open_with_lineidx
 from mtorch.dataloaders import yolo_test_data_loader
@@ -27,6 +27,7 @@ from mtorch.yolo_predict import PlainPredictorSingleClassNMS, PlainPredictorClas
                                 TreePredictorSingleClassNMS, TreePredictorClassSpecificNMS
 from mtorch.yolo_v2 import yolo_2extraconv
 from mtorch.darknet import darknet_layers
+from irisexperiment import ObjectDetectionEvaluator
 
 
 def get_parser():
@@ -138,14 +139,15 @@ def main(args, log):
     data_time = AverageMeter()
     tic = time.time()
     results = list()
+    gts = list()
     end = time.time()
     for i, inputs in enumerate(test_loader):
         data_time.update(time.time() - end)
 
-        data, keys, image_keys, hs, ws = inputs[0], inputs[1], inputs[2], inputs[3], inputs[4]
-
+        data, image_keys, hs, ws, gt_batch = inputs[0], inputs[1], inputs[2], inputs[3], inputs[4]
+        gts += gt_batch
         # compute output
-        for im, key, image_key, h, w in zip(data, keys, image_keys, hs, ws):
+        for im, image_key, h, w in zip(data, image_keys, hs, ws):
             im = im.unsqueeze_(0)
             im = im.float().cuda()
             with torch.no_grad():
@@ -154,13 +156,12 @@ def main(args, log):
 
             bbox = bbox.cpu().numpy()
             prob = prob.cpu().numpy()
-
             assert bbox.shape[-1] == 4
             bbox = bbox.reshape(-1, 4)
             prob = prob.reshape(-1, prob.shape[-1])
-            result = result2bblist((h, w), prob, bbox, cmap,
+            result = result2bbIRIS((h, w), prob, bbox, cmap,
                                    thresh=args["thresh"], obj_thresh=args["obj_thresh"])
-            results.append((key, image_key, result))
+            results.append(result)
 
         # measure elapsed time
         batch_time.update(time.time() - end)
@@ -175,10 +176,13 @@ def main(args, log):
                         i, len(test_loader), speed=speed, batch_time=batch_time, data_time=data_time)
             log.verbose(info_str)
             tic = time.time()
-
-    log.console("Prediction is done, saving results")
-    log.console("Prediction results will be saved to {}".format(args["output"]))
-    write_predict(args["output"], results)
+    import pickle
+    # pickle.dump(results, open('./output/IRIS_pred.p', 'wb'))
+    # pickle.dump(gts, open('./output/IRIS_gt.p', 'wb'))
+    evaluator = ObjectDetectionEvaluator('a','a','a')
+    evaluator.add_predictions(results, gts)
+    eval_result =evaluator.get_report()
+    print(eval_result)
 
 
 if __name__ == '__main__':

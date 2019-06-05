@@ -10,6 +10,7 @@ from mtorch.tbox_utils import Labeler
 from mtorch.augmentation import DefaultDarknetAugmentation, TestAugmentation
 from mtorch.distributed_samplers import DistributedSequentialWrappingSampler, DistributedRandomWrappingSampler
 
+import pdb
 __all__ = ['yolo_train_data_loader', 'yolo_test_data_loader']
 
 
@@ -27,8 +28,12 @@ def create_imdb_dataset(path, cmapfile, transform, labeler=None, **kwargs):
         from mtorch.imdbtsvdata import ImdbTSVData
         return ImdbTSVData(path, cmapfile, transform, labeler, **kwargs)
     else:
-        return ImdbData(path, cmapfile, transform, labeler, **kwargs)
-
+        from mtorch.imdbIRISdata import ImageDataset
+        if 'predict_phase' in kwargs:
+            return ImageDataset(path, transform, kwargs['predict_phase'])
+        else:
+            return ImageDataset(path, transform)
+        # return ImdbData(path, cmapfile, transform, labeler, **kwargs)
 
 def yolo_train_data_loader(args):
     """prepares data loader for training
@@ -65,7 +70,6 @@ def yolo_train_data_loader(args):
     augmenter = DefaultDarknetAugmentation()
     augmented_dataset = create_imdb_dataset(datafile,
                                             cmapfile, augmenter(), Labeler())
-
     if use_wrap_sampler:
         total_batch_size = batch_size * env_world_size()
         num_iters_per_epoch = max(min_iters_per_epoch,
