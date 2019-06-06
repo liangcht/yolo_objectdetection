@@ -6,17 +6,17 @@ import sys
 import traceback
 import shutil
 from mmod.simple_parser import load_labelmap_list
-from mtorch.yolo_v2 import yolo_3extraconv
-from mtorch.darknet import darknet_layers
-from mtorch.yolo_v2_loss import YoloLossForPlainStructure
+from iristorch.models.yolo_v2 import Yolo
+from iristorch.layers.yolo_loss import YoloLoss
 from mtorch.augmentation import DefaultDarknetAugmentation
 from mtorch.multifixed_scheduler import MultiFixedScheduler
 from mtorch.dataloaders import create_imdb_dataset
-from mtorch.caffesgd import CaffeSGD
 from mtorch.lr_scheduler import LinearDecreasingLR
 import pdb
 
-pretrain_model = '/home/tobai/ODExperiments/yoloSample/yolomodel/Logo_YoloV2_CaffeFeaturizer.pt'
+# pretrain_model = '/home/tobai/ODExperiments/yoloSample/yolomodel/Logo_YoloV2_CaffeFeaturizer.pt'
+pretrain_model = './output/torch_pretrain_model.pt'
+
 total_epoch = 300
 log_pth = './output_irisInit/'
 # TODO: solver param
@@ -39,7 +39,7 @@ def train(model, num_class, device):
     model.train()
     # model.freeze('dark6')
     optimizer = torch.optim.SGD(model.parameters(), lr=0.0001, momentum=0.9)
-    criterion = YoloLossForPlainStructure(num_classes=num_class)
+    criterion = YoloLoss(num_classes=num_class)
     criterion = criterion.cuda()
 
     # load training data
@@ -82,17 +82,17 @@ def train(model, num_class, device):
 def main(args, log_pth):
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
     cmap = load_labelmap_list(label_map)
-    model = yolo_3extraconv(darknet_layers(),
-        weights_file=pretrain_model,
-        caffe_format_weights=True,
-        ignore_mismatch = True,
-        num_classes=len(cmap),
-        map_location=lambda storage, loc: storage.cuda(0)).cuda()
-    if model.pretrained_info:
-        print("Pretrained model was loaded: " + model.pretrained_info)
+    model = Yolo(num_classes = len(cmap))
+    
+    pretrained_dict = torch.load(pretrain_model)
+    model_dict = model.state_dict()
+    pretrained_dict = {k: v for k, v in pretrained_dict.items() if
+                       (k in model_dict) and (model_dict[k].shape == pretrained_dict[k].shape)}
+    model.load_state_dict(pretrained_dict, strict=False)
     # TODO: set distributed
 
     # TODO: add solver_params
+    model.to(device)
     train(model, len(cmap), device)
 
 

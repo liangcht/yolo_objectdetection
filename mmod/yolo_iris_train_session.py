@@ -54,6 +54,7 @@ def train(model, num_class, device):
             scheduler.step()
             optimizer.zero_grad()
             outputs = model(inputs.to(device))
+            pdb.set_trace()
             loss = criterion(outputs.float().to(device), labels.float().to(device))
             loss.backward()
             optimizer.step()
@@ -93,6 +94,8 @@ def main(args, log_pth):
     # TODO: set distributed
 
     # TODO: add solver_params
+    tmp_torchmodel = './output/torch_pretrain_model.pt'
+    # torch.save(model.state_dict(), tmp_torchmodel)
     train(model, len(cmap), device)
 
 
