@@ -26,7 +26,7 @@ class AzureBlobODDataset(torch.utils.data.Dataset):
     
     def __getitem__(self, index):
         image_manifest = self.image_manifests[index]
-        target = image_manifest["Regions"]
+        targets = image_manifest["Regions"]
         image = None
         blobName = "{0}/{1}".format(self.dataset, image_manifest["name"])
         try:
@@ -37,19 +37,20 @@ class AzureBlobODDataset(torch.utils.data.Dataset):
             raise e
 
         if self.predict_phase:
-            sample=image
-            sample = self.transform(sample)
+            image, targets = self.transform(image, targets)
             w, h = image.size
-            return sample, index, h, w, target
+            return image, index, h, w, targets
         else:
             # Convert absolute coordinates to (x1, y1, x2, y2)
-            abs_target = [None] * len(target)
-            for i, t in enumerate(target):
+            abs_target = [None] * len(targets)
+            for i, t in enumerate(targets):
                 bbox = t["BoundingBox"]
-                abs_target[i] = [bbox[0], bbox[1], bbox[2], bbox[3], t['tagIndex']]
-            target = np.array(abs_target)
-            sample = {IMAGE: image, LABEL:target}
-            sample = self.transform(sample)
+
+                abs_target[i] = [t['tagIndex'], bbox[0], bbox[1], bbox[2], bbox[3]]
+            #targets = np.array(abs_target)
+            image, targets = self.transform(image, targets)
+            sample = {IMAGE: image, LABEL:targets}
+            
             return sample[IMAGE], sample[LABEL]
 
     def __len__(self):
