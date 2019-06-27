@@ -12,18 +12,21 @@ from mtorch.augmentation import DefaultDarknetAugmentation
 from mtorch.multifixed_scheduler import MultiFixedScheduler
 from mtorch.dataloaders import create_imdb_dataset
 from mtorch.lr_scheduler import LinearDecreasingLR
+from mtorch.azureBlobODDataset import AzureBlobODDataset
 import pdb
+import json
 
 # pretrain_model = '/home/tobai/ODExperiments/yoloSample/yolomodel/Logo_YoloV2_CaffeFeaturizer.pt'
-pretrain_model = './output/torch_pretrain_model.pt'
+pretrain_model = '/app/pretrain_model/Logo_YoloV2_CaffeFeaturizer.pt'
 
 total_epoch = 300
 log_pth = './output_irisInit/'
 # TODO: solver param
 # steps = [100, 5000, 9000]
 # lrs = [0.00001, 0.00001, 0.0001]
-datafile = '/home/tobai/ODExperiments/dataset/benchmark_dataset/Ping-Logo-55/Ping-Logo-55.train_images.txt'
-cmapfile = '/home/tobai/ODExperiments/dataset/benchmark_dataset/Ping-Logo-55/Ping-Logo_labels.txt'
+datafile = '/app/Ping-Logo/Ping-Logo-55.train_images.txt'
+cmapfile = '/app/Ping-Logo/Ping-Logo_labels.txt'
+trainingManifestFile = '/app/Ping-Logo/PingLogo_trainingManifest.json'
 label_map = cmapfile
 
 def to_python_float(t):
@@ -44,8 +47,16 @@ def train(model, num_class, device):
 
     # load training data
     augmenter = DefaultDarknetAugmentation()
-    augmented_dataset = create_imdb_dataset(datafile,
-                                            cmapfile, augmenter())
+    augmented_dataset = None
+    with open(trainingManifestFile) as json_data:
+        training_manifest = json.load(json_data)
+        account_name = training_manifest["account_name"]
+        container_name = training_manifest["container_name"]
+        dataset_name = training_manifest["name"]
+        sas_token = training_manifest["sas_token"]
+        image_list = training_manifest["images"]['train']
+        augmented_dataset = AzureBlobODDataset(account_name, container_name, dataset_name, sas_token, image_list, augmenter())
+    
     data_loader = torch.utils.data.DataLoader(augmented_dataset, shuffle=True, batch_size=16) 
     scheduler = LinearDecreasingLR(optimizer, total_iter=len(data_loader)*total_epoch)
 
@@ -56,6 +67,7 @@ def train(model, num_class, device):
             outputs = model(inputs.to(device))
             loss = criterion(outputs.float().to(device), labels.float().to(device))
             loss.backward()
+            print(loss.data)
             optimizer.step()
 
         # pdb.set_trace()
@@ -108,8 +120,7 @@ if __name__ == '__main__':
 
     if os.path.exists(log_pth):
         shutil.rmtree(log_pth)
-    else:
-        os.makedirs(log_pth)
+    os.makedirs(log_pth)
 
     try:
         with warnings.catch_warnings():
