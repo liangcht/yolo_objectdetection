@@ -23,10 +23,7 @@ log_pth = './output_irisInit/'
 # TODO: solver param
 # steps = [100, 5000, 9000]
 # lrs = [0.00001, 0.00001, 0.0001]
-datafile = '/app/Ping-Logo/Ping-Logo-55.train_images.txt'
-cmapfile = '/app/Ping-Logo/Ping-Logo_labels.txt'
 trainingManifestFile = '/app/Ping-Logo/PingLogo_trainingManifest.json'
-label_map = cmapfile
 
 def to_python_float(t):
     if isinstance(t, (float, int)):
@@ -92,8 +89,12 @@ def train(model, num_class, device):
 
 def main(args, log_pth):
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
-    cmap = load_labelmap_list(label_map)
-    model = Yolo(num_classes = len(cmap))
+    num_class = 0
+    with open(trainingManifestFile) as json_data:
+        training_manifest = json.load(json_data)
+        num_class = len(training_manifest["tags"])
+
+    model = Yolo(num_classes = num_class)
     
     pretrained_dict = torch.load(pretrain_model)
     model_dict = model.state_dict()
@@ -104,7 +105,7 @@ def main(args, log_pth):
 
     # TODO: add solver_params
     model.to(device)
-    train(model, len(cmap), device)
+    train(model, num_class, device)
 
 
 if __name__ == '__main__':
