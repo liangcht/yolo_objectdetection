@@ -23,7 +23,7 @@ log_pth = './output_irisInit/'
 # TODO: solver param
 # steps = [100, 5000, 9000]
 # lrs = [0.00001, 0.00001, 0.0001]
-trainingManifestFile = '/app/Ping-Logo/PingLogo_trainingManifest.json'
+trainingManifestFile = '/app/Ping-Logo/PingLogo_ltwh_trainingManifest.json'
 
 def to_python_float(t):
     if isinstance(t, (float, int)):
