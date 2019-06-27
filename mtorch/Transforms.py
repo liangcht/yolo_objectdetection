@@ -36,7 +36,7 @@ DEF_CANVAS_SIZE = (416, 416)
 DEF_SCALE_RANGE = (0.25, 2)
 # Resize related constants
 INTERP_METHOD = Image.BILINEAR  # TODO: this should be just "bilinear" and based on the library chosen the right naming
-DEF_RESIZE_LIB = "skimage"
+DEF_RESIZE_LIB = "torchvision" #"skimage"
 TORCHVISION = "torchvision"
 OPENCV = "opencv"
 DARKNET = "darkresize"
