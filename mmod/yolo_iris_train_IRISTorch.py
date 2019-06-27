@@ -33,7 +33,7 @@ def to_python_float(t):
         return t.item()
     return t[0]
     
-def _keep_max_num_bboxes(self, bboxes):
+def _keep_max_num_bboxes(bboxes):
         """Discards boxes beyond num_bboxes"""
         num_bboxes = 30
         cur_num = bboxes.shape[0]
@@ -73,7 +73,7 @@ def train(model, num_class, device):
             scheduler.step()
             optimizer.zero_grad()
             outputs = model(inputs.to(device))
-            labels = _keep_max_num_bboxes(bboxes).flatten()
+            labels = _keep_max_num_bboxes(labels).flatten()
             loss = criterion(outputs.float().to(device), labels.float().to(device))
             loss.backward()
             print(loss.data)
