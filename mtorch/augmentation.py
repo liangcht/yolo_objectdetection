@@ -38,7 +38,7 @@ class BasicDarknetAugmentation(object):
         set_inrange = Transforms.SetBBoxesInRange()
         box_randomizer = Transforms.RandomizeBBoxes(self.max_boxes)
         random_distorter = Transforms.RandomDistort(hue=self.hue, saturation=self.saturation, exposure=self.exposure)
-        random_resizer = Transforms.RandomResizeDarknet(self.jitter, library=Transforms.OPENCV)
+        random_resizer = Transforms.RandomResizeDarknet(self.jitter)
         horizontal_flipper = Transforms.RandomHorizontalFlip(self.flip)
         place_on_canvas = Transforms.PlaceOnCanvas()
         to_labels = Transforms.ToDarknetLabels(self.max_boxes)

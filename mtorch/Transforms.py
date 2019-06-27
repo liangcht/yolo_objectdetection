@@ -1,15 +1,13 @@
 """Classes that represent different transforms for augmentation for object detection
-The API is almost identical to respective torchvsion transforms (with option to use skimage resize as well)
+The API is almost identical to respective torchvsion transforms
 Important notes - differently from torchvision, the image size is assumed to be a tuple with (WIDTH, HEIGHT).
 This is similar to the convention of image size in PIL.Image and also fits bounding box coordinate order (x,y)
 """
 import numpy as np
-import cv2
 import torch
 from torchvision import transforms
 from PIL import Image
 import random
-from skimage import transform
 import logging
 
 from mtorch import transform_boxes as tbox
@@ -35,9 +33,7 @@ DEF_CANVAS_SIZE = (416, 416)
 DEF_SCALE_RANGE = (0.25, 2)
 # Resize related constants
 INTERP_METHOD = Image.BILINEAR  # TODO: this should be just "bilinear" and based on the library chosen the right naming
-DEF_RESIZE_LIB = "torchvision" #"skimage"
 TORCHVISION = "torchvision"
-OPENCV = "opencv"
 #  Number of tries for random augmentation to be left with at least one bounding box
 DEF_NUM_TRIES = 1
 MIN_NUM_BBOXES = 1
@@ -257,14 +253,13 @@ class Resize(ImageBoxAugmentation):
     """
 
     def __init__(self, output_size=None, scale_factor=None, interp_method=INTERP_METHOD,
-                 library=DEF_RESIZE_LIB, valid_num_bboxes=MIN_NUM_BBOXES):
+                 library=TORCHVISION, valid_num_bboxes=MIN_NUM_BBOXES):
         """Constructor of Resize object
         :param output_size: a tuple or integer that specifies the size of the image after resizing
         :param scale: a tuple or integer that specifies the scaling factor to determine the output size,
         overrides output_size.
         :param interp_method: name of interpolation method (bilinear is a default)
         :param library: name of library to use for image resizing,
-         currently supports torchvision or skimage(the default)
         :param valid_num_bboxes: int, minimal number of bounding boxes to remain after transform
         """
         super(Resize, self).__init__(valid_num_bboxes)
@@ -296,25 +291,10 @@ class Resize(ImageBoxAugmentation):
 
         # NOTE: expected size format:
         # Torchvision - (height, width)
-        # OPENCV - (width, height)
-        # SKIMAGE - (height, width)
         if self.library is not None and self.library == TORCHVISION:
             resized_image = transforms.functional.resize(self.image,
                                                          size=(int(self.__new_h), int(self.__new_w)),
                                                          interpolation=self.interp_method)
-
-        elif self.library == OPENCV:
-            resized_image = cv2.resize(np.asarray(self.image) / MAX_PIXEL_VAL,
-                                       (int(self.__new_w), int(self.__new_h)),
-                                       interpolation=cv2.INTER_LINEAR)
-            resized_image = Image.fromarray(np.uint8(resized_image * int(MAX_PIXEL_VAL)))
-
-        else:  # SKIMAGE
-            resized_image = transform.resize(np.asarray(self.image),
-                                             output_shape=(int(self.__new_h), int(self.__new_w)),
-                                             mode='edge',
-                                             anti_aliasing=False)
-            resized_image = Image.fromarray(np.uint8(resized_image * int(MAX_PIXEL_VAL)))
 
         result = {IMAGE: resized_image, LABEL: resized_bboxes}
         ImageBoxAugmentation.check_correctness(result)
@@ -416,7 +396,7 @@ class RandomResizeDarknet(ImageBoxAugmentation):
     """
 
     def __init__(self, jitter=0, scale=DEF_SCALE_RANGE, output_size_limit=DEF_CANVAS_SIZE,
-                 interp_method=INTERP_METHOD, library=DEF_RESIZE_LIB, tries=DEF_NUM_TRIES,
+                 interp_method=INTERP_METHOD, library=TORCHVISION, tries=DEF_NUM_TRIES,
                  valid_num_bboxes=MIN_NUM_BBOXES):
         """Constructor of RandomResizeDarknet object
         :param jitter: random perturbation of the sample IMAGE size
