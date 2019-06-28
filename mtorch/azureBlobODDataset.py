@@ -60,7 +60,10 @@ class AzureBlobODDataset(torch.utils.data.Dataset):
 
                 ltwh_target[i] = [t['tagIndex'], bbox[0], bbox[1], bbox[2], bbox[3]]
             #targets = np.array(abs_target)
+            print(image)
+            print(targets)
             image, targets = self.transform(image, ltwh_target)
+            print("#################")
             print(image)
             print(targets)
             targets = np.asarray(targets)
