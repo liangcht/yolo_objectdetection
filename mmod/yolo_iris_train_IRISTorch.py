@@ -8,9 +8,6 @@ import shutil
 from iristorch.models.yolo_v2 import Yolo
 from iristorch.layers.yolo_loss import YoloLoss
 from iristorch.transforms.transforms import IrisODTransform
-from mtorch.augmentation import DefaultDarknetAugmentation
-from mtorch.multifixed_scheduler import MultiFixedScheduler
-from mtorch.lr_scheduler import LinearDecreasingLR
 from mtorch.azureBlobODDataset import AzureBlobODDataset
 import pdb
 import json
@@ -42,7 +39,6 @@ def train(model, num_class, device):
     criterion = criterion.cuda()
 
     # load training data
-    #augmenter = DefaultDarknetAugmentation()
     augmented_dataset = None
     with open(trainingManifestFile) as json_data:
         training_manifest = json.load(json_data)
@@ -54,7 +50,7 @@ def train(model, num_class, device):
         augmented_dataset = AzureBlobODDataset(account_name, container_name, dataset_name, sas_token, image_list, IrisODTransform(416))
     
     data_loader = torch.utils.data.DataLoader(augmented_dataset, shuffle=True, batch_size=16) 
-    scheduler = LinearDecreasingLR(optimizer, total_iter=len(data_loader)*total_epoch)
+    scheduler = StepLR(optimizer, step_size=total_epoch//4, gamma=0.1)
 
     for epoch in range(total_epoch):
         for inputs, labels in data_loader:
