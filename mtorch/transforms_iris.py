@@ -9,6 +9,7 @@ def _adjust_bboxes(bboxes):
     for bbox in bboxes:
         center_x = (bbox[1] + bbox[3]) / 2
         center_y = (bbox[2] + bbox[4]) / 2
+        print("{0}, {1}".format(center_x, center_y))
         if center_x >= 0 and center_x <= 1 and center_y >= 0 and center_y <= 1 and bbox[1] < bbox[3] and bbox[2] < bbox[4]:
             new_bboxes.append([bbox[0], max(bbox[1], 0.0), max(bbox[2], 0.0), min(bbox[3], 1.0), min(bbox[4], 1.0)])
 
@@ -190,7 +191,7 @@ class CenterCropTransform(Transform):
 class IrisODTransform(Transform):
     def __init__(self, input_size):
         self.transforms = [ODImageTransform(torchvision.transforms.Resize(input_size)),
-                           #ODCenterCrop(input_size),
+                           ODCenterCrop(input_size),
                            ODImageTransform(torchvision.transforms.ToTensor()),
                            ODImageTransform(torchvision.transforms.Normalize([0.482, 0.459, 0.408], [1, 1, 1]))]
 
