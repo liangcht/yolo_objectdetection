@@ -10,6 +10,7 @@ def _adjust_bboxes(bboxes):
         center_x = (bbox[1] + bbox[3]) / 2
         center_y = (bbox[2] + bbox[4]) / 2
         print("{0}, {1}".format(center_x, center_y))
+        print(bbox)
         if center_x >= 0 and center_x <= 1 and center_y >= 0 and center_y <= 1 and bbox[1] < bbox[3] and bbox[2] < bbox[4]:
             new_bboxes.append([bbox[0], max(bbox[1], 0.0), max(bbox[2], 0.0), min(bbox[3], 1.0), min(bbox[4], 1.0)])
 
