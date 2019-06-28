@@ -7,7 +7,7 @@ import traceback
 import shutil
 from iristorch.models.yolo_v2 import Yolo
 from iristorch.layers.yolo_loss import YoloLoss
-from iristorch.transforms.transforms import SSDTransform
+from iristorch.transforms.transforms import SSDTransform, IrisODTransform
 from mtorch.augmentation import DefaultDarknetAugmentation
 from mtorch.multifixed_scheduler import MultiFixedScheduler
 from mtorch.lr_scheduler import LinearDecreasingLR
@@ -51,7 +51,7 @@ def train(model, num_class, device):
         dataset_name = training_manifest["name"]
         sas_token = training_manifest["sas_token"]
         image_list = training_manifest["images"]['train']
-        augmented_dataset = AzureBlobODDataset(account_name, container_name, dataset_name, sas_token, image_list, SSDTransform(416))
+        augmented_dataset = AzureBlobODDataset(account_name, container_name, dataset_name, sas_token, image_list, IrisODTransform(416))
     
     data_loader = torch.utils.data.DataLoader(augmented_dataset, shuffle=True, batch_size=16) 
     scheduler = LinearDecreasingLR(optimizer, total_iter=len(data_loader)*total_epoch)
