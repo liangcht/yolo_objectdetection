@@ -7,12 +7,11 @@ import traceback
 import shutil
 from iristorch.models.yolo_v2 import Yolo
 from iristorch.layers.yolo_loss import YoloLoss
-from iristorch.transforms.transforms import SSDTransform
+from iristorch.transforms.transforms import IrisODTransform
 from mtorch.augmentation import DefaultDarknetAugmentation
 from mtorch.multifixed_scheduler import MultiFixedScheduler
 from mtorch.lr_scheduler import LinearDecreasingLR
 from mtorch.azureBlobODDataset import AzureBlobODDataset
-from mtorch.transforms_iris import IrisODTransform
 import pdb
 import json
 import numpy as np
