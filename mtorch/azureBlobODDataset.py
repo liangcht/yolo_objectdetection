@@ -62,6 +62,7 @@ class AzureBlobODDataset(torch.utils.data.Dataset):
             #targets = np.array(abs_target)
             image, targets = self.transform(image, ltwh_target)
             targets = np.asarray(targets)
+            print(targets)
             targets = _keep_max_num_bboxes(targets).flatten()
             sample = {IMAGE: image, LABEL:targets}
             
