@@ -8,7 +8,7 @@ import shutil
 from torch.optim.lr_scheduler import StepLR
 from iristorch.models.yolo_v2 import Yolo
 from iristorch.layers.yolo_loss import YoloLoss
-from iristorch.transforms.transforms import IrisODTransform
+from iristorch.transforms.transforms import SSDTransform, IrisODTransform
 from mtorch.azureBlobODDataset import AzureBlobODDataset
 import pdb
 import json
@@ -48,7 +48,7 @@ def train(model, num_class, device):
         dataset_name = training_manifest["name"]
         sas_token = training_manifest["sas_token"]
         image_list = training_manifest["images"]['train']
-        augmented_dataset = AzureBlobODDataset(account_name, container_name, dataset_name, sas_token, image_list, IrisODTransform(416))
+        augmented_dataset = AzureBlobODDataset(account_name, container_name, dataset_name, sas_token, image_list, SSDTransform(416))
     
     data_loader = torch.utils.data.DataLoader(augmented_dataset, shuffle=True, batch_size=16) 
     scheduler = StepLR(optimizer, step_size=total_epoch//4, gamma=0.1)
