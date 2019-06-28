@@ -58,7 +58,7 @@ class ODCenterCrop(object):
         for i, t in enumerate(target):
             target[i] = (t[0], (t[1] - relative_x) / relative_w, (t[2] - relative_y) / relative_h,
                          (t[3] - relative_x) / relative_w, (t[4] - relative_y) / relative_h)
-        print(target)
+
         target = _adjust_bboxes(target)
             
         return img, target
@@ -190,7 +190,7 @@ class CenterCropTransform(Transform):
 class IrisODTransform(Transform):
     def __init__(self, input_size):
         self.transforms = [ODImageTransform(torchvision.transforms.Resize(input_size)),
-                           ODCenterCrop(input_size),
+                           #ODCenterCrop(input_size),
                            ODImageTransform(torchvision.transforms.ToTensor()),
                            ODImageTransform(torchvision.transforms.Normalize([0.482, 0.459, 0.408], [1, 1, 1]))]
 
