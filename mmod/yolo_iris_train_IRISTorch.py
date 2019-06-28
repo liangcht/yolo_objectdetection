@@ -32,18 +32,6 @@ def to_python_float(t):
     if hasattr(t, 'item'):
         return t.item()
     return t[0]
-    
-def _keep_max_num_bboxes(bboxes):
-        """Discards boxes beyond num_bboxes"""
-        num_bboxes = 30
-        cur_num = bboxes.shape[0]
-        diff_to_max = num_bboxes - cur_num
-        if diff_to_max > 0:
-            bboxes = np.lib.pad(bboxes, ((0, diff_to_max), (0, 0)),
-                                "constant", constant_values=(0.0,))
-        elif diff_to_max < 0:
-            bboxes = bboxes[:num_bboxes, :]
-        return bboxes
 
 def train(model, num_class, device):
     # switch to train mode
@@ -73,7 +61,6 @@ def train(model, num_class, device):
             scheduler.step()
             optimizer.zero_grad()
             outputs = model(inputs.to(device))
-            labels = _keep_max_num_bboxes(labels).flatten()
             loss = criterion(outputs.float().to(device), labels.float().to(device))
             loss.backward()
             print(loss.data)
