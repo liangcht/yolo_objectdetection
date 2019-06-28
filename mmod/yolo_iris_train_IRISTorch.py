@@ -5,6 +5,7 @@ import torch
 import sys
 import traceback
 import shutil
+from torch.optim.lr_scheduler import StepLR
 from iristorch.models.yolo_v2 import Yolo
 from iristorch.layers.yolo_loss import YoloLoss
 from iristorch.transforms.transforms import IrisODTransform
