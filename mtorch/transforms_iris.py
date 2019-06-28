@@ -58,10 +58,8 @@ class ODCenterCrop(object):
         relative_h = self.output_size / h
         
         for i, t in enumerate(target):
-            #target[i] = (t[0], (t[1] - relative_x) / relative_w, (t[2] - relative_y) / relative_h,
-            #             (t[3] - relative_x) / relative_w, (t[4] - relative_y) / relative_h)
             target[i] = (t[0], (t[1] - relative_x) / relative_w, (t[2] - relative_y) / relative_h,
-                         t[3] / self.output_size * w, t[4] / self.output_size * h)
+                         (t[3] - relative_x) / relative_w, (t[4] - relative_y) / relative_h)
 
         target = _adjust_bboxes(target)
             

@@ -54,13 +54,13 @@ class AzureBlobODDataset(torch.utils.data.Dataset):
             return image, index, h, w, targets
         else:
             # Convert absolute coordinates to (x1, y1, x2, y2)
-            ltwh_target = [None] * len(targets)
+            iris_target = [None] * len(targets)
             for i, t in enumerate(targets):
                 bbox = t["BoundingBox"]
 
-                ltwh_target[i] = [t['tagIndex'], bbox[0], bbox[1], bbox[2], bbox[3]]
+                iris_target[i] = [t['tagIndex'], bbox[0], bbox[1], bbox[0] + bbox[2], bbox[1] + bbox[3]]
             #targets = np.array(abs_target)
-            image, targets = self.transform(image, ltwh_target)
+            image, targets = self.transform(image, iris_target)
             targets = np.asarray(targets)
             print(targets)
             targets = _keep_max_num_bboxes(targets).flatten()
