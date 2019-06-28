@@ -62,7 +62,7 @@ class AzureBlobODDataset(torch.utils.data.Dataset):
             #targets = np.array(abs_target)
             print(image)
             print(targets)
-            image, targets = self.transform(image, ltwh_target)
+            #image, targets = self.transform(image, ltwh_target)
             print("#################")
             print(image)
             targets = np.asarray(targets)
