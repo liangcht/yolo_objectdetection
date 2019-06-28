@@ -61,8 +61,10 @@ class AzureBlobODDataset(torch.utils.data.Dataset):
                 iris_target[i] = [t['tagIndex'], bbox[0], bbox[1], bbox[0] + bbox[2], bbox[1] + bbox[3]]
             #targets = np.array(abs_target)
             image, targets = self.transform(image, iris_target)
-            targets = np.asarray(targets)
-            print(targets)
+            np_target = np.zeros(shape=(len(targets), 5), dtype=float)
+            for i, t in enumerate(targets):
+                np_target[i] = np.asarray(t)
+            print(np_target)
             targets = _keep_max_num_bboxes(targets).flatten()
             sample = {IMAGE: image, LABEL:targets}
             
