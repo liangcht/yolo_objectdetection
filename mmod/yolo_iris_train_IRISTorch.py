@@ -48,6 +48,7 @@ def eval(model, num_classes, test_loader):
     gts = list()
     end = time.time()
     for i, inputs in enumerate(test_loader):
+        print(len(inputs))
         data_time.update(time.time() - end)
 
         data, image_keys, hs, ws, gt_batch = inputs[0], inputs[1], inputs[2], inputs[3], inputs[4]
@@ -71,7 +72,6 @@ def eval(model, num_classes, test_loader):
             for pre_idx, pre_box in enumerate(result):
                 if pre_box[0] == 0:
                     del result[pre_idx]
-            print(result)
             results.append(result)
 
         # measure elapsed time
