@@ -117,6 +117,7 @@ def train(model, num_class, device):
             loss.backward()
             print(loss.data)
             optimizer.step()
+            eval(model, num_class, test_data_loader)
 
         # pdb.set_trace()
         reduced_loss = to_python_float(loss.data)
