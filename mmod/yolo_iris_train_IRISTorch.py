@@ -9,10 +9,16 @@ from torch.optim.lr_scheduler import StepLR
 from iristorch.models.yolo_v2 import Yolo
 from iristorch.layers.yolo_loss import YoloLoss
 from iristorch.transforms.transforms import SSDTransform, IrisODTransform
+from mtorch.augmentation import TestAugmentation
 from mtorch.azureBlobODDataset import AzureBlobODDataset
 import pdb
 import json
 import numpy as np
+from mtorch.yolo_predict import PlainPredictorClassSpecificNMS
+from mmod.meters import AverageMeter
+from irisexperiment import ObjectDetectionEvaluator
+from mmod.detection import result2bbIRIS
+import time
 
 # pretrain_model = '/home/tobai/ODExperiments/yoloSample/yolomodel/Logo_YoloV2_CaffeFeaturizer.pt'
 pretrain_model = '/app/pretrain_model/Logo_YoloV2_CaffeFeaturizer.pt'
@@ -31,6 +37,52 @@ def to_python_float(t):
         return t.item()
     return t[0]
 
+def eval(model, num_classes, test_loader):
+    print("Creating test data loader")
+    model.eval()
+    yolo_predictor = PlainPredictorClassSpecificNMS(num_classes=num_classes).cuda()
+    batch_time = AverageMeter()
+    data_time = AverageMeter()
+    tic = time.time()
+    results = list()
+    gts = list()
+    end = time.time()
+    for i, inputs in enumerate(test_loader):
+        data_time.update(time.time() - end)
+
+        data, image_keys, hs, ws, gt_batch = inputs[0], inputs[1], inputs[2], inputs[3], inputs[4]
+        gts += gt_batch
+        # compute output
+        for im, image_key, h, w in zip(data, image_keys, hs, ws):
+            im = im.unsqueeze_(0)
+            im = im.float().cuda()
+            with torch.no_grad():
+                features = model(im)
+            prob, bbox = yolo_predictor(features, torch.Tensor((h, w)))
+
+            bbox = bbox.cpu().numpy()
+            prob = prob.cpu().numpy()
+            assert bbox.shape[-1] == 4
+            bbox = bbox.reshape(-1, 4)
+            prob = prob.reshape(-1, prob.shape[-1])
+            result = result2bbIRIS((h, w), prob, bbox, None,
+                                   thresh=None, obj_thresh=None)
+            # skip the background class
+            for pre_idx, pre_box in enumerate(result):
+                if pre_box[0] == 0:
+                    del result[pre_idx]
+            results.append(result)
+
+        # measure elapsed time
+        batch_time.update(time.time() - end)
+        end = time.time()
+
+    evaluator = ObjectDetectionEvaluator('a','a','a')
+    evaluator.add_predictions(results, gts)
+    eval_result =evaluator.get_report()
+    print(eval_result)
+    model.train()
+
 def train(model, num_class, device):
     # switch to train mode
     model.train()
@@ -48,9 +100,12 @@ def train(model, num_class, device):
         dataset_name = training_manifest["name"]
         sas_token = training_manifest["sas_token"]
         image_list = training_manifest["images"]['train']
+        eval_image_list = training_manifest["images"]['val']
         augmented_dataset = AzureBlobODDataset(account_name, container_name, dataset_name, sas_token, image_list, SSDTransform(416))
+        test_dataset = AzureBlobODDataset(account_name, container_name, dataset_name, sas_token, eval_image_list, TestAugmentation(), predict_phase=True)
     
     data_loader = torch.utils.data.DataLoader(augmented_dataset, shuffle=True, batch_size=16) 
+    test_data_loader = torch.utils.data.DataLoader(test_dataset, shuffle=True, batch_size=16) 
     scheduler = StepLR(optimizer, step_size=total_epoch//4, gamma=0.1)
 
     for epoch in range(total_epoch):
@@ -79,9 +134,10 @@ def train(model, num_class, device):
                 'optimizer': optimizer.state_dict(),
             })
         snapshot_pt = log_pth + "_epoch_{}".format(epoch + 1) + '.pt'
-        if epoch % 20 == 0:
+        if epoch % 1 == 0:
             print("Snapshotting to: {}".format(snapshot_pt))
             torch.save(state, snapshot_pt)
+            eval(model, num_class, test_data_loader)
 
 
 def main(args, log_pth):
