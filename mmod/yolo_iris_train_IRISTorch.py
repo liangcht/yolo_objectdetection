@@ -71,6 +71,7 @@ def eval(model, num_classes, test_loader):
             for pre_idx, pre_box in enumerate(result):
                 if pre_box[0] == 0:
                     del result[pre_idx]
+            print(result)
             results.append(result)
 
         # measure elapsed time
