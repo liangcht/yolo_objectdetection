@@ -16,7 +16,7 @@ import json
 import numpy as np
 from mtorch.yolo_predict import PlainPredictorClassSpecificNMS
 from mmod.meters import AverageMeter
-from irisexperiment import ObjectDetectionEvaluator
+from iris_evaluator import ObjectDetectionEvaluator
 from mmod.detection import result2bbIRIS
 import time
 
@@ -102,7 +102,7 @@ def train(model, num_class, device):
         image_list = training_manifest["images"]['train']
         eval_image_list = training_manifest["images"]['val']
         augmented_dataset = AzureBlobODDataset(account_name, container_name, dataset_name, sas_token, image_list, SSDTransform(416))
-        test_dataset = AzureBlobODDataset(account_name, container_name, dataset_name, sas_token, eval_image_list, TestAugmentation(), predict_phase=True)
+        test_dataset = AzureBlobODDataset(account_name, container_name, dataset_name, sas_token, eval_image_list, SSDTransform(416), predict_phase=True)
     
     data_loader = torch.utils.data.DataLoader(augmented_dataset, shuffle=True, batch_size=16) 
     test_data_loader = torch.utils.data.DataLoader(test_dataset, shuffle=True, batch_size=16) 
