@@ -47,12 +47,13 @@ def eval(model, num_classes, test_loader):
     gts = list()
     end = time.time()
     for i, inputs in enumerate(test_loader):
-        print(i)
         if i >= 5:
             break
         data_time.update(time.time() - end)
 
         data, image_keys, hs, ws, gt_batch = inputs[0], inputs[1], inputs[2], inputs[3], inputs[4]
+        print(inputs[4])
+        print("$$$$$$$$$$$")
         gts += gt_batch
         # compute output
         for im, image_key, h, w in zip(data, image_keys, hs, ws):
@@ -80,6 +81,7 @@ def eval(model, num_classes, test_loader):
         end = time.time()
 
     evaluator = ObjectDetectionEvaluator()
+    print("############")
     print(len(results))
     print(len(gts))
     evaluator.add_predictions(results, gts)
