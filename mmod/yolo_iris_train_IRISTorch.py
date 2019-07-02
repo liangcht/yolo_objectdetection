@@ -123,7 +123,7 @@ def train(model, num_class, device):
             optimizer.zero_grad()
             outputs = model(inputs.to(device))
             print("****************")
-            print(labels)
+            print(labels.size())
             loss = criterion(outputs.float().to(device), labels.float().to(device))
             loss.backward()
             print(loss.data)
