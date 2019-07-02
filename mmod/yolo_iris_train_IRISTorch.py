@@ -128,7 +128,7 @@ def train(model, num_class, device):
         batch_size = 64
     steps = [i_step * total_epoch * nSample / batch_size for i_step in [80, 400, 600, 10000]]
 
-    data_loader = torch.utils.data.DataLoader(augmented_dataset, shuffle=True, batch_size=16)
+    data_loader = torch.utils.data.DataLoader(augmented_dataset, shuffle=True, batch_size=batch_size)
     test_data_loader = torch.utils.data.DataLoader(test_dataset, shuffle=True, batch_size=1) 
     scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=steps, gamma=0.5)
 
@@ -158,7 +158,7 @@ def train(model, num_class, device):
                 'optimizer': optimizer.state_dict(),
             })
         snapshot_pt = log_pth + "_epoch_{}".format(epoch + 1) + '.pt'
-        if epoch % 1 == 0:
+        if epoch % 10 == 0:
             print("Snapshotting to: {}".format(snapshot_pt))
             torch.save(state, snapshot_pt)
             eval(model, num_class, test_data_loader)
@@ -177,7 +177,7 @@ def main(args, log_pth):
     # TODO: set distributed
 
     from mtorch.custom_layers_ops import freeze_modules_for_training
-    freeze_modules_for_training(model, 'dark5e')
+    freeze_modules_for_training(model, 'last_conv')
 
     # TODO: add solver_params
     model.to(device)
