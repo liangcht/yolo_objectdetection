@@ -109,7 +109,7 @@ def train(model, num_class, device):
         test_dataset = AzureBlobODDataset(account_name, container_name, dataset_name, sas_token, eval_image_list, SSDTransform(416), predict_phase=True)
     
     data_loader = torch.utils.data.DataLoader(augmented_dataset, shuffle=True, batch_size=16) 
-    test_data_loader = torch.utils.data.DataLoader(test_dataset, shuffle=True, batch_size=16) 
+    test_data_loader = torch.utils.data.DataLoader(test_dataset, shuffle=True, batch_size=1) 
     scheduler = StepLR(optimizer, step_size=total_epoch//4, gamma=0.1)
 
     for epoch in range(total_epoch):
