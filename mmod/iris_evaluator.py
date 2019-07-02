@@ -122,8 +122,8 @@ class MultilabelClassificationEvaluator(Evaluator):
 
 # Light weight evaluator compare with mscoco evaluation
 class ObjectDetectionSingleIOUEvaluator(Evaluator):
-    def __init__(self, branch_name, task_config, experiment_id, random_seed = 0, iou = 0.5):
-        super(ObjectDetectionSingleIOUEvaluator, self).__init__(branch_name, task_config, experiment_id, random_seed)
+    def __init__(self, random_seed = 0, iou = 0.5):
+        super(ObjectDetectionSingleIOUEvaluator, self).__init__(random_seed)
         self.iou = iou
 
     def add_predictions(self, predictions, targets):
@@ -237,10 +237,10 @@ class ObjectDetectionSingleIOUEvaluator(Evaluator):
 # TODO: Fix the COCO Evaluator and use it.
 class ObjectDetectionEvaluator(Evaluator):
     IOU_VALUES = [0.3, 0.5, 0.75, 0.9]
-    def __init__(self, branch_name, task_config, experiment_id, random_seed = 0):
-        self.evaluators = [ObjectDetectionSingleIOUEvaluator(branch_name, task_config, experiment_id, random_seed, iou)
+    def __init__(self, random_seed = 0):
+        self.evaluators = [ObjectDetectionSingleIOUEvaluator(random_seed, iou)
                            for iou in ObjectDetectionEvaluator.IOU_VALUES]
-        super(ObjectDetectionEvaluator, self).__init__(branch_name, task_config, experiment_id, random_seed)
+        super(ObjectDetectionEvaluator, self).__init__(random_seed)
         
     def add_predictions(self, predictions, targets):
         for evaluator in self.evaluators:
