@@ -177,7 +177,7 @@ def main(args, log_pth):
     # TODO: set distributed
 
     from mtorch.custom_layers_ops import freeze_modules_for_training
-    freeze_modules_for_training(model, 'last_conv')
+    freeze_modules_for_training(model, 'dark5e')
 
     # TODO: add solver_params
     model.to(device)
