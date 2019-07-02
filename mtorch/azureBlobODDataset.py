@@ -41,11 +41,10 @@ class AzureBlobODDataset(torch.utils.data.Dataset):
             iris_target = [None] * len(target)
             for i, t in enumerate(target):
                 bbox = t["BoundingBox"]
-
                 iris_target[i] = [t['tagIndex'], bbox[0], bbox[1], bbox[0] + bbox[2], bbox[1] + bbox[3]]
             sample = self.transform(sample)
             w, h = image.size
-            return sample, index, h, w, target
+            return sample, index, h, w, iris_target
         else:
             # Convert absolute coordinates to (x1, y1, x2, y2)
             abs_target = [None] * len(target)
