@@ -51,7 +51,7 @@ class AzureBlobODDataset(torch.utils.data.Dataset):
             abs_target = [None] * len(target)
             for i, t in enumerate(target):
                 bbox = t["BoundingBox"]
-                abs_target[i] = [bbox[0], bbox[1], bbox[2], bbox[3], t['tagIndex']]
+                abs_target[i] = [bbox[0], bbox[1], bbox[0] + bbox[2], bbox[1] + bbox[3], t['tagIndex']]
             target = np.array(abs_target)
             sample = {IMAGE: image, LABEL:target}
             sample = self.transform(sample)
