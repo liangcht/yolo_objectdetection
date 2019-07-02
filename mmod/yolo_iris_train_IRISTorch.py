@@ -36,6 +36,10 @@ cmapfile = '/app/Ping-Logo/Ping-Logo_labels.txt'
 trainingManifestFile = '/app/Ping-Logo/PingLogo_ltwh_trainingManifest.json'
 label_map = cmapfile
 
+steps = [100, 5000, 9000, 10000000]
+lrs = [0.001, 0.0006, 0.0003, 0.0001]
+init_lr = lrs[0]
+
 def to_python_float(t):
     if isinstance(t, (float, int)):
         return t
@@ -93,7 +97,7 @@ def train(model, num_class, device):
     # switch to train mode
     model.train()
     # model.freeze('dark6')
-    optimizer = torch.optim.SGD(model.parameters(), lr=0.0001, momentum=0.9)
+    optimizer = torch.optim.SGD(model.parameters(), lr=init_lr, momentum=0.9)
     criterion = YoloLoss(num_classes=num_class)
     criterion = criterion.cuda()
 
@@ -111,9 +115,20 @@ def train(model, num_class, device):
         augmented_dataset = AzureBlobODDataset(account_name, container_name, dataset_name, sas_token, image_list, augmenter())
         test_dataset = AzureBlobODDataset(account_name, container_name, dataset_name, sas_token, test_image_list, TestAugmentation()(), predict_phase=True)
     
+    # calculate config base on the dataset
+    nSample = len(augmented_dataset)
+    total_epoch = max(5, math.ceil(50000 /(nSample+ 300)))
+    if nSample < 1024:
+        batch_size = 16
+    elif nSample < 2048:
+        batch_size = 32
+    else:
+        batch_size = 64
+    steps = [i_step * total_epoch * nSample / batch_size for i_step in [80, 400, 600, 10000]]
+
     data_loader = torch.utils.data.DataLoader(augmented_dataset, shuffle=True, batch_size=16)
     test_data_loader = torch.utils.data.DataLoader(test_dataset, shuffle=True, batch_size=1) 
-    scheduler = LinearDecreasingLR(optimizer, total_iter=len(data_loader)*total_epoch)
+    scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=steps, gamma=0.5)
 
     for epoch in range(total_epoch):
         for inputs, labels in data_loader:
