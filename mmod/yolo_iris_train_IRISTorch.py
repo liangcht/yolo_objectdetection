@@ -52,8 +52,9 @@ def eval(model, num_classes, test_loader):
         data_time.update(time.time() - end)
 
         data, image_keys, hs, ws, gt_batch = inputs[0], inputs[1], inputs[2], inputs[3], inputs[4]
+        print("$$$$$")
+        print(image_keys)
         print(inputs[4])
-        print("$$$$$$$$$$$")
         gts.append(gt_batch)
         # compute output
         for im, image_key, h, w in zip(data, image_keys, hs, ws):
@@ -75,6 +76,7 @@ def eval(model, num_classes, test_loader):
                 if pre_box[0] == 0:
                     del result[pre_idx]
             results.append(result)
+            print(result)
 
         # measure elapsed time
         batch_time.update(time.time() - end)
@@ -123,7 +125,6 @@ def train(model, num_class, device):
             loss.backward()
             print(loss.data)
             optimizer.step()
-            eval(model, num_class, test_data_loader)
 
         # pdb.set_trace()
         reduced_loss = to_python_float(loss.data)
