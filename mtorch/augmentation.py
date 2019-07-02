@@ -150,8 +150,6 @@ class TestAugmentation(object):
         pass
 
     def __call__(self, means=MEANS):
-        print('&&&&&&&&&&')
-        print(type(means))
         minus_dc = Transforms.SubtractMeans(means)
         od_resizer = ODImResize(target_size=TEST_CANVAS_SIZE)
         self.composed_transforms = Transforms.Compose(

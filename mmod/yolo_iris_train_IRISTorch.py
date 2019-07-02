@@ -59,9 +59,6 @@ def eval(model, num_classes, test_loader):
         data_time.update(time.time() - end)
 
         data, image_keys, hs, ws, gt_batch = inputs[0], inputs[1], inputs[2], inputs[3], inputs[4]
-        print("$$$$$")
-        print(image_keys)
-        print(inputs[4])
         gts.append(gt_batch)
         # compute output
         for im, image_key, h, w in zip(data, image_keys, hs, ws):
