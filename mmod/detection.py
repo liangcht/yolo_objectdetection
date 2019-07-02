@@ -158,6 +158,9 @@ def result2bbIRIS(hw, probs, boxes, class_map, thresh=None, obj_thresh=None, cla
             top = max(top, 0)
             top = min(top, im_h - 1)
             bot = max(bot, 0)
+            print("$$$$$")
+            print(bot)
+            print(im_h)
             bot = min(bot, im_h - 1)
 
             conf = float(max(round(probs[i, j], 4), 0.00001))       
