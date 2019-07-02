@@ -80,6 +80,8 @@ def eval(model, num_classes, test_loader):
         end = time.time()
 
     evaluator = ObjectDetectionEvaluator()
+    print(len(results))
+    print(len(gts))
     evaluator.add_predictions(results, gts)
     eval_result =evaluator.get_report()
     print(eval_result)
