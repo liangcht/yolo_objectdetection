@@ -48,7 +48,8 @@ def eval(model, num_classes, test_loader):
     gts = list()
     end = time.time()
     for i, inputs in enumerate(test_loader):
-        print(inputs[0])
+        print(i)
+        print(len(inputs[0]))
         data_time.update(time.time() - end)
 
         data, image_keys, hs, ws, gt_batch = inputs[0], inputs[1], inputs[2], inputs[3], inputs[4]
