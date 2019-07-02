@@ -23,6 +23,8 @@ from iris_evaluator import ObjectDetectionEvaluator
 from mmod.detection import result2bbIRIS
 import time
 
+import math
+
 # pretrain_model = '/home/tobai/ODExperiments/yoloSample/yolomodel/Logo_YoloV2_CaffeFeaturizer.pt'
 pretrain_model = '/app/pretrain_model/Logo_YoloV2_CaffeFeaturizer.pt'
 
