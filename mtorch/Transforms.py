@@ -1216,6 +1216,8 @@ class SubtractMeans(object):
         :param max_pixel_val:  maximum value per color channel
         :param norm: normalization of color values
         """
+        print("^^^^^^^^^^^^^^^^")
+        print(type(mean))
         self.mean = tuple([mean_c / max_pixel_val for mean_c in mean])
         self.norm = tuple([n_c / max_pixel_val for n_c in norm])
 
