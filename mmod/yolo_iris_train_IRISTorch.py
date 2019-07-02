@@ -54,8 +54,6 @@ def eval(model, num_classes, test_loader):
     gts = list()
     end = time.time()
     for i, inputs in enumerate(test_loader):
-        if i >= 5:
-            break
         data_time.update(time.time() - end)
 
         data, image_keys, hs, ws, gt_batch = inputs[0], inputs[1], inputs[2], inputs[3], inputs[4]
@@ -80,7 +78,6 @@ def eval(model, num_classes, test_loader):
                 if pre_box[0] == 0:
                     del result[pre_idx]
             results.append(result)
-            print(result)
 
         # measure elapsed time
         batch_time.update(time.time() - end)
@@ -161,6 +158,9 @@ def main(args, log_pth):
                        (k in model_dict) and (model_dict[k].shape == pretrained_dict[k].shape)}
     model.load_state_dict(pretrained_dict, strict=False)
     # TODO: set distributed
+
+    from mtorch.custom_layers_ops import freeze_modules_for_training
+    freeze_modules_for_training(model, 'dark5e/maxpool')
 
     # TODO: add solver_params
     model.to(device)

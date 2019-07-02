@@ -21,11 +21,11 @@ def _freeze_till(model, layer_name):
     # gradient will not be tracked
     freeze_stopped = False
     for name, param in model.named_parameters():
-        print("layer {} is freeze".format(name))
         if layer_name in name:
             freeze_stopped = True
             break
         param.requires_grad = False
+        print("layer {} is freeze".format(name))
     # running BN statistics will not be updated
     for name, module in model.named_modules():
         if layer_name in name:
@@ -45,3 +45,16 @@ def freeze_modules_for_training(model, layer_to_stop_freezing=None):
         _freeze_all_modules(model)
         return True
     return _freeze_till(model, layer_to_stop_freezing)
+
+
+def unfreeze_modules_for_training(model):
+    """frees modules for training
+    :param model: nn.Module or nn.Sequential
+    :param layer_to_stop_freezing: name of the layer at which to stop freezing
+    :return true if the freezing was stopped at some point
+    """
+    for name, param in model.named_parameters():
+        print("layer {} is unfreeze".format(name))
+        param.requires_grad = True
+    # running BN statistics will not be updated
+    model.train()
