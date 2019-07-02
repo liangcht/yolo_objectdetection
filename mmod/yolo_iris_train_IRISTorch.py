@@ -89,7 +89,7 @@ def eval(model, num_classes, test_loader):
     evaluator = ObjectDetectionEvaluator()
     print("############")
     print(len(results))
-    print(len(gts))
+    print(len(gts))gi
     evaluator.add_predictions(results, gts)
     eval_result =evaluator.get_report()
     print(eval_result)
@@ -122,7 +122,10 @@ def train(model, num_class, device):
     scheduler = LinearDecreasingLR(optimizer, total_iter=len(data_loader)*total_epoch)
 
     for epoch in range(total_epoch):
+        count = 0
         for inputs, labels in data_loader:
+            if count >= 10:
+                break
             scheduler.step()
             optimizer.zero_grad()
             outputs = model(inputs.to(device))
@@ -130,8 +133,8 @@ def train(model, num_class, device):
             loss.backward()
             print(loss.data)
             optimizer.step()
-            eval(model, num_class, test_data_loader)
-
+            count += 1
+            
         # pdb.set_trace()
         reduced_loss = to_python_float(loss.data)
         print("epoch {} loss {}".format(epoch, reduced_loss))
