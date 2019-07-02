@@ -42,7 +42,7 @@ class AzureBlobODDataset(torch.utils.data.Dataset):
             iris_target = [None] * len(target)
             for i, t in enumerate(target):
                 bbox = t["BoundingBox"]
-                iris_target[i] = [t['tagIndex'], bbox[0], bbox[1], bbox[0] + bbox[2], bbox[1] + bbox[3]]
+                iris_target[i] = [t['tagIndex'], bbox[0] * w, bbox[1] * h, (bbox[0] + bbox[2]) * w, (bbox[1] + bbox[3]) * h]
             sample = self.transform(sample)
             w, h = image.size
             return sample, index, h, w, iris_target
