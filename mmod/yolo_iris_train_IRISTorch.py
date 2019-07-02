@@ -54,7 +54,7 @@ def eval(model, num_classes, test_loader):
         data, image_keys, hs, ws, gt_batch = inputs[0], inputs[1], inputs[2], inputs[3], inputs[4]
         print(inputs[4])
         print("$$$$$$$$$$$")
-        gts += gt_batch
+        gts.append(gt_batch)
         # compute output
         for im, image_key, h, w in zip(data, image_keys, hs, ws):
             im = im.unsqueeze_(0)
