@@ -118,7 +118,7 @@ def train(model, num_class, device):
         image_list = training_manifest["images"]['train']
         test_image_list = training_manifest["images"]['val']
         augmented_dataset = AzureBlobODDataset(account_name, container_name, dataset_name, sas_token, image_list, augmenter())
-        test_dataset = AzureBlobODDataset(account_name, container_name, dataset_name, sas_token, test_image_list, TestAugmentation())
+        test_dataset = AzureBlobODDataset(account_name, container_name, dataset_name, sas_token, test_image_list, TestAugmentation(), predict_phase=True)
     
     data_loader = torch.utils.data.DataLoader(augmented_dataset, shuffle=True, batch_size=16)
     test_data_loader = torch.utils.data.DataLoader(test_dataset, shuffle=True, batch_size=1) 
