@@ -89,7 +89,7 @@ def eval(model, num_classes, test_loader):
     evaluator = ObjectDetectionEvaluator()
     print("############")
     print(len(results))
-    print(len(gts))gi
+    print(len(gts))
     evaluator.add_predictions(results, gts)
     eval_result =evaluator.get_report()
     print(eval_result)
@@ -134,7 +134,7 @@ def train(model, num_class, device):
             print(loss.data)
             optimizer.step()
             count += 1
-            
+
         # pdb.set_trace()
         reduced_loss = to_python_float(loss.data)
         print("epoch {} loss {}".format(epoch, reduced_loss))
