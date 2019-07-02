@@ -23,6 +23,7 @@ class AzureBlobODDataset(torch.utils.data.Dataset):
         self.dataset = dataset
         self.predict_phase=predict_phase
         print("Init Azureblob Dataset, IRIS imdb phase {}".format(predict_phase))
+        print(len(imageManifests))
     
     def __getitem__(self, index):
         image_manifest = self.image_manifests[index]
