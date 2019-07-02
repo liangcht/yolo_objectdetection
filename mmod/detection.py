@@ -139,7 +139,7 @@ def result2bbIRIS(hw, probs, boxes, class_map, thresh=None, obj_thresh=None, cla
         for j in range(class_num):
             if probs[i, j] <= thresh:
                 continue
-            label = class_map[j]
+            label = class_map[j] if class_map else j
             if class_thresh and probs[i, j] <= class_thresh[label]:
                 continue
 
