@@ -9,7 +9,6 @@ from torch.optim.lr_scheduler import StepLR
 from iristorch.models.yolo_v2 import Yolo
 from iristorch.layers.yolo_loss import YoloLoss
 from iristorch.transforms.transforms import SSDTransform, IrisODTransform
-from mtorch.augmentation import TestAugmentation
 from mtorch.azureBlobODDataset import AzureBlobODDataset
 import pdb
 import json
@@ -19,6 +18,8 @@ from mmod.meters import AverageMeter
 from iris_evaluator import ObjectDetectionEvaluator
 from mmod.detection import result2bbIRIS
 import time
+from torchvision import transforms
+from mtorch import Transforms
 
 # pretrain_model = '/home/tobai/ODExperiments/yoloSample/yolomodel/Logo_YoloV2_CaffeFeaturizer.pt'
 pretrain_model = '/app/pretrain_model/Logo_YoloV2_CaffeFeaturizer.pt'
@@ -105,7 +106,7 @@ def train(model, num_class, device):
         image_list = training_manifest["images"]['train']
         eval_image_list = training_manifest["images"]['val']
         augmented_dataset = AzureBlobODDataset(account_name, container_name, dataset_name, sas_token, image_list, SSDTransform(416))
-        test_dataset = AzureBlobODDataset(account_name, container_name, dataset_name, sas_token, eval_image_list, SSDTransform(416), predict_phase=True)
+        test_dataset = AzureBlobODDataset(account_name, container_name, dataset_name, sas_token, eval_image_list, Transforms.Compose([SSDTransform(416), transforms.functional.to_tensor]), predict_phase=True)
     
     data_loader = torch.utils.data.DataLoader(augmented_dataset, shuffle=True, batch_size=16) 
     test_data_loader = torch.utils.data.DataLoader(test_dataset, shuffle=True, batch_size=16) 
