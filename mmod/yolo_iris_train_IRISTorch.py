@@ -65,8 +65,7 @@ def eval(model, num_classes, test_loader):
 
             bbox = bbox.cpu().numpy()
             prob = prob.cpu().numpy()
-            assert bbox.shape[-1] == 4 *
-
+            assert bbox.shape[-1] == 4
             bbox = bbox.reshape(-1, 4)
             prob = prob.reshape(-1, prob.shape[-1])
             result = result2bbIRIS((h, w), prob, bbox, None,
