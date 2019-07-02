@@ -53,7 +53,7 @@ def eval(model, num_classes, test_loader):
             break
         data_time.update(time.time() - end)
 
-        data, image_keys, hs, ws, gt_batch = inputs[0], inputs[1], inputs[2], inputs[3], transforms.functional.to_tensor(inputs[4])
+        data, image_keys, hs, ws, gt_batch = inputs[0], inputs[1], inputs[2], inputs[3], [transforms.functional.to_tensor(i) for i in inputs[4]]
         gts += gt_batch
         # compute output
         for im, image_key, h, w in zip(data, image_keys, hs, ws):
@@ -65,7 +65,8 @@ def eval(model, num_classes, test_loader):
 
             bbox = bbox.cpu().numpy()
             prob = prob.cpu().numpy()
-            assert bbox.shape[-1] == 4
+            assert bbox.shape[-1] == 4 *
+
             bbox = bbox.reshape(-1, 4)
             prob = prob.reshape(-1, prob.shape[-1])
             result = result2bbIRIS((h, w), prob, bbox, None,
