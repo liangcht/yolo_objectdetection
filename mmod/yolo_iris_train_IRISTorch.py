@@ -33,7 +33,7 @@ log_pth = './output_irisInit/'
 # lrs = [0.00001, 0.00001, 0.0001]
 datafile = '/app/Ping-Logo/Ping-Logo-55.train_images.txt'
 cmapfile = '/app/Ping-Logo/Ping-Logo_labels.txt'
-trainingManifestFile = '/app/Ping-Logo/PingLogo_trainingManifest.json'
+trainingManifestFile = '/app/Ping-Logo/PingLogo_ltwh_trainingManifest.json'
 label_map = cmapfile
 
 def to_python_float(t):
