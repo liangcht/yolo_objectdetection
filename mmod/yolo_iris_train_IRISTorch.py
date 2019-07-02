@@ -62,7 +62,6 @@ def eval(model, num_classes, test_loader):
             im = im.float().cuda()
             with torch.no_grad():
                 features = model(im)
-                print(features)
             prob, bbox = yolo_predictor(features, torch.Tensor((h, w)))
 
             bbox = bbox.cpu().numpy()
@@ -124,6 +123,7 @@ def train(model, num_class, device):
             outputs = model(inputs.to(device))
             print("****************")
             print(labels.size())
+            print(outputs.size())
             loss = criterion(outputs.float().to(device), labels.float().to(device))
             loss.backward()
             print(loss.data)
