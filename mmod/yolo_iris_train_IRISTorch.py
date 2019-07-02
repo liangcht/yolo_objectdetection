@@ -18,7 +18,6 @@ from mmod.meters import AverageMeter
 from iris_evaluator import ObjectDetectionEvaluator
 from mmod.detection import result2bbIRIS
 import time
-from torchvision import transforms
 
 # pretrain_model = '/home/tobai/ODExperiments/yoloSample/yolomodel/Logo_YoloV2_CaffeFeaturizer.pt'
 pretrain_model = '/app/pretrain_model/Logo_YoloV2_CaffeFeaturizer.pt'
@@ -53,7 +52,8 @@ def eval(model, num_classes, test_loader):
             break
         data_time.update(time.time() - end)
 
-        data, image_keys, hs, ws, gt_batch = inputs[0], inputs[1], inputs[2], inputs[3], [transforms.functional.to_tensor(i) for i in inputs[4]]
+        data, image_keys, hs, ws, gt_batch = inputs[0], inputs[1], inputs[2], inputs[3], inputs[4]
+        print(gt_batch)
         gts += gt_batch
         # compute output
         for im, image_key, h, w in zip(data, image_keys, hs, ws):
