@@ -209,7 +209,7 @@ def main(args, log_pth):
     cmap = load_labelmap_list(label_map)
     model = Yolo(num_classes = len(cmap))
 
-    model_dict = torch.load("_epoch_1.pt")
+    model_dict = torch.load("_epoch_21.pt")
     model.load_state_dict(model_dict["state_dict"], strict=True)
     print(model_dict["state_dict"])
     model.to(device)
