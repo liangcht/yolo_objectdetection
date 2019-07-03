@@ -70,6 +70,7 @@ def eval(model, num_classes, test_loader):
             im = im.float().cuda()
             with torch.no_grad():
                 features = model(im)
+                print(features)
             prob, bbox = yolo_predictor(features, torch.Tensor((h, w)))
 
             bbox = bbox.cpu().numpy()
@@ -84,7 +85,6 @@ def eval(model, num_classes, test_loader):
                 if pre_box[0] == 0:
                     del result[pre_idx]
             results.append(result)
-            print(result)
 
         # measure elapsed time
         batch_time.update(time.time() - end)
