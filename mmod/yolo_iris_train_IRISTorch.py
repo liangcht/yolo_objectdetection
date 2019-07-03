@@ -220,7 +220,7 @@ def main(args, log_pth):
         dataset_name = training_manifest["name"]
         sas_token = training_manifest["sas_token"]
 
-        test_image_list = training_manifest["images"]['val']
+        test_image_list = training_manifest["images"]['train']
         test_dataset = AzureBlobODDataset(account_name, container_name, dataset_name, sas_token, test_image_list, TestAugmentation()(), predict_phase=True)
     
     test_data_loader = torch.utils.data.DataLoader(test_dataset, shuffle=True, batch_size=1) 
