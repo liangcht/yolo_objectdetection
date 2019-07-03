@@ -71,6 +71,8 @@ def eval(model, num_classes, test_loader):
             im = im.float().cuda()
             with torch.no_grad():
                 features = model(im)
+                import pdb
+                pdb.set_trace()
             prob, bbox = yolo_predictor(features, torch.Tensor((h, w)))
 
             bbox = bbox.cpu().numpy()
@@ -85,7 +87,6 @@ def eval(model, num_classes, test_loader):
                 if pre_box[0] == 0:
                     del result[pre_idx]
             results.append(result)
-            import pdb
             pdb.set_trace()
             print(result)
 
