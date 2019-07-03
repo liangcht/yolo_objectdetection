@@ -64,14 +64,13 @@ def eval(model, num_classes, test_loader):
         data_time.update(time.time() - end)
 
         data, image_keys, hs, ws, gt_batch = inputs[0], inputs[1], inputs[2], inputs[3], inputs[4]
-        gts.append(gt_batch)
+        gts += gt_batch
         # compute output
         for im, image_key, h, w in zip(data, image_keys, hs, ws):
             im = im.unsqueeze_(0)
             im = im.float().cuda()
             with torch.no_grad():
                 features = model(im)
-                print(features)
             prob, bbox = yolo_predictor(features, torch.Tensor((h, w)))
 
             bbox = bbox.cpu().numpy()
