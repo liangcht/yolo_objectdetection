@@ -190,7 +190,7 @@ def main(args, log_pth):
     cmap = load_labelmap_list(label_map)
     model = Yolo(num_classes = len(cmap))
 
-    model_dict = torch.load("output_irisInit/_epoch_21.pt")
+    model_dict = torch.load("_epoch_1.pt")
     model.load_state_dict(model_dict, strict=True)
     model.to_device()
 
@@ -205,7 +205,7 @@ def main(args, log_pth):
         test_dataset = AzureBlobODDataset(account_name, container_name, dataset_name, sas_token, test_image_list, TestAugmentation()(), predict_phase=True)
     
     test_data_loader = torch.utils.data.DataLoader(test_dataset, shuffle=True, batch_size=1) 
-    eval(model, num_class, test_data_loader)
+    eval(model, len(cmap), test_data_loader)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
