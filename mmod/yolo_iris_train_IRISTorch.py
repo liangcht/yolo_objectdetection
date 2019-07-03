@@ -191,7 +191,7 @@ def main(args, log_pth):
     model = Yolo(num_classes = len(cmap))
 
     model_dict = torch.load("_epoch_1.pt")
-    model.load_state_dict(model_dict, strict=True)
+    model.load_state_dict(model_dict["state_dict"], strict=True)
     model.to_device()
 
     with open(trainingManifestFile) as json_data:
