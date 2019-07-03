@@ -23,7 +23,7 @@ PLAIN_PRED_THRESH = 0 #0.005
 TREE_PRED_THRESH = 0.1
 # NMS filtering
 NMS_THRESHOLD = 0.45
-PRE_THRESHOLD = 0.005
+PRE_THRESHOLD = 0 #0.005
 
 
 class YoloPredict(nn.Module):
