@@ -149,6 +149,7 @@ def train(model, num_class, device):
     scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=steps, gamma=0.5)
 
     for epoch in range(total_epoch):
+        start = time.time()
         for inputs, labels in data_loader:
             scheduler.step()
             optimizer.zero_grad()
@@ -160,7 +161,7 @@ def train(model, num_class, device):
 
         # pdb.set_trace()
         reduced_loss = to_python_float(loss.data)
-        print("epoch {} loss {}".format(epoch, reduced_loss))
+        print("epoch {} loss {} elapse {} seconds".format(epoch, reduced_loss, time.time() - start))
         print(scheduler.get_lr())
         state = {
             'epochs': epoch,
