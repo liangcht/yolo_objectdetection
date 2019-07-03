@@ -85,6 +85,8 @@ def eval(model, num_classes, test_loader):
                 if pre_box[0] == 0:
                     del result[pre_idx]
             results.append(result)
+            import pdb
+            pdb.set_trace()
             print(result)
 
         # measure elapsed time
