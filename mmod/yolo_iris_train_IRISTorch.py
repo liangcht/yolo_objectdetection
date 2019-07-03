@@ -211,6 +211,7 @@ def main(args, log_pth):
 
     model_dict = torch.load("_epoch_21.pt")
     model.load_state_dict(model_dict["state_dict"], strict=True)
+    print(model_dict["state_dict"])
     model.to(device)
 
     with open(trainingManifestFile) as json_data:
