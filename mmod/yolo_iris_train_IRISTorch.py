@@ -85,6 +85,7 @@ def eval(model, num_classes, test_loader):
                 if pre_box[0] == 0:
                     del result[pre_idx]
             results.append(result)
+            print(result)
 
         # measure elapsed time
         batch_time.update(time.time() - end)
@@ -180,7 +181,7 @@ def train(model, num_class, device):
             torch.save(state, snapshot_pt)
             eval(model, num_class, test_data_loader)
 
-
+'''
 def main(args, log_pth):
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
     cmap = load_labelmap_list(label_map)
@@ -206,7 +207,7 @@ def main(args, log_pth):
     cmap = load_labelmap_list(label_map)
     model = Yolo(num_classes = len(cmap))
 
-    model_dict = torch.load("_epoch_1.pt")
+    model_dict = torch.load("_epoch_21.pt")
     model.load_state_dict(model_dict["state_dict"], strict=True)
     model.to(device)
 
@@ -222,7 +223,7 @@ def main(args, log_pth):
     
     test_data_loader = torch.utils.data.DataLoader(test_dataset, shuffle=True, batch_size=1) 
     eval(model, len(cmap), test_data_loader)
-'''
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     # parser.add_argument('--branch_name')
