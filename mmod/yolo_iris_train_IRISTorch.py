@@ -71,8 +71,6 @@ def eval(model, num_classes, test_loader):
             im = im.float().cuda()
             with torch.no_grad():
                 features = model(im)
-                import pdb
-                pdb.set_trace()
             prob, bbox = yolo_predictor(features, torch.Tensor((h, w)))
 
             bbox = bbox.cpu().numpy()
@@ -87,7 +85,6 @@ def eval(model, num_classes, test_loader):
                 if pre_box[0] == 0:
                     del result[pre_idx]
             results.append(result)
-            pdb.set_trace()
             print(result)
 
         # measure elapsed time
@@ -214,18 +211,18 @@ def main(args, log_pth):
     model.load_state_dict(model_dict["state_dict"], strict=True)
     print(model_dict["state_dict"])
     model.to(device)
-    '''
-    with open(trainingManifestFile) as json_data:
-        training_manifest = json.load(json_data)
-        account_name = training_manifest["account_name"]
-        container_name = training_manifest["container_name"]
-        dataset_name = training_manifest["name"]
-        sas_token = training_manifest["sas_token"]
 
-        test_image_list = training_manifest["images"]['train']
-        test_dataset = AzureBlobODDataset(account_name, container_name, dataset_name, sas_token, test_image_list, TestAugmentation()(), predict_phase=True)
-    test_data_loader = torch.utils.data.DataLoader(test_dataset, shuffle=True, batch_size=1) 
-    '''
+    # with open(trainingManifestFile) as json_data:
+    #     training_manifest = json.load(json_data)
+    #     account_name = training_manifest["account_name"]
+    #     container_name = training_manifest["container_name"]
+    #     dataset_name = training_manifest["name"]
+    #     sas_token = training_manifest["sas_token"]
+
+    #     test_image_list = training_manifest["images"]['train']
+    #     test_dataset = AzureBlobODDataset(account_name, container_name, dataset_name, sas_token, test_image_list, TestAugmentation()(), predict_phase=True)
+    # test_data_loader = torch.utils.data.DataLoader(test_dataset, shuffle=True, batch_size=1) 
+
     test_data_loader = yolo_test_data_loader('/app/Ping-Logo/Ping-Logo-55.test_images.txt', cmapfile=cmapfile,
                                         batch_size=32,
                                         num_workers=4)
