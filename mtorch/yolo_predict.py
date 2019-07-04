@@ -19,11 +19,11 @@ DEFAULT_NUM_ANCHORS = 5
 BBOX_DIM = 4
 # thresholds:
 # PREDICTION:
-PLAIN_PRED_THRESH = 0 #0.005
+PLAIN_PRED_THRESH = 0.005
 TREE_PRED_THRESH = 0.1
 # NMS filtering
 NMS_THRESHOLD = 0.45
-PRE_THRESHOLD = 0 #0.005
+sho = 0.005
 
 
 class YoloPredict(nn.Module):

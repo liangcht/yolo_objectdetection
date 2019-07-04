@@ -85,7 +85,6 @@ def eval(model, num_classes, test_loader):
                 if pre_box[0] == 0:
                     del result[pre_idx]
             results.append(result)
-            print(result)
 
         # measure elapsed time
         batch_time.update(time.time() - end)
@@ -128,7 +127,7 @@ def train(model, num_class, device):
 
     # calculate config base on the dataset
     nSample = len(augmented_dataset)
-    total_epoch = max(5, math.ceil(50000 /(nSample+ 300)))
+    #total_epoch = max(5, math.ceil(50000 /(nSample+ 300)))
     if nSample < 1024:
         batch_size = 16
     elif nSample < 2048:
