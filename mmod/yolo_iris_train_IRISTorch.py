@@ -184,7 +184,7 @@ def train(model, num_class, device):
             torch.save(state, snapshot_pt)
             eval(model, num_class, test_data_loader)
 
-'''
+
 def main(args, log_pth):
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
     cmap = load_labelmap_list(label_map)
@@ -231,7 +231,7 @@ def main(args, log_pth):
                                         num_workers=4)
     
     eval(model, len(cmap), test_data_loader)
-
+'''
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     # parser.add_argument('--branch_name')
