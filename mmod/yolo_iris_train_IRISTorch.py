@@ -206,8 +206,8 @@ def main(args, log_pth):
     cmap = load_labelmap_list(label_map)
     model = Yolo(num_classes = len(cmap))
 
-    if (args['eval_only']):
-        model_dict = torch.load(args['model_file'])
+    if (args["eval_only"]):
+        model_dict = torch.load(args["model_file"])
         model.load_state_dict(model_dict["state_dict"], strict=True)
 
         # with open(trainingManifestFile) as json_data:
@@ -249,7 +249,7 @@ if __name__ == '__main__':
     # parser.add_argument('--random_seed', type=int, default=0)
     # parser.add_argument('--train_data')
     # parser.add_argument('--test_data')
-    parser.add_argument('--eval_only')
+    parser.add_argument('--eval_only', type=bool)
     parser.add_argument('--model_file')
     args = parser.parse_args()
 
