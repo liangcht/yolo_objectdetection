@@ -39,11 +39,11 @@ class AzureBlobODDataset(torch.utils.data.Dataset):
 
         if self.predict_phase:
             sample=image
-            iris_target = [None] * len(target)
+            iris_target = []
             w, h = image.size
             for i, t in enumerate(target):
                 bbox = t["BoundingBox"]
-                iris_target[i] = [t['tagIndex'], bbox[0] * w, bbox[1] * h, (bbox[0] + bbox[2]) * w, (bbox[1] + bbox[3]) * h]
+                iris_target.append((t['tagIndex'], bbox[0] * w, bbox[1] * h, (bbox[0] + bbox[2]) * w, (bbox[1] + bbox[3]) * h))
             sample = self.transform(sample)
             return sample, index, h, w, iris_target
         else:
