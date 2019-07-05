@@ -214,7 +214,7 @@ def main(args, log_pth):
         test_data_loader = torch.utils.data.DataLoader(test_dataset, sampler=sampler, batch_size=32, num_workers=4, collate_fn=_list_collate)
         
         '''
-        test_data_loader = yolo_test_data_loader('/app/Ping-Logo/Ping-Logo-55.test_Debug_images.txt', cmapfile=cmapfile,
+        test_data_loader = yolo_test_data_loader('/app/Ping-Logo/Ping-Logo-55.test_debug_images.txt', cmapfile=cmapfile,
                                             batch_size=32,
                                             num_workers=4)
         
