@@ -256,7 +256,7 @@ if __name__ == '__main__':
     if os.path.exists(log_pth):
         shutil.rmtree(log_pth)
     os.makedirs(log_pth)
-
+    print(args)
     try:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", category=UserWarning)
