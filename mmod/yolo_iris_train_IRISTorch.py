@@ -227,7 +227,7 @@ def main(args, log_pth):
         model.to(device)
         eval(model, len(cmap), test_data_loader)
     else:
-         pretrained_dict = torch.load(pretrain_model)
+        pretrained_dict = torch.load(pretrain_model)
         model_dict = model.state_dict()
         pretrained_dict = {k: v for k, v in pretrained_dict.items() if
                         (k in model_dict) and (model_dict[k].shape == pretrained_dict[k].shape)}
