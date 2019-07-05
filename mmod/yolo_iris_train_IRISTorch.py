@@ -107,7 +107,6 @@ def train(model, num_class, device):
     criterion = YoloLoss(num_classes=num_class)
     criterion = criterion.cuda()
 
-    '''
     # load training data
     augmenter = DefaultDarknetAugmentation()
     augmented_dataset = None
@@ -120,12 +119,11 @@ def train(model, num_class, device):
         image_list = training_manifest["images"]['train']
         test_image_list = training_manifest["images"]['val']
         augmented_dataset = AzureBlobODDataset(account_name, container_name, dataset_name, sas_token, image_list, augmenter())
-        test_dataset = AzureBlobODDataset(account_name, container_name, dataset_name, sas_token, test_image_list, TestAugmentation()(), predict_phase=True)
-    '''
+        #test_dataset = AzureBlobODDataset(account_name, container_name, dataset_name, sas_token, test_image_list, TestAugmentation()(), predict_phase=True)
 
     # load training data
-    augmenter = DefaultDarknetAugmentation()
-    augmented_dataset = create_imdb_dataset(datafile,
+    #augmenter = DefaultDarknetAugmentation()
+    #augmented_dataset = create_imdb_dataset(datafile,
                                             cmapfile, augmenter())
 
     # calculate config base on the dataset
