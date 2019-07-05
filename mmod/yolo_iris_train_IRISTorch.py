@@ -45,7 +45,7 @@ label_map = cmapfile
 
 steps = [100, 5000, 9000, 10000000]
 lrs = [0.001, 0.0006, 0.0003, 0.0001]
-init_lr = lrs[0]
+init_lr = lrs[2]
 
 def to_python_float(t):
     if isinstance(t, (float, int)):
