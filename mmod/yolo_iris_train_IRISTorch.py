@@ -99,6 +99,7 @@ def eval(model, num_classes, test_loader):
     eval_result =evaluator.get_report()
     print(eval_result)
     model.train()
+    return eval_result
 
 def train(model, num_class, device):
     # switch to train mode
@@ -179,8 +180,10 @@ def train(model, num_class, device):
         snapshot_pt = log_pth + "_epoch_{}".format(epoch + 1) + '.pt'
         if epoch % 10 == 0:
             print("Snapshotting to: {}".format(snapshot_pt))
-            torch.save(state, snapshot_pt)
-            eval(model, num_class, test_data_loader)
+            
+            result = eval(model, num_class, test_data_loader)
+            if (result['mAP_50'] > 0.0):
+                torch.save(state, snapshot_pt)
 
 def main(args, log_pth):
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
