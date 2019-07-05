@@ -180,7 +180,7 @@ def train(model, num_class, device):
             torch.save(state, snapshot_pt)
             eval(model, num_class, test_data_loader)
 
-
+'''
 def main(args, log_pth):
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
     cmap = load_labelmap_list(label_map)
@@ -206,7 +206,7 @@ def main(args, log_pth):
     cmap = load_labelmap_list(label_map)
     model = Yolo(num_classes = len(cmap))
 
-    model_dict = torch.load("_epoch_21.pt")
+    model_dict = torch.load("_epoch_291.pt")
     model.load_state_dict(model_dict["state_dict"], strict=True)
     print(model_dict["state_dict"])
     model.to(device)
