@@ -206,7 +206,7 @@ def main(args, log_pth):
     cmap = load_labelmap_list(label_map)
     model = Yolo(num_classes = len(cmap))
 
-    if (args["eval_only"]):
+    if args["eval_only"]:
         model_dict = torch.load(args["model_file"])
         model.load_state_dict(model_dict["state_dict"], strict=True)
 
