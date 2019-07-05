@@ -123,8 +123,7 @@ def train(model, num_class, device):
 
     # load training data
     #augmenter = DefaultDarknetAugmentation()
-    #augmented_dataset = create_imdb_dataset(datafile,
-                                            cmapfile, augmenter())
+    #augmented_dataset = create_imdb_dataset(datafile, cmapfile, augmenter())
 
     # calculate config base on the dataset
     nSample = len(augmented_dataset)
