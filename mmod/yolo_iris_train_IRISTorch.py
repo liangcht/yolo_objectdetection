@@ -227,7 +227,7 @@ def main(args, log_pth):
                                         num_workers=4)
     
     eval(model, len(cmap), test_data_loader)
-'''
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     # parser.add_argument('--branch_name')
