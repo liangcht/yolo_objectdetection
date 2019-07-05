@@ -40,7 +40,7 @@ cmapfile = '/app/Ping-Logo/Ping-Logo_labels.txt'
 #datafile = '/app/animal661/Animal.train_images.txt'
 #testfile = '/app/animal661/Animal.test_images.txt'
 #cmapfile = '/app/animal661/Animal-661_labels.txt'
-trainingManifestFile = '/app/Ping-Logo/PingLogo_ltwh_trainingManifest.json'
+trainingManifestFile = '/app/Ping-Logo/PingLogo_Debug_trainingManifest.json'
 #trainingManifestFile = '/app/animal661/Animal661_trainingManifest.json'
 label_map = cmapfile
 
@@ -70,6 +70,7 @@ def eval(model, num_classes, test_loader):
 
         data, image_keys, hs, ws, gt_batch = inputs[0], inputs[1], inputs[2], inputs[3], inputs[4]
         gts += gt_batch
+        print(gt_batch)
         # compute output
         for im, image_key, h, w in zip(data, image_keys, hs, ws):
             im = im.unsqueeze_(0)
@@ -90,8 +91,6 @@ def eval(model, num_classes, test_loader):
                 if pre_box[0] == 0:
                     del result[pre_idx]
             results.append(result)
-            import pdb
-            pdb.set_trace()
 
         # measure elapsed time
         batch_time.update(time.time() - end)
