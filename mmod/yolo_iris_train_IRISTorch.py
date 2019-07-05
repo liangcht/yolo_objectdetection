@@ -202,11 +202,11 @@ def main(args, log_pth):
             test_dataset = AzureBlobODDataset(account_name, container_name, dataset_name, sas_token, test_image_list, TestAugmentation()(), predict_phase=True)
         test_data_loader = torch.utils.data.DataLoader(test_dataset, shuffle=True, batch_size=1)
 
-        '''
-        test_data_loader = yolo_test_data_loader('/app/Ping-Logo/Ping-Logo-55.test_images.txt', cmapfile=cmapfile,
+
+        test_data_loader_2 = yolo_test_data_loader('/app/Ping-Logo/Ping-Logo-55.test_images.txt', cmapfile=cmapfile,
                                             batch_size=32,
                                             num_workers=4)
-        '''
+        
 
         model.to(device)
         eval(model, len(cmap), test_data_loader)
