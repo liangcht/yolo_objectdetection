@@ -2,6 +2,7 @@ import argparse
 import os
 import warnings
 import torch
+from torch.utils.data import SequentialSampler
 import sys
 import traceback
 import shutil
@@ -202,7 +203,8 @@ def main(args, log_pth):
 
             test_image_list = training_manifest["images"]['train']
             test_dataset = AzureBlobODDataset(account_name, container_name, dataset_name, sas_token, test_image_list, TestAugmentation()(), predict_phase=True)
-        test_data_loader = torch.utils.data.DataLoader(test_dataset, batch_size=32, num_workers=4)
+        sampler = SequentialSampler(test_dataset)
+        test_data_loader = torch.utils.data.DataLoader(test_dataset, sampler=sampler, batch_size=32, num_workers=4)
 
         '''
         test_data_loader = yolo_test_data_loader('/app/Ping-Logo/Ping-Logo-55.test_images.txt', cmapfile=cmapfile,
