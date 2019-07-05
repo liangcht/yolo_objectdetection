@@ -117,6 +117,7 @@ def train(model, num_class, device):
         container_name = training_manifest["container_name"]
         dataset_name = training_manifest["name"]
         sas_token = training_manifest["sas_token"]
+        print(sas_token)
         image_list = training_manifest["images"]['train']
         test_image_list = training_manifest["images"]['val']
         augmented_dataset = AzureBlobODDataset(account_name, container_name, dataset_name, sas_token, image_list, augmenter())
