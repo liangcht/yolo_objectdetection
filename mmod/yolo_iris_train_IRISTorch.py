@@ -39,7 +39,8 @@ log_pth = './output_irisInit/'
 datafile = '/app/animal661/Animal.train_images.txt'
 testfile = '/app/animal661/Animal.test_images.txt'
 cmapfile = '/app/animal661/Animal-661_labels.txt'
-trainingManifestFile = '/app/Ping-Logo/PingLogo_ltwh_trainingManifest.json'
+#trainingManifestFile = '/app/Ping-Logo/PingLogo_ltwh_trainingManifest.json'
+trainingManifestFile = '/app/animal661/Animal661_trainingManifest.json'
 label_map = cmapfile
 
 steps = [100, 5000, 9000, 10000000]
