@@ -185,6 +185,14 @@ def train(model, num_class, device):
             torch.save(state, snapshot_pt)
             eval(model, num_class, test_data_loader)
 
+def _list_collate(batch):
+    """ Function that collates lists or tuples together into one list (of lists/tuples).
+    Use this as the collate function in a Dataloader,
+    if you want to have a list of items as an output, as opposed to tensors
+    """
+    items = list(zip(*batch))
+    return items
+
 def main(args, log_pth):
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
     cmap = load_labelmap_list(label_map)
@@ -204,7 +212,7 @@ def main(args, log_pth):
             test_image_list = training_manifest["images"]['train']
             test_dataset = AzureBlobODDataset(account_name, container_name, dataset_name, sas_token, test_image_list, TestAugmentation()(), predict_phase=True)
         sampler = SequentialSampler(test_dataset)
-        test_data_loader = torch.utils.data.DataLoader(test_dataset, sampler=sampler, batch_size=32, num_workers=4)
+        test_data_loader = torch.utils.data.DataLoader(test_dataset, sampler=sampler, batch_size=32, num_workers=4, collate_fn=_list_collate)
 
         '''
         test_data_loader = yolo_test_data_loader('/app/Ping-Logo/Ping-Logo-55.test_images.txt', cmapfile=cmapfile,
