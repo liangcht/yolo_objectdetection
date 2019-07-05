@@ -118,6 +118,8 @@ class ImageDataset(torch.utils.data.Dataset):
             sample=image
             sample = self.transform(sample)
             w, h = image.size
+            import pdb
+            pdb.set_trace()
             return sample, index, h, w, target
         else:
             # Convert absolute coordinates to (x1, y1, x2, y2)
