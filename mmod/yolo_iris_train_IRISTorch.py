@@ -27,15 +27,18 @@ import time
 import math
 
 # pretrain_model = '/home/tobai/ODExperiments/yoloSample/yolomodel/Logo_YoloV2_CaffeFeaturizer.pt'
-pretrain_model = '/app/pretrain_model/Logo_YoloV2_CaffeFeaturizer.pt'
+pretrain_model = '/app/pretrain_model/YoloV2_CaffeFeaturizer_V2.pt'
 
 total_epoch = 300
 log_pth = './output_irisInit/'
 # TODO: solver param
 # steps = [100, 5000, 9000]
 # lrs = [0.00001, 0.00001, 0.0001]
-datafile = '/app/Ping-Logo/Ping-Logo-55.train_images.txt'
-cmapfile = '/app/Ping-Logo/Ping-Logo_labels.txt'
+#datafile = '/app/Ping-Logo/Ping-Logo-55.train_images.txt'
+#cmapfile = '/app/Ping-Logo/Ping-Logo_labels.txt'
+datafile = '/app/animal661/Animal.train_images.txt'
+testfile = '/app/animal661/Animal.test_images.txt'
+cmapfile = '/app/animal661/Animal-661_labels.txt'
 trainingManifestFile = '/app/Ping-Logo/PingLogo_ltwh_trainingManifest.json'
 label_map = cmapfile
 
@@ -180,27 +183,6 @@ def train(model, num_class, device):
             torch.save(state, snapshot_pt)
             eval(model, num_class, test_data_loader)
 
-'''
-def main(args, log_pth):
-    device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
-    cmap = load_labelmap_list(label_map)
-    model = Yolo(num_classes = len(cmap))
-    
-    pretrained_dict = torch.load(pretrain_model)
-    model_dict = model.state_dict()
-    pretrained_dict = {k: v for k, v in pretrained_dict.items() if
-                       (k in model_dict) and (model_dict[k].shape == pretrained_dict[k].shape)}
-    model.load_state_dict(pretrained_dict, strict=False)
-    # TODO: set distributed
-
-    from mtorch.custom_layers_ops import freeze_modules_for_training
-    freeze_modules_for_training(model, 'dark5e')
-
-    # TODO: add solver_params
-    model.to(device)
-    train(model, len(cmap), device)
-
-'''
 def main(args, log_pth):
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
     cmap = load_labelmap_list(label_map)
@@ -220,7 +202,7 @@ def main(args, log_pth):
         #     test_image_list = training_manifest["images"]['train']
         #     test_dataset = AzureBlobODDataset(account_name, container_name, dataset_name, sas_token, test_image_list, TestAugmentation()(), predict_phase=True)
         # test_data_loader = torch.utils.data.DataLoader(test_dataset, shuffle=True, batch_size=1) 
-
+        
         test_data_loader = yolo_test_data_loader('/app/Ping-Logo/Ping-Logo-55.test_images.txt', cmapfile=cmapfile,
                                             batch_size=32,
                                             num_workers=4)
