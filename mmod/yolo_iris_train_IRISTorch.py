@@ -69,6 +69,8 @@ def eval(model, num_classes, test_loader):
         data_time.update(time.time() - end)
 
         data, image_keys, hs, ws, gt_batch = inputs[0], inputs[1], inputs[2], inputs[3], inputs[4]
+        import pdb
+        pdb.set_trace()
         gts += gt_batch
         # compute output
         for im, image_key, h, w in zip(data, image_keys, hs, ws):
