@@ -68,6 +68,8 @@ def eval(model, num_classes, test_loader):
         data_time.update(time.time() - end)
 
         data, image_keys, hs, ws, gt_batch = inputs[0], inputs[1], inputs[2], inputs[3], inputs[4]
+        import pdb
+        pdb.set_trace()
         gts += gt_batch
         # compute output
         for im, image_key, h, w in zip(data, image_keys, hs, ws):
@@ -200,7 +202,7 @@ def main(args, log_pth):
 
             test_image_list = training_manifest["images"]['train']
             test_dataset = AzureBlobODDataset(account_name, container_name, dataset_name, sas_token, test_image_list, TestAugmentation()(), predict_phase=True)
-        test_data_loader = torch.utils.data.DataLoader(test_dataset, shuffle=True, batch_size=1)
+        test_data_loader = torch.utils.data.DataLoader(test_dataset, batch_size=32, num_workers=4)
 
         '''
         test_data_loader = yolo_test_data_loader('/app/Ping-Logo/Ping-Logo-55.test_images.txt', cmapfile=cmapfile,

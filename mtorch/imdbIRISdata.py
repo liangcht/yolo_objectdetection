@@ -94,8 +94,6 @@ class ImageDataset(torch.utils.data.Dataset):
                         self.zip_objects[zip_filepath] = zipfile.ZipFile(zip_filepath)
 
                 target = self._load_target(columns[1].strip())
-                import pdb
-                pdb.set_trace()
                 self.images_filepaths.append((columns[0].strip(), target))
 
         for filepath, label in self.images_filepaths:
