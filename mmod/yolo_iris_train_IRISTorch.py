@@ -191,20 +191,23 @@ def main(args, log_pth):
         model_dict = torch.load(args.model_file)
         model.load_state_dict(model_dict["state_dict"], strict=True)
 
-        # with open(trainingManifestFile) as json_data:
-        #     training_manifest = json.load(json_data)
-        #     account_name = training_manifest["account_name"]
-        #     container_name = training_manifest["container_name"]
-        #     dataset_name = training_manifest["name"]
-        #     sas_token = training_manifest["sas_token"]
+        with open(trainingManifestFile) as json_data:
+            training_manifest = json.load(json_data)
+            account_name = training_manifest["account_name"]
+            container_name = training_manifest["container_name"]
+            dataset_name = training_manifest["name"]
+            sas_token = training_manifest["sas_token"]
 
-        #     test_image_list = training_manifest["images"]['train']
-        #     test_dataset = AzureBlobODDataset(account_name, container_name, dataset_name, sas_token, test_image_list, TestAugmentation()(), predict_phase=True)
-        # test_data_loader = torch.utils.data.DataLoader(test_dataset, shuffle=True, batch_size=1) 
-        
+            test_image_list = training_manifest["images"]['train']
+            test_dataset = AzureBlobODDataset(account_name, container_name, dataset_name, sas_token, test_image_list, TestAugmentation()(), predict_phase=True)
+        test_data_loader = torch.utils.data.DataLoader(test_dataset, shuffle=True, batch_size=1)
+
+        '''
         test_data_loader = yolo_test_data_loader('/app/Ping-Logo/Ping-Logo-55.test_images.txt', cmapfile=cmapfile,
                                             batch_size=32,
                                             num_workers=4)
+        '''
+        
         model.to(device)
         eval(model, len(cmap), test_data_loader)
     else:
