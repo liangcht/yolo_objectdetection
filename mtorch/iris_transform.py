@@ -191,8 +191,11 @@ class IrisODTransform(Transform):
     def __init__(self, input_size):
         self.transforms = [ODImageTransform(torchvision.transforms.Resize(input_size)),
                            ODCenterCrop(input_size),
+                           self._permute_whc,
                            ODImageTransform(torchvision.transforms.ToTensor()),
-                           ODImageTransform(torchvision.transforms.Normalize([104.0, 117.0, 123.0], [1, 1, 1]))]
+                           ODImageTransform(torchvision.transforms.Normalize([0.482, 0.459, 0.408], [1, 1, 1]))]
+    def _permute_whc(x):
+        return x.permute((1, 2, 0))
 
 class SSDTransform(Transform):
     def __init__(self, input_size):
