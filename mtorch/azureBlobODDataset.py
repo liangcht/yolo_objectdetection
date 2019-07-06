@@ -40,14 +40,12 @@ class AzureBlobODDataset(torch.utils.data.Dataset):
         if self.predict_phase:
             sample=image
             iris_target = []
-            stub_target = []
             w, h = image.size
             for i, t in enumerate(target):
                 bbox = t["BoundingBox"]
                 iris_target.append((int(t['tagIndex']), bbox[0] * w, bbox[1] * h, (bbox[0] + bbox[2]) * w, (bbox[1] + bbox[3]) * h))
-                stub_target.append((int(t['tagIndex']), bbox[0], bbox[1], (bbox[0] + bbox[2]), (bbox[1] + bbox[3])))
-            sample = self.transform(sample, stub_target)
-            return sample[0], index, h, w, iris_target
+            sample = self.transform(sample)
+            return sample, index, h, w, iris_target
         else:
             # Convert absolute coordinates to (x1, y1, x2, y2)
             w, h = image.size
