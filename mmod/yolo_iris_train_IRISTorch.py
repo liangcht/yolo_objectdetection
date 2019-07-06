@@ -24,6 +24,7 @@ from mtorch.yolo_predict import PlainPredictorClassSpecificNMS
 from mmod.meters import AverageMeter
 from iris_evaluator import ObjectDetectionEvaluator
 from mmod.detection import result2bbIRIS
+from mmod.visual import visualize
 import time
 
 import math
@@ -91,6 +92,8 @@ def eval(model, num_classes, test_loader):
                 if pre_box[0] == 0:
                     del result[pre_idx]
             results.append(result)
+            visualize(im, result, path="debug_image/{0}.jpg".format(image_key))
+
 
         # measure elapsed time
         batch_time.update(time.time() - end)
