@@ -34,8 +34,7 @@ def draw_rect(ax, all_cls, cls, rect, score=None):
     """
     if cls not in all_cls:
         idx = len(all_cls)
-        color_idx = idx % (len(STANDARD_COLORS) / 2) * 2
-        print(color_idx)
+        color_idx = int(idx % (len(STANDARD_COLORS) / 2) * 2)
         color = STANDARD_COLORS[color_idx]
         bgcolor = STANDARD_COLORS[color_idx + 1]
         all_cls[cls] = color, bgcolor
