@@ -74,6 +74,7 @@ def eval(model, num_classes, test_loader):
         gts += gt_batch
         # compute output
         for im, image_key, h, w in zip(data, image_keys, hs, ws):
+            dum_im = im
             im = im.unsqueeze_(0)
             im = im.float().cuda()
             with torch.no_grad():
@@ -92,7 +93,7 @@ def eval(model, num_classes, test_loader):
                 if pre_box[0] == 0:
                     del result[pre_idx]
             results.append(result)
-            visualize(im, result, path="debug_image/{0}.jpg".format(image_key))
+            visualize(dum_im, result, path="debug_image/{0}.jpg".format(image_key))
 
 
         # measure elapsed time

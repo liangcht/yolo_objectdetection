@@ -26,7 +26,6 @@ class ODImResize(object):
         right = int(np.round(self.network_input_width - new_w - left))
         top = int(np.round((self.network_input_height - new_h) / 2))
         bottom = int(np.round((self.network_input_height - new_h - top)))
-        print(left, right, top, bottom)
         im_squared = cv2.copyMakeBorder(im_resized, top=top, bottom=bottom, left=left, right=right,
                                     borderType=cv2.BORDER_CONSTANT, value=[0, 0, 0])
  
