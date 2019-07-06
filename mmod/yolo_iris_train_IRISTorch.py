@@ -75,6 +75,8 @@ def eval(model, num_classes, test_loader):
         # compute output
         for im, image_key, h, w in zip(data, image_keys, hs, ws):
             dum_im = im
+            import pdb
+            pdb.set_trace()
             im = im.unsqueeze_(0)
             im = im.float().cuda()
             with torch.no_grad():
