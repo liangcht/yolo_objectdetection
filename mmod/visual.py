@@ -117,7 +117,7 @@ def visualize(im, results, thresh=0.0, return_as_array=True, fig=None, path=None
 
     width, height = fig.get_size_inches() * fig.get_dpi()
     width, height = int(width), int(height)
-    return np.fromstring(canvas.tostring_rgb(), dtype='uint8').reshape(height, width, 3)
+    #return np.fromstring(canvas.tostring_rgb(), dtype='uint8').reshape(height, width, 3)
 
 
 def visualize_detections(exp, results, thresh=0.0):
