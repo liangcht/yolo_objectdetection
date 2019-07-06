@@ -95,7 +95,8 @@ def eval(model, num_classes, test_loader):
                 if pre_box[0] == 0:
                     del result[pre_idx]
             results.append(result)
-            visualize(dum_im, result, path="debug_image/{0}.jpg".format(image_key))
+            vi_result = {"class": result[1], "conf": result[0], "rect": result[2:]}
+            visualize(dum_im, vi_result, path="debug_image/{0}.jpg".format(image_key))
 
 
         # measure elapsed time
