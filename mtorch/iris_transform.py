@@ -27,7 +27,7 @@ class ODImageTransform(object):
 class YoloInferenceTransform(object):
     def __init__(self, target_size):
         self.target_size = target_size
-    def __call__(self, img, target):
+    def __call__(self, img):
         w, h = img.size
         alpha = np.sqrt(self.target_size[0] * self.target_size[1]) / np.sqrt(h * w)
         height2 = int(np.round(alpha * h))
@@ -41,7 +41,7 @@ class YoloInferenceTransform(object):
             self.network_input_height = ((self.network_input_width * h + w - 1) // w +
                                         31) // 32 * 32
         img = img.resize((self.network_input_height, self.network_input_height), Image.BILINEAR)
-        return img, target
+        return img
 
 class ODResize(object):
     """ Resize so that the shorter side will be self.size. """
