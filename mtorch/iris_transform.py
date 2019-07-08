@@ -21,8 +21,6 @@ class ODImageTransform(object):
     def __init__(self, transform):
         self.transform = transform
     def __call__(self, img, target=None):
-        import pdb
-        pdb.set_trace()
         img = self.transform(img)
         return img, target
     
