@@ -205,7 +205,7 @@ def main(args, log_pth):
     if args.eval_only:
         model_dict = torch.load(args.model_file)
         model.load_state_dict(model_dict["state_dict"], strict=True)
-
+        '''
         with open(trainingManifestFile) as json_data:
             training_manifest = json.load(json_data)
             account_name = training_manifest["account_name"]
@@ -223,7 +223,7 @@ def main(args, log_pth):
         test_data_loader = yolo_test_data_loader('/app/Ping-Logo/Ping-Logo-55.test_debug_images.txt', cmapfile=cmapfile,
                                             batch_size=32,
                                             num_workers=4)
-        '''
+
         model.to(device)
         eval(model, len(cmap), test_data_loader)
     else:
