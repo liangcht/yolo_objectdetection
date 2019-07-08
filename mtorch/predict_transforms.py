@@ -52,7 +52,7 @@ class ODImResize(object):
 
     def _set_network_input_size(self, h, w):
         if h > w:
-            self.network_input_height = ((416 * w + h - 1) // h +
+            self.network_input_height = ((416 * h + w - 1) // w +
                                             31) // 32 * 32
             self.network_input_width = 416
         else:
