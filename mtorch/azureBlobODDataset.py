@@ -40,7 +40,7 @@ class AzureBlobODDataset(torch.utils.data.Dataset):
         if self.predict_phase:
             sample=image
             iris_target = []
-            dummy_target = []
+            dummy_target = [True]
             w, h = image.size
             for i, t in enumerate(target):
                 bbox = t["BoundingBox"]
