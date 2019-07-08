@@ -30,7 +30,7 @@ class ODImResize(object):
                                     borderType=cv2.BORDER_CONSTANT, value=[0, 0, 0])
  
         return im_squared
-    
+    '''
     def _set_network_input_size(self, h, w):
         if self.maintain_ratio:
             alpha = np.sqrt(self.target_size[0] * self.target_size[1]) / np.sqrt(h * w)
@@ -47,3 +47,12 @@ class ODImResize(object):
         else:
             self.network_input_height = self.target_size[0]
             self.network_input_width = self.target_size[1]
+    '''
+
+    def _set_network_input_size(self, h, w):
+        if h > w:
+            self.network_input_height = h * w / 416.0
+            self.network_input_width = 416
+        else:
+            self.network_input_width = 416
+            self.network_input_height = w * h / 416.0
