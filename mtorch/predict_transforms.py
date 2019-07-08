@@ -23,6 +23,8 @@ class ODImResize(object):
                                 max(self.network_input_width, self.network_input_height))
         new_h, new_w = im_resized.shape[0:2]
         print(im.shape[0])
+        print(new_h)
+        print(new_w)
         left = int(np.round((self.network_input_width - new_w) / 2))
         right = int(np.round(self.network_input_width - new_w - left))
         top = int(np.round((self.network_input_height - new_h) / 2))
