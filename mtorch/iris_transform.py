@@ -194,6 +194,7 @@ class IrisODTransform(Transform):
     def __init__(self, input_size):
         self.transforms = [ODImageTransform(torchvision.transforms.functional.to_tensor),
                            ODImageTransform(lambda x : x.numpy()),
+                           ODImageTransform(lambda x : x.permute((1, 2, 0))),
                            ODImageTransform(ODImResize()),
                            #ODImageTransform(torchvision.transforms.Resize(input_size)),
                            #ODCenterCrop(input_size),
