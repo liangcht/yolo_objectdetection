@@ -215,8 +215,8 @@ def main(args, log_pth):
             sas_token = training_manifest["sas_token"]
 
             test_image_list = training_manifest["images"]['val']
-            test_dataset = AzureBlobODDataset(account_name, container_name, dataset_name, sas_token, test_image_list, TestAugmentation()(), predict_phase=True)
-            ##test_dataset = AzureBlobODDataset(account_name, container_name, dataset_name, sas_token, test_image_list, IrisODTransform(416), predict_phase=True)
+            #test_dataset = AzureBlobODDataset(account_name, container_name, dataset_name, sas_token, test_image_list, TestAugmentation()(), predict_phase=True)
+            test_dataset = AzureBlobODDataset(account_name, container_name, dataset_name, sas_token, test_image_list, IrisODTransform(416), predict_phase=True)
         sampler = SequentialSampler(test_dataset)
         test_data_loader = torch.utils.data.DataLoader(test_dataset, sampler=sampler, batch_size=32, num_workers=4, collate_fn=_list_collate)
         
