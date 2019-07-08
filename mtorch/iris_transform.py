@@ -20,7 +20,7 @@ def _adjust_bboxes(bboxes):
 class ODImageTransform(object):
     def __init__(self, transform):
         self.transform = transform
-    def __call__(self, img, target=None):
+    def __call__(self, img, target):
         img = self.transform(img)
         return img, target
     
