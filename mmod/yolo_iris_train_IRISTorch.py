@@ -74,6 +74,8 @@ def eval(model, num_classes, test_loader):
         gts += gt_batch
         # compute output
         for im, image_key, h, w in zip(data, image_keys, hs, ws):
+            import pdb
+            pdb.set_trace()
             dum_im = np.asarray(im)
             dum_im = np.transpose(dum_im, (1, 2, 0))
             im = im.unsqueeze_(0)
