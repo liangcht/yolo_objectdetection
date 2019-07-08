@@ -40,7 +40,7 @@ class YoloInferenceTransform(object):
             self.network_input_width = (width2 + 31) // 32 * 32
             self.network_input_height = ((self.network_input_width * h + w - 1) // w +
                                         31) // 32 * 32
-        img = img.resize((self.network_input_width, self.network_input_height), Image.BICUBIC)
+        img = img.resize((self.network_input_width, self.network_input_height), Image.BILINEAR)
         return img
 
 class ODResize(object):
