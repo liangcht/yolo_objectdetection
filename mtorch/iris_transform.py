@@ -23,7 +23,26 @@ class ODImageTransform(object):
     def __call__(self, img, target):
         img = self.transform(img)
         return img, target
-    
+
+class YoloInferenceTransform(object):
+    def __init__(self, target_size):
+        self.target_size = target_size
+    def __call__(self, img, target):
+        w, h = img.size
+        alpha = np.sqrt(self.target_size[0] * self.target_size[1]) / np.sqrt(h * w)
+        height2 = int(np.round(alpha * h))
+        width2 = int(np.round(alpha * w))
+        if h > w:
+            self.network_input_height = (height2 + 31) // 32 * 32
+            self.network_input_width = ((self.network_input_height * w + h - 1) // h +
+                                        31) // 32 * 32
+        else:
+            self.network_input_width = (width2 + 31) // 32 * 32
+            self.network_input_height = ((self.network_input_width * h + w - 1) // w +
+                                        31) // 32 * 32
+        img = img.resize((self.network_input_height, self.network_input_height), Image.BILINEAR)
+        return img, target
+
 class ODResize(object):
     """ Resize so that the shorter side will be self.size. """
     def __init__(self, size):
@@ -192,14 +211,16 @@ class CenterCropTransform(Transform):
 COLOR_MEAN = (104.0, 117.0, 123.0)
 class IrisODTransform(Transform):
     def __init__(self, input_size):
-        self.transforms = [ODImageTransform(torchvision.transforms.functional.to_tensor),
-                           ODImageTransform(lambda x : x[(2, 1, 0), :, :]),
-                           ODImageTransform(lambda x : x.permute((1, 2, 0))),
-                           ODImageTransform(lambda x : x.numpy()),
-                           ODImageTransform(ODImResize()),
+        self.transforms = [#ODImageTransform(torchvision.transforms.functional.to_tensor),
+                           #ODImageTransform(lambda x : x[(2, 1, 0), :, :]),
+                           #ODImageTransform(lambda x : x.permute((1, 2, 0))),
+                           #ODImageTransform(lambda x : x.numpy()),
+                           #ODImageTransform(ODImResize()),
                            #ODImageTransform(torchvision.transforms.Resize(416)),
                            #ODCenterCrop(input_size),
+                           ODImageTransform(YoloInferenceTransform((416, 416))),
                            ODImageTransform(torchvision.transforms.ToTensor()),
+                           ODImageTransform(lambda x : x.permute((1, 2, 0))),
                            ODImageTransform(torchvision.transforms.Normalize([c / 255.0 for c in COLOR_MEAN], [1/255.0, 1/255.0, 1/255.0]))]
 
 class SSDTransform(Transform):
