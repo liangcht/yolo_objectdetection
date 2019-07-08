@@ -22,6 +22,7 @@ class ODImResize(object):
         im_resized = im_rescale(im.astype(np.float32, copy=True), 
                                 max(self.network_input_width, self.network_input_height))
         new_h, new_w = im_resized.shape[0:2]
+        print(im.shape[0])
         left = int(np.round((self.network_input_width - new_w) / 2))
         right = int(np.round(self.network_input_width - new_w - left))
         top = int(np.round((self.network_input_height - new_h) / 2))
@@ -51,8 +52,8 @@ class ODImResize(object):
 
     def _set_network_input_size(self, h, w):
         if h > w:
-            self.network_input_height = h * w / 416.0
+            self.network_input_height = h * 416.0 / w
             self.network_input_width = 416
         else:
-            self.network_input_width =  w * h / 416.0
+            self.network_input_width =  w * 416.0 / h
             self.network_input_height = 416
