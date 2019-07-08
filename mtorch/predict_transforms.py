@@ -54,5 +54,5 @@ class ODImResize(object):
             self.network_input_height = h * w / 416.0
             self.network_input_width = 416
         else:
-            self.network_input_width = 416
-            self.network_input_height = w * h / 416.0
+            self.network_input_width =  w * h / 416.0
+            self.network_input_height = 416
