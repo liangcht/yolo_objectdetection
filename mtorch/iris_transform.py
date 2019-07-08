@@ -220,7 +220,6 @@ class IrisODTransform(Transform):
                            #ODCenterCrop(input_size),
                            ODImageTransform(YoloInferenceTransform((416, 416))),
                            ODImageTransform(torchvision.transforms.ToTensor()),
-                           ODImageTransform(lambda x : x.permute((1, 2, 0))),
                            ODImageTransform(torchvision.transforms.Normalize([c / 255.0 for c in COLOR_MEAN], [1/255.0, 1/255.0, 1/255.0]))]
 
 class SSDTransform(Transform):
