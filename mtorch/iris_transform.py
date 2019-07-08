@@ -197,7 +197,7 @@ class IrisODTransform(Transform):
                            #ODImageTransform(lambda x : x.permute((1, 2, 0))),
                            #ODImageTransform(lambda x : x.numpy()),
                            #ODImageTransform(ODImResize()),
-                           ODImageTransform(torchvision.transforms.Resize(256)),
+                           ODImageTransform(torchvision.transforms.Resize(416, Image.BICUBIC)),
                            #ODCenterCrop(input_size),
                            ODImageTransform(torchvision.transforms.ToTensor()),
                            ODImageTransform(lambda x : x[(2, 1, 0), :, :]),
