@@ -192,7 +192,7 @@ class CenterCropTransform(Transform):
 
 class IrisODTransform(Transform):
     def __init__(self, input_size):
-        self.transforms = [ODImageTransform(lambda x : x.numpy()),
+        self.transforms = [ODImageTransform(transforms.functional.to_tensor()),
                            ODImageTransform(ODImResize()),
                            #ODImageTransform(torchvision.transforms.Resize(input_size)),
                            #ODCenterCrop(input_size),
