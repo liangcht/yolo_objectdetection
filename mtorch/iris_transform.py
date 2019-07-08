@@ -189,7 +189,7 @@ class CenterCropTransform(Transform):
                            torchvision.transforms.CenterCrop(input_size),
                            torchvision.transforms.ToTensor(),
                            torchvision.transforms.Normalize([0.482, 0.459, 0.408], [1, 1, 1])]
-
+COLOR_MEAN = (104.0, 117.0, 123.0)
 class IrisODTransform(Transform):
     def __init__(self, input_size):
         self.transforms = [ODImageTransform(torchvision.transforms.functional.to_tensor),
@@ -199,7 +199,7 @@ class IrisODTransform(Transform):
                            #ODImageTransform(torchvision.transforms.Resize(input_size)),
                            #ODCenterCrop(input_size),
                            ODImageTransform(torchvision.transforms.ToTensor()),
-                           ODImageTransform(torchvision.transforms.Normalize([0.408, 0.459, 0.482], [1/255.0, 1/255.0, 1/255.0]))]
+                           ODImageTransform(torchvision.transforms.Normalize([c / 255.0 for c in COLOR_MEAN], [1/255.0, 1/255.0, 1/255.0]))]
 
 class SSDTransform(Transform):
     def __init__(self, input_size):
