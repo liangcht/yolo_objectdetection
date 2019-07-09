@@ -12,6 +12,18 @@ import numpy as np
 IMAGE = "image"  # TODO: change to get that as parameter from prototxt
 LABEL = "bbox"   # TODO: change to get that as parameter from prototxt
 
+def _keep_max_num_bboxes(bboxes):
+    """Discards boxes beyond num_bboxes"""
+    num_bboxes = 30
+    cur_num = bboxes.shape[0]
+    diff_to_max = num_bboxes - cur_num
+    if diff_to_max > 0:
+        bboxes = np.lib.pad(bboxes, ((0, diff_to_max), (0, 0)),
+                            "constant", constant_values=(0.0,))
+    elif diff_to_max < 0:
+        bboxes = bboxes[:num_bboxes, :]
+    return bboxes
+
 class AzureBlobODDataset(torch.utils.data.Dataset):
     """
     """
@@ -71,6 +83,7 @@ class AzureBlobODDataset(torch.utils.data.Dataset):
             for t in iris_target:
                 target.append([t[1] * w, t[2] * h, t[3] * w, t[4] * h, t[0]])
             target = np.array(target)
+            target = _keep_max_num_bboxes(target).flatten()
             return sample, target
 
     def __len__(self):
