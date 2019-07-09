@@ -65,9 +65,8 @@ def eval(model, num_classes, test_loader):
             im = im.float().cuda()
             with torch.no_grad():
                 features = model(im)
+            '''
             prob, bbox = yolo_predictor(features, torch.Tensor((h, w)))
-            import pdb
-            pdb.set_trace()
             bbox = bbox.cpu().numpy()
             prob = prob.cpu().numpy()
             assert bbox.shape[-1] == 4
@@ -75,6 +74,8 @@ def eval(model, num_classes, test_loader):
             prob = prob.reshape(-1, prob.shape[-1])
             result = result2bbIRIS((h, w), prob, bbox, None,
                                    thresh=None, obj_thresh=None)
+            '''
+            result = yolo_predictor(features, torch.Tensor((h, w)))
             results.append(result)
 
     evaluator = ObjectDetectionEvaluator()
