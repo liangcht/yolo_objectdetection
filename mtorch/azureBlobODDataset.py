@@ -81,12 +81,9 @@ class AzureBlobODDataset(torch.utils.data.Dataset):
             sample, iris_target = self.transform(sample, iris_target)
             target = []
             for t in iris_target:
-                target.append([t[1] * w, t[2] * h, t[3] * w, t[4] * h, t[0]])
+                target.append([t[1], t[2], t[3] - t[1], t[4] - t[2], t[0]])
             target = np.array(target)
-            import pdb
-            pdb.set_trace()
             target = _keep_max_num_bboxes(target).flatten()
-            pdb.set_trace()
             return sample, target
 
     def __len__(self):
