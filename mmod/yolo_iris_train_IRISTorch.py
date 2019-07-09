@@ -9,8 +9,8 @@ import shutil
 from mmod.simple_parser import load_labelmap_list
 from iristorch.models.yolo_v2 import Yolo
 from iristorch.layers.yolo_loss import YoloLoss
-from mtorch.iris_transform import IrisODTransform
-from mtorch.augmentation import DefaultDarknetAugmentation, TestAugmentation
+from iristorch.transforms import YoloV2InferenceTransform
+from mtorch.augmentation import DefaultDarknetAugmentation
 from mtorch.multifixed_scheduler import MultiFixedScheduler
 from mtorch.dataloaders import create_imdb_dataset
 from mtorch.lr_scheduler import LinearDecreasingLR
@@ -24,7 +24,6 @@ from mtorch.yolo_predict import PlainPredictorClassSpecificNMS
 from mmod.meters import AverageMeter
 from iris_evaluator import ObjectDetectionEvaluator
 from mmod.detection import result2bbIRIS
-from mmod.visual import visualize
 import time
 
 import math
@@ -74,8 +73,6 @@ def eval(model, num_classes, test_loader):
         gts += gt_batch
         # compute output
         for im, image_key, h, w in zip(data, image_keys, hs, ws):
-            dum_im = np.asarray(im)
-            dum_im = np.transpose(dum_im, (1, 2, 0))
             im = im.unsqueeze_(0)
             im = im.float().cuda()
             with torch.no_grad():
@@ -89,14 +86,7 @@ def eval(model, num_classes, test_loader):
             prob = prob.reshape(-1, prob.shape[-1])
             result = result2bbIRIS((h, w), prob, bbox, None,
                                    thresh=None, obj_thresh=None)
-            # skip the background class
-            for pre_idx, pre_box in enumerate(result):
-                if pre_box[0] == 0:
-                    del result[pre_idx]
             results.append(result)
-            vi_result = [{"class": r[1], "conf": r[0], "rect": r[2:]} for r in result]
-            #visualize(dum_im, vi_result, path="debug_image/{0}.jpg".format(image_key))
-
 
         # measure elapsed time
         batch_time.update(time.time() - end)
@@ -215,16 +205,10 @@ def main(args, log_pth):
             sas_token = training_manifest["sas_token"]
 
             test_image_list = training_manifest["images"]['val']
-            #test_dataset = AzureBlobODDataset(account_name, container_name, dataset_name, sas_token, test_image_list, TestAugmentation()(), predict_phase=True)
-            test_dataset = AzureBlobODDataset(account_name, container_name, dataset_name, sas_token, test_image_list, IrisODTransform(416), predict_phase=True)
+            test_dataset = AzureBlobODDataset(account_name, container_name, dataset_name, sas_token, test_image_list, YoloV2InferenceTransform(416), predict_phase=True)
         sampler = SequentialSampler(test_dataset)
         test_data_loader = torch.utils.data.DataLoader(test_dataset, sampler=sampler, batch_size=32, num_workers=4, collate_fn=_list_collate)
         
-        '''
-        test_data_loader = yolo_test_data_loader('/app/Ping-Logo/Ping-Logo-55.test_images.txt', cmapfile=cmapfile,
-                                            batch_size=32,
-                                            num_workers=4)
-        '''
         model.to(device)
         eval(model, len(cmap), test_data_loader)
     else:
