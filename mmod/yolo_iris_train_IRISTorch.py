@@ -87,8 +87,6 @@ def eval(model, num_classes, test_loader):
             result = result2bbIRIS((h, w), prob, bbox, None,
                                    thresh=None, obj_thresh=None)
             results.append(result)
-            import pdb
-            pdb.set_trace()
 
         # measure elapsed time
         batch_time.update(time.time() - end)
