@@ -108,8 +108,8 @@ def train(model, num_class, device):
 
 
     # load training data
-    augmenter = YoloV2TrainingTransform(416)
-    augmented_dataset = None
+    #augmenter = YoloV2TrainingTransform(416)
+    #augmented_dataset = None
     with open(trainingManifestFile) as json_data:
         training_manifest = json.load(json_data)
         account_name = training_manifest["account_name"]
@@ -117,14 +117,14 @@ def train(model, num_class, device):
         dataset_name = training_manifest["name"]
         sas_token = training_manifest["sas_token"]
         print(sas_token)
-        image_list = training_manifest["images"]['train']
+        #image_list = training_manifest["images"]['train']
         test_image_list = training_manifest["images"]['val']
-        augmented_dataset = AzureBlobODDataset(account_name, container_name, dataset_name, sas_token, image_list, augmenter)
+        #augmented_dataset = AzureBlobODDataset(account_name, container_name, dataset_name, sas_token, image_list, augmenter)
         test_dataset = AzureBlobODDataset(account_name, container_name, dataset_name, sas_token, test_image_list, YoloV2InferenceTransform(416), predict_phase=True)
 
     # load training data
-    # augmenter = DefaultDarknetAugmentation()
-    # augmented_dataset = create_imdb_dataset(datafile, cmapfile, augmenter())
+    augmenter = DefaultDarknetAugmentation()
+    augmented_dataset = create_imdb_dataset(datafile, cmapfile, augmenter())
     
 
     # calculate config base on the dataset
