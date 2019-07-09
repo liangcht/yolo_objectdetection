@@ -55,8 +55,6 @@ class ODCenterCrop(object):
         x = int(round((w - self.output_size) / 2))
         y = int(round((h - self.output_size) / 2))
         img = img.crop((x, y, x + self.output_size, y + self.output_size))
-        import pdb
-        pdb.set_trace()
         relative_x = x / w
         relative_y = y / h
         relative_w = self.output_size / w
