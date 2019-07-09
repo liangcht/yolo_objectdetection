@@ -67,7 +67,10 @@ class AzureBlobODDataset(torch.utils.data.Dataset):
                 bbox = t["BoundingBox"]
                 iris_target.append((int(t['tagIndex']), bbox[0], bbox[1], bbox[0] + bbox[2], bbox[1] + bbox[3]))
             sample, iris_target = self.transform(sample, iris_target)
-            target = np.array([iris_target[1] * w, iris_target[2] * h, iris_target[3] * w, iris_target[4] * h, iris_target[0]])
+            target = []
+            for t in iris_target:
+                target.append([iris_target[1] * w, iris_target[2] * h, iris_target[3] * w, iris_target[4] * h, iris_target[0]])
+            target = np.array(target)
             return sample, target
 
     def __len__(self):
