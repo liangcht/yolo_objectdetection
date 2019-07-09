@@ -18,6 +18,8 @@ def _keep_max_num_bboxes(bboxes):
     cur_num = bboxes.shape[0]
     diff_to_max = num_bboxes - cur_num
     if diff_to_max > 0:
+        import pdb
+        pdb.set_trace()
         bboxes = np.lib.pad(bboxes, ((0, diff_to_max), (0, 0)),
                             "constant", constant_values=(0.0,))
     elif diff_to_max < 0:
