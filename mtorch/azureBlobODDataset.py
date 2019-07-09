@@ -18,8 +18,6 @@ def _keep_max_num_bboxes(bboxes):
     cur_num = bboxes.shape[0]
     diff_to_max = num_bboxes - cur_num
     if diff_to_max > 0:
-        import pdb
-        pdb.set_trace()
         bboxes = np.lib.pad(bboxes, ((0, diff_to_max), (0, 0)),
                             "constant", constant_values=(0.0,))
     elif diff_to_max < 0:
@@ -81,10 +79,9 @@ class AzureBlobODDataset(torch.utils.data.Dataset):
                 bbox = t["BoundingBox"]
                 iris_target.append((int(t['tagIndex']), bbox[0], bbox[1], bbox[0] + bbox[2], bbox[1] + bbox[3]))
             sample, iris_target = self.transform(sample, iris_target)
-            target = []
-            for t in iris_target:
-                target.append([t[1], t[2], t[3] - t[1], t[4] - t[2], t[0]])
-            target = np.array(target)
+            target = np.zeros(shape=(len(iris_target), 5), dtype=float)
+            for t, i in enumerate(iris_target):
+                target[i] = np.asarray([t[1], t[2], t[3] - t[1], t[4] - t[2], t[0]])
             target = _keep_max_num_bboxes(target).flatten()
             return sample, target
 
