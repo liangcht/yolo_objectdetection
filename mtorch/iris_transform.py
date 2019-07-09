@@ -6,6 +6,9 @@ import numpy as np
 
 from mtorch.predict_transforms import ODImResize
 
+YOLO_COLOR_MEAN = (104.0, 117.0, 123.0)
+MAX_PIXEL_VAL = 255.0
+UNIT = (1.0,) * 3
 
 def _adjust_bboxes(bboxes):
     new_bboxes = []
@@ -23,25 +26,6 @@ class ODImageTransform(object):
     def __call__(self, img, target):
         img = self.transform(img)
         return img, target
-
-class YoloInferenceTransform(object):
-    def __init__(self, target_size):
-        self.target_size = target_size
-    def __call__(self, img):
-        w, h = img.size
-        alpha = np.sqrt(self.target_size[0] * self.target_size[1]) / np.sqrt(h * w)
-        height2 = int(np.round(alpha * h))
-        width2 = int(np.round(alpha * w))
-        if h > w:
-            self.network_input_height = (height2 + 31) // 32 * 32
-            self.network_input_width = ((self.network_input_height * w + h - 1) // h +
-                                        31) // 32 * 32
-        else:
-            self.network_input_width = (width2 + 31) // 32 * 32
-            self.network_input_height = ((self.network_input_width * h + w - 1) // w +
-                                        31) // 32 * 32
-        img = img.resize((self.network_input_width, self.network_input_height), Image.BILINEAR)
-        return img
 
 class ODResize(object):
     """ Resize so that the shorter side will be self.size. """
@@ -208,20 +192,13 @@ class CenterCropTransform(Transform):
                            torchvision.transforms.CenterCrop(input_size),
                            torchvision.transforms.ToTensor(),
                            torchvision.transforms.Normalize([0.482, 0.459, 0.408], [1, 1, 1])]
-COLOR_MEAN = (104.0, 117.0, 123.0)
+
 class IrisODTransform(Transform):
     def __init__(self, input_size):
-        self.transforms = [#ODImageTransform(torchvision.transforms.functional.to_tensor),
-                           #ODImageTransform(lambda x : x[(2, 1, 0), :, :]),
-                           #ODImageTransform(lambda x : x.permute((1, 2, 0))),
-                           #ODImageTransform(lambda x : x.numpy()),
-                           #ODImageTransform(ODImResize()),
-                           #ODImageTransform(torchvision.transforms.Resize(416)),
-                           #ODCenterCrop(input_size),
-                           ODImageTransform(YoloInferenceTransform((416, 416))),
+        self.transforms = [ODImageTransform(torchvision.transforms.Resize(input_size)),
+                           ODCenterCrop(input_size),
                            ODImageTransform(torchvision.transforms.ToTensor()),
-                           ODImageTransform(lambda x : x[(2, 1, 0), :, :]),
-                           ODImageTransform(torchvision.transforms.Normalize([c / 255.0 for c in COLOR_MEAN], [1/255.0, 1/255.0, 1/255.0]))]
+                           ODImageTransform(torchvision.transforms.Normalize([0.482, 0.459, 0.408], [1, 1, 1]))]
 
 class SSDTransform(Transform):
     def __init__(self, input_size):
@@ -231,3 +208,39 @@ class SSDTransform(Transform):
                            ODImageTransform(torchvision.transforms.ColorJitter(hue=0.05, saturation=0.05)),
                            ODImageTransform(torchvision.transforms.ToTensor()),
                            ODImageTransform(torchvision.transforms.Normalize([0.482, 0.459, 0.408], [1, 1, 1]))]
+
+class FixedAreaTransform(object):
+    def __init__(self, target_size):
+        self.target_size = target_size
+    def __call__(self, img):
+        w, h = img.size
+        alpha = self.target_size / np.sqrt(h * w)
+        height2 = int(np.round(alpha * h))
+        width2 = int(np.round(alpha * w))
+        if h > w:
+            self.network_input_height = (height2 + 31) // 32 * 32
+            self.network_input_width = ((self.network_input_height * w + h - 1) // h +
+                                        31) // 32 * 32
+        else:
+            self.network_input_width = (width2 + 31) // 32 * 32
+            self.network_input_height = ((self.network_input_width * h + w - 1) // w +
+                                        31) // 32 * 32
+        img = img.resize((self.network_input_width, self.network_input_height), Image.BILINEAR)
+        return img
+
+class YoloV2InferenceTransform(Transform):
+    def __init__(self, input_size):
+        self.transforms = [ODImageTransform(FixedAreaTransform(input_size)),
+                           ODImageTransform(torchvision.transforms.ToTensor()),
+                           ODImageTransform(lambda x : x[(2, 1, 0), :, :]),
+                           ODImageTransform(torchvision.transforms.Normalize([c / MAX_PIXEL_VAL for c in YOLO_COLOR_MEAN], [u / MAX_PIXEL_VAL for u in UNIT]))]
+
+class YoloV2TrainingTransform(Transform):
+    def __init__(self, input_size):
+        self.transforms = [ODImageTransform(torchvision.transforms.Resize(input_size)),
+                           ODCenterCrop(input_size),
+                           ODImageTransform(torchvision.transforms.ToTensor()),
+                           ODImageTransform(lambda x : x[(2, 1, 0), :, :]),
+                           ODImageTransform(torchvision.transforms.Normalize([c / MAX_PIXEL_VAL for c in YOLO_COLOR_MEAN], [u / MAX_PIXEL_VAL for u in UNIT]))]
+
+

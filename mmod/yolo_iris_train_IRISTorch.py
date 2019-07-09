@@ -15,6 +15,7 @@ from mtorch.multifixed_scheduler import MultiFixedScheduler
 from mtorch.dataloaders import create_imdb_dataset
 from mtorch.lr_scheduler import LinearDecreasingLR
 from mtorch.azureBlobODDataset import AzureBlobODDataset
+from mtorch.iris_transform import YoloV2TrainingTransform
 import pdb
 import json
 
@@ -107,7 +108,7 @@ def train(model, num_class, device):
 
 
     # load training data
-    augmenter = DefaultDarknetAugmentation()
+    augmenter = YoloV2TrainingTransform(416)
     augmented_dataset = None
     with open(trainingManifestFile) as json_data:
         training_manifest = json.load(json_data)
