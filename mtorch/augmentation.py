@@ -55,9 +55,13 @@ class BasicDarknetAugmentation(object):
                 [set_inrange, box_randomizer, darknet_random_resize_place, random_distorter,
                 horizontal_flipper, to_labels, to_tensor, minus_dc])
         else:
+            '''
             self.composed_transforms = Transforms.Compose(
                 [set_inrange, box_randomizer, random_resizer, place_on_canvas, random_distorter,
                 horizontal_flipper, to_labels, to_tensor, minus_dc])
+            '''
+            self.composed_transforms = Transforms.Compose(
+                [random_resizer, place_on_canvas, to_labels, to_tensor, minus_dc])
         return self.composed_transforms
 
     def _set_augmentation_params(self):
