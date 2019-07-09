@@ -9,13 +9,13 @@ import shutil
 from mmod.simple_parser import load_labelmap_list
 from iristorch.models.yolo_v2 import Yolo
 from iristorch.layers.yolo_loss import YoloLoss
-from iristorch.transforms.transforms import YoloV2InferenceTransformV2
+from iristorch.transforms.transforms import YoloV2InferenceTransform
 from mtorch.augmentation import DefaultDarknetAugmentation
 from mtorch.multifixed_scheduler import MultiFixedScheduler
 from mtorch.dataloaders import create_imdb_dataset
 from mtorch.lr_scheduler import LinearDecreasingLR
 from mtorch.azureBlobODDataset import AzureBlobODDataset
-from mtorch.iris_transform import YoloV2TrainingTransform
+from mtorch.iris_transform import YoloV2TrainingTransformV2
 import pdb
 import json
 
