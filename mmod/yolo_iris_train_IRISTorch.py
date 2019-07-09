@@ -16,7 +16,7 @@ from mtorch.azureBlobODDataset import AzureBlobODDataset
 import json
 
 import numpy as np
-from mtorch.yolo_predict import PlainPredictorClassSpecificNM
+from mtorch.yolo_predict import PlainPredictorClassSpecificNMS
 from iris_evaluator import ObjectDetectionEvaluator
 from mmod.detection import result2bbIRIS
 import time
