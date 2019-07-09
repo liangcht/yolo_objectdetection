@@ -19,7 +19,6 @@ import pdb
 import json
 
 import numpy as np
-from mtorch.dataloaders import yolo_test_data_loader
 from mtorch.yolo_predict import PlainPredictorClassSpecificNMS
 from mmod.meters import AverageMeter
 from iris_evaluator import ObjectDetectionEvaluator
@@ -28,8 +27,8 @@ import time
 
 import math
 
-# pretrain_model = '/home/tobai/ODExperiments/yoloSample/yolomodel/Logo_YoloV2_CaffeFeaturizer.pt'
-pretrain_model = '/app/pretrain_model/YoloV2_CaffeFeaturizer_V2.pt'
+pretrain_model = '/app/pretrain_model/Logo_YoloV2_CaffeFeaturizer.pt'
+# pretrain_model = '/app/pretrain_model/YoloV2_CaffeFeaturizer_V2.pt'
 
 total_epoch = 300
 log_pth = './output_irisInit/'
@@ -106,7 +105,7 @@ def train(model, num_class, device):
     criterion = YoloLoss(num_classes=num_class)
     criterion = criterion.cuda()
 
-    '''
+
     # load training data
     augmenter = DefaultDarknetAugmentation()
     augmented_dataset = None
@@ -120,12 +119,13 @@ def train(model, num_class, device):
         image_list = training_manifest["images"]['train']
         test_image_list = training_manifest["images"]['val']
         augmented_dataset = AzureBlobODDataset(account_name, container_name, dataset_name, sas_token, image_list, augmenter())
-        #test_dataset = AzureBlobODDataset(account_name, container_name, dataset_name, sas_token, test_image_list, TestAugmentation()(), predict_phase=True)
-    '''
+        test_dataset = AzureBlobODDataset(account_name, container_name, dataset_name, sas_token, test_image_list, YoloV2InferenceTransform(416), predict_phase=True)
 
+    '''
     # load training data
     augmenter = DefaultDarknetAugmentation()
     augmented_dataset = create_imdb_dataset(datafile, cmapfile, augmenter())
+    '''
 
     # calculate config base on the dataset
     nSample = len(augmented_dataset)
@@ -140,12 +140,13 @@ def train(model, num_class, device):
 
     data_loader = torch.utils.data.DataLoader(augmented_dataset, shuffle=True, batch_size=batch_size)
 
+    '''
     test_data_loader = yolo_test_data_loader('/app/Ping-Logo/Ping-Logo-55.test_images.txt', cmapfile=cmapfile,
                                         batch_size=32,
                                         num_workers=4)
-
-    #data_loader = torch.utils.data.DataLoader(augmented_dataset, shuffle=True, batch_size=batch_size)
-    #test_data_loader = torch.utils.data.DataLoader(test_dataset, shuffle=True, batch_size=1) 
+    '''
+    sampler = SequentialSampler(test_dataset)
+    test_data_loader = torch.utils.data.DataLoader(test_dataset, sampler=sampler, batch_size=32, num_workers=4, collate_fn=_list_collate)
     scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=steps, gamma=0.5)
 
     for epoch in range(total_epoch):
