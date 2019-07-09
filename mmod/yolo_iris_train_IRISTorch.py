@@ -9,13 +9,12 @@ import shutil
 from mmod.simple_parser import load_labelmap_list
 from iristorch.models.yolo_v2 import Yolo
 from iristorch.layers.yolo_loss import YoloLoss
-from iristorch.transforms.transforms import YoloV2InferenceTransform
+from iristorch.transforms.transforms import YoloV2InferenceTransform, YoloV2TrainingTransform
 from mtorch.augmentation import DefaultDarknetAugmentation
 from mtorch.multifixed_scheduler import MultiFixedScheduler
 from mtorch.dataloaders import create_imdb_dataset
 from mtorch.lr_scheduler import LinearDecreasingLR
 from mtorch.azureBlobODDataset import AzureBlobODDataset
-from mtorch.iris_transform import YoloV2TrainingTransformV2
 import pdb
 import json
 
@@ -108,7 +107,7 @@ def train(model, num_class, device):
 
 
     # load training data
-    augmenter = YoloV2TrainingTransformV2(416)
+    augmenter = YoloV2TrainingTransform(416)
     augmented_dataset = None
     with open(trainingManifestFile) as json_data:
         training_manifest = json.load(json_data)
