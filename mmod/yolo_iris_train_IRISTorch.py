@@ -10,14 +10,13 @@ from mmod.simple_parser import load_labelmap_list
 from iristorch.models.yolo_v2 import Yolo
 from iristorch.layers.yolo_loss import YoloLoss
 from iristorch.transforms.transforms import YoloV2InferenceTransform, YoloV2TrainingTransform
-from mtorch.lr_scheduler import LinearDecreasingLR
+from iristorch.evaluators.evaluators import ObjectDetectionEvaluator
+from iristorch.layers.yolo_predict import PlainPredictorClassSpecificNMS
 from torch.optim.lr_scheduler import StepLR
 from mtorch.azureBlobODDataset import AzureBlobODDataset
 import json
 
 import numpy as np
-from mtorch.yolo_predict import PlainPredictorClassSpecificNMS
-from iris_evaluator import ObjectDetectionEvaluator
 from mmod.detection import result2bbIRIS
 import time
 
@@ -134,7 +133,7 @@ def train(model, num_class, device):
     sampler = SequentialSampler(test_dataset)
     test_data_loader = torch.utils.data.DataLoader(test_dataset, sampler=sampler, batch_size=32, num_workers=4, collate_fn=_list_collate)
 
-    scheduler = StepLR(optimizer, step_size=total_epoch * len(data_loader) // 4, gamma=0.1) #LinearDecreasingLR(optimizer, total_iter=len(data_loader)*total_epoch) #torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=steps, gamma=0.5)
+    scheduler = StepLR(optimizer, step_size=total_epoch * len(data_loader) // 4, gamma=0.1)
 
     for epoch in range(total_epoch):
         start = time.time()
