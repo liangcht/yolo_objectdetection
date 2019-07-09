@@ -47,7 +47,7 @@ label_map = cmapfile
 
 steps = [100, 5000, 9000, 10000000]
 lrs = [0.001, 0.0006, 0.0003, 0.0001]
-init_lr = lrs[0]
+init_lr = lrs[3]
 
 def to_python_float(t):
     if isinstance(t, (float, int)):
@@ -108,8 +108,8 @@ def train(model, num_class, device):
 
 
     # load training data
-    augmenter = YoloV2TrainingTransform(416)
-    augmented_dataset = None
+    #augmenter = YoloV2TrainingTransform(416)
+    #augmented_dataset = None
     with open(trainingManifestFile) as json_data:
         training_manifest = json.load(json_data)
         account_name = training_manifest["account_name"]
@@ -119,14 +119,13 @@ def train(model, num_class, device):
         print(sas_token)
         image_list = training_manifest["images"]['train']
         test_image_list = training_manifest["images"]['val']
-        augmented_dataset = AzureBlobODDataset(account_name, container_name, dataset_name, sas_token, image_list, augmenter)
+        #augmented_dataset = AzureBlobODDataset(account_name, container_name, dataset_name, sas_token, image_list, augmenter)
         test_dataset = AzureBlobODDataset(account_name, container_name, dataset_name, sas_token, test_image_list, YoloV2InferenceTransform(416), predict_phase=True)
 
-    '''
     # load training data
     augmenter = DefaultDarknetAugmentation()
     augmented_dataset = create_imdb_dataset(datafile, cmapfile, augmenter())
-    '''
+    
 
     # calculate config base on the dataset
     nSample = len(augmented_dataset)
@@ -146,9 +145,11 @@ def train(model, num_class, device):
                                         batch_size=32,
                                         num_workers=4)
     '''
+
     sampler = SequentialSampler(test_dataset)
     test_data_loader = torch.utils.data.DataLoader(test_dataset, sampler=sampler, batch_size=32, num_workers=4, collate_fn=_list_collate)
-    scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=steps, gamma=0.5)
+
+    scheduler = LinearDecreasingLR(optimizer, total_iter=len(data_loader)*total_epoch) #torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=steps, gamma=0.5)
 
     for epoch in range(total_epoch):
         start = time.time()
