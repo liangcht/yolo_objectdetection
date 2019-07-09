@@ -49,6 +49,7 @@ class AzureBlobODDataset(torch.utils.data.Dataset):
             return sample[0], index, h, w, iris_target
         else:
             # Convert absolute coordinates to (x1, y1, x2, y2)
+            '''
             w, h = image.size
             abs_target = [None] * len(target)
             for i, t in enumerate(target):
@@ -58,6 +59,14 @@ class AzureBlobODDataset(torch.utils.data.Dataset):
             sample = {IMAGE: image, LABEL:target}
             sample = self.transform(sample)
             return sample[IMAGE], sample[LABEL]
+            '''
+            w, h = image.size
+            abs_target = [None] * len(target)
+            for i, t in enumerate(target):
+                bbox = t["BoundingBox"]
+                iris_target.append((int(t['tagIndex']), bbox[0] * w, bbox[1] * h, (bbox[0] + bbox[2]) * w, (bbox[1] + bbox[3]) * h))
+            sample, iris_target = self.transform(sample, iris_target)
+            return sample, iris_target
 
     def __len__(self):
         return len(self.image_manifests)
