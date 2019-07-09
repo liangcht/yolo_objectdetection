@@ -9,7 +9,7 @@ import shutil
 from mmod.simple_parser import load_labelmap_list
 from iristorch.models.yolo_v2 import Yolo
 from iristorch.layers.yolo_loss import YoloLoss
-from iristorch.transforms import YoloV2InferenceTransform
+from iristorch.transforms.transforms import YoloV2InferenceTransform
 from mtorch.augmentation import DefaultDarknetAugmentation
 from mtorch.multifixed_scheduler import MultiFixedScheduler
 from mtorch.dataloaders import create_imdb_dataset
