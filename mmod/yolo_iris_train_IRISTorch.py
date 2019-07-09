@@ -119,7 +119,7 @@ def train(model, num_class, device):
         print(sas_token)
         image_list = training_manifest["images"]['train']
         test_image_list = training_manifest["images"]['val']
-        augmented_dataset = AzureBlobODDataset(account_name, container_name, dataset_name, sas_token, image_list, augmenter())
+        augmented_dataset = AzureBlobODDataset(account_name, container_name, dataset_name, sas_token, image_list, augmenter)
         test_dataset = AzureBlobODDataset(account_name, container_name, dataset_name, sas_token, test_image_list, YoloV2InferenceTransform(416), predict_phase=True)
 
     '''
