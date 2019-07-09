@@ -242,4 +242,14 @@ class YoloV2TrainingTransform(Transform):
                            ODImageTransform(lambda x : x[(2, 1, 0), :, :]),
                            ODImageTransform(torchvision.transforms.Normalize([c / MAX_PIXEL_VAL for c in YOLO_COLOR_MEAN], [u / MAX_PIXEL_VAL for u in UNIT]))]
 
+class YoloV2TrainingTransformV2(Transform):
+    def __init__(self, input_size):
+        self.transforms = [ODRandomExpand((0.5, 0.5, 0.5)),
+                           ODRandomResizedCrop(input_size),
+                           ODRandomHorizontalFlip(),
+                           ODImageTransform(torchvision.transforms.ColorJitter(hue=0.05, saturation=0.05)),
+                           ODImageTransform(torchvision.transforms.ToTensor()),
+                           ODImageTransform(lambda x : x[(2, 1, 0), :, :]),
+                           ODImageTransform(torchvision.transforms.Normalize([c / MAX_PIXEL_VAL for c in YOLO_COLOR_MEAN], [u / MAX_PIXEL_VAL for u in UNIT]))]
+
 
