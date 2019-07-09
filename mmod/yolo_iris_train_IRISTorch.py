@@ -27,21 +27,21 @@ import time
 
 import math
 
-pretrain_model = '/app/pretrain_model/Logo_YoloV2_CaffeFeaturizer.pt'
-# pretrain_model = '/app/pretrain_model/YoloV2_CaffeFeaturizer_V2.pt'
+#pretrain_model = '/app/pretrain_model/Logo_YoloV2_CaffeFeaturizer.pt'
+pretrain_model = '/app/pretrain_model/YoloV2_CaffeFeaturizer_V2.pt'
 
 total_epoch = 300
 log_pth = './output_irisInit/'
 # TODO: solver param
 # steps = [100, 5000, 9000]
 # lrs = [0.00001, 0.00001, 0.0001]
-datafile = '/app/Ping-Logo/Ping-Logo-55.train_images.txt'
-cmapfile = '/app/Ping-Logo/Ping-Logo_labels.txt'
-#datafile = '/app/animal661/Animal.train_images.txt'
+#datafile = '/app/Ping-Logo/Ping-Logo-55.train_images.txt'
+#cmapfile = '/app/Ping-Logo/Ping-Logo_labels.txt'
+datafile = '/app/animal661/Animal.train_images.txt'
 #testfile = '/app/animal661/Animal.test_images.txt'
-#cmapfile = '/app/animal661/Animal-661_labels.txt'
-trainingManifestFile = '/app/Ping-Logo/PingLogo_trainingManifest.json'
-#trainingManifestFile = '/app/animal661/Animal661_trainingManifest.json'
+cmapfile = '/app/animal661/Animal-661_labels.txt'
+#trainingManifestFile = '/app/Ping-Logo/PingLogo_trainingManifest.json'
+trainingManifestFile = '/app/animal661/Animal661_trainingManifest.json'
 label_map = cmapfile
 
 steps = [100, 5000, 9000, 10000000]
