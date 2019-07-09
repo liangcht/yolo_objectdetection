@@ -32,12 +32,12 @@ log_pth = './output_irisInit/'
 # lrs = [0.00001, 0.00001, 0.0001]
 #datafile = '/app/Ping-Logo/Ping-Logo-55.train_images.txt'
 #cmapfile = '/app/Ping-Logo/Ping-Logo_labels.txt'
-datafile = '/app/animal661/Animal.train_images.txt'
+#datafile = '/app/animal661/Animal.train_images.txt'
 #testfile = '/app/animal661/Animal.test_images.txt'
-cmapfile = '/app/animal661/Animal-661_labels.txt'
+#cmapfile = '/app/animal661/Animal-661_labels.txt'
 #trainingManifestFile = '/app/Ping-Logo/PingLogo_trainingManifest.json'
 trainingManifestFile = '/app/animal661/Animal661_trainingManifest.json'
-label_map = cmapfile
+#label_map = cmapfile
 
 steps = [100, 5000, 9000, 10000000]
 lrs = [0.001, 0.0006, 0.0003, 0.0001]
@@ -65,16 +65,6 @@ def eval(model, num_classes, test_loader):
             im = im.float().cuda()
             with torch.no_grad():
                 features = model(im)
-            '''
-            prob, bbox = yolo_predictor(features, torch.Tensor((h, w)))
-            bbox = bbox.cpu().numpy()
-            prob = prob.cpu().numpy()
-            assert bbox.shape[-1] == 4
-            bbox = bbox.reshape(-1, 4)
-            prob = prob.reshape(-1, prob.shape[-1])
-            result = result2bbIRIS((h, w), prob, bbox, None,
-                                   thresh=None, obj_thresh=None)
-            '''
             result = yolo_predictor(features, torch.Tensor((h, w)))
             results.append(result)
 
@@ -126,12 +116,6 @@ def train(model, num_class, device):
 
     data_loader = torch.utils.data.DataLoader(augmented_dataset, shuffle=True, batch_size=batch_size)
 
-    '''
-    test_data_loader = yolo_test_data_loader('/app/Ping-Logo/Ping-Logo-55.test_images.txt', cmapfile=cmapfile,
-                                        batch_size=32,
-                                        num_workers=4)
-    '''
-
     sampler = SequentialSampler(test_dataset)
     test_data_loader = torch.utils.data.DataLoader(test_dataset, sampler=sampler, batch_size=32, num_workers=4, collate_fn=_list_collate)
 
@@ -179,7 +163,9 @@ def _list_collate(batch):
 
 def main(args, log_pth):
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
-    cmap = load_labelmap_list(label_map)
+    with open(trainingManifestFile) as json_data:
+        training_manifest = json.load(json_data)
+        cmap = training_manifest["tags"]
     model = Yolo(num_classes = len(cmap))
 
     if args.eval_only:
