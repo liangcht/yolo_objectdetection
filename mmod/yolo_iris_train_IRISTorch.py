@@ -72,6 +72,8 @@ def eval(model, num_classes, test_loader):
             assert bbox.shape[-1] == 4
             bbox = bbox.reshape(-1, 4)
             prob = prob.reshape(-1, prob.shape[-1])
+            import pdb
+            pdb.set_trace()
             result = result2bbIRIS((h, w), prob, bbox, None,
                                    thresh=None, obj_thresh=None)
             results.append(result)
