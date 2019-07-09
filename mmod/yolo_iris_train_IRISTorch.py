@@ -66,14 +66,13 @@ def eval(model, num_classes, test_loader):
             with torch.no_grad():
                 features = model(im)
             prob, bbox = yolo_predictor(features, torch.Tensor((h, w)))
-
+            import pdb
+            pdb.set_trace()
             bbox = bbox.cpu().numpy()
             prob = prob.cpu().numpy()
             assert bbox.shape[-1] == 4
             bbox = bbox.reshape(-1, 4)
             prob = prob.reshape(-1, prob.shape[-1])
-            import pdb
-            pdb.set_trace()
             result = result2bbIRIS((h, w), prob, bbox, None,
                                    thresh=None, obj_thresh=None)
             results.append(result)
