@@ -134,7 +134,7 @@ def train(model, num_class, device):
     sampler = SequentialSampler(test_dataset)
     test_data_loader = torch.utils.data.DataLoader(test_dataset, sampler=sampler, batch_size=32, num_workers=4, collate_fn=_list_collate)
 
-    scheduler = StepLR(optimizer, step_size=total_epoch//4, gamma=0.1) #LinearDecreasingLR(optimizer, total_iter=len(data_loader)*total_epoch) #torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=steps, gamma=0.5)
+    scheduler = LinearDecreasingLR(optimizer, total_iter=len(data_loader)*total_epoch) #torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=steps, gamma=0.5)
 
     for epoch in range(total_epoch):
         start = time.time()
