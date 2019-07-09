@@ -10,17 +10,13 @@ from mmod.simple_parser import load_labelmap_list
 from iristorch.models.yolo_v2 import Yolo
 from iristorch.layers.yolo_loss import YoloLoss
 from iristorch.transforms.transforms import YoloV2InferenceTransform, YoloV2TrainingTransform
-from mtorch.augmentation import DefaultDarknetAugmentation
-from mtorch.multifixed_scheduler import MultiFixedScheduler
-from mtorch.dataloaders import create_imdb_dataset
 from mtorch.lr_scheduler import LinearDecreasingLR
+from torch.optim.lr_scheduler import StepLR
 from mtorch.azureBlobODDataset import AzureBlobODDataset
-import pdb
 import json
 
 import numpy as np
-from mtorch.yolo_predict import PlainPredictorClassSpecificNMS
-from mmod.meters import AverageMeter
+from mtorch.yolo_predict import PlainPredictorClassSpecificNM
 from iris_evaluator import ObjectDetectionEvaluator
 from mmod.detection import result2bbIRIS
 import time
@@ -59,15 +55,9 @@ def eval(model, num_classes, test_loader):
     print("Creating test data loader")
     model.eval()
     yolo_predictor = PlainPredictorClassSpecificNMS(num_classes=num_classes).cuda()
-    batch_time = AverageMeter()
-    data_time = AverageMeter()
-    tic = time.time()
     results = list()
     gts = list()
-    end = time.time()
     for i, inputs in enumerate(test_loader):
-        data_time.update(time.time() - end)
-
         data, image_keys, hs, ws, gt_batch = inputs[0], inputs[1], inputs[2], inputs[3], inputs[4]
         gts += gt_batch
         # compute output
@@ -86,10 +76,6 @@ def eval(model, num_classes, test_loader):
             result = result2bbIRIS((h, w), prob, bbox, None,
                                    thresh=None, obj_thresh=None)
             results.append(result)
-
-        # measure elapsed time
-        batch_time.update(time.time() - end)
-        end = time.time()
 
     evaluator = ObjectDetectionEvaluator()
     evaluator.add_predictions(results, gts)
@@ -148,7 +134,7 @@ def train(model, num_class, device):
     sampler = SequentialSampler(test_dataset)
     test_data_loader = torch.utils.data.DataLoader(test_dataset, sampler=sampler, batch_size=32, num_workers=4, collate_fn=_list_collate)
 
-    scheduler = LinearDecreasingLR(optimizer, total_iter=len(data_loader)*total_epoch) #torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=steps, gamma=0.5)
+    scheduler = StepLR(optimizer, step_size=total_epoch//4, gamma=0.1) #LinearDecreasingLR(optimizer, total_iter=len(data_loader)*total_epoch) #torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=steps, gamma=0.5)
 
     for epoch in range(total_epoch):
         start = time.time()
