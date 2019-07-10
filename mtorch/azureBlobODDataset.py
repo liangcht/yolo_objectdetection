@@ -12,22 +12,10 @@ import numpy as np
 IMAGE = "image"  # TODO: change to get that as parameter from prototxt
 LABEL = "bbox"   # TODO: change to get that as parameter from prototxt
 
-def _keep_max_num_bboxes(bboxes):
-    """Discards boxes beyond num_bboxes"""
-    num_bboxes = 30
-    cur_num = bboxes.shape[0]
-    diff_to_max = num_bboxes - cur_num
-    if diff_to_max > 0:
-        bboxes = np.lib.pad(bboxes, ((0, diff_to_max), (0, 0)),
-                            "constant", constant_values=(0.0,))
-    elif diff_to_max < 0:
-        bboxes = bboxes[:num_bboxes, :]
-    return bboxes
-
 class AzureBlobODDataset(torch.utils.data.Dataset):
     """
     """
-    def __init__(self, accountName, containerName, dataset, sasToken, imageManifests, transform=None, predict_phase=False):
+    def __init__(self, accountName, containerName, dataset, sasToken, imageManifests, transform=None):
         self.container_name = containerName
         self.block_blob_service = BlockBlobService(account_name=accountName, sas_token=sasToken)
         self.image_manifests = imageManifests
@@ -49,6 +37,15 @@ class AzureBlobODDataset(torch.utils.data.Dataset):
             sys.stdout.flush()
             raise e
 
+        sample=image
+        iris_target = []
+        w, h = image.size
+        for i, t in enumerate(target):
+            bbox = t["BoundingBox"]
+            iris_target.append((int(t['tagIndex']), bbox[0], bbox[1], (bbox[0] + bbox[2]), (bbox[1] + bbox[3])))
+        sample, target = self.transform(sample, iris_target)
+        return sample, target
+        '''
         if self.predict_phase:
             sample=image
             iris_target = []
@@ -57,21 +54,8 @@ class AzureBlobODDataset(torch.utils.data.Dataset):
                 bbox = t["BoundingBox"]
                 iris_target.append((int(t['tagIndex']), bbox[0], bbox[1], (bbox[0] + bbox[2]), (bbox[1] + bbox[3])))
             sample, target = self.transform(sample, iris_target)
-            assert target == iris_target
             return sample, target
         else:
-            # Convert absolute coordinates to (x1, y1, x2, y2)
-            '''
-            w, h = image.size
-            abs_target = [None] * len(target)
-            for i, t in enumerate(target):
-                bbox = t["BoundingBox"]
-                abs_target[i] = [bbox[0] * w, bbox[1] * h, (bbox[0] + bbox[2]) * w, (bbox[1] + bbox[3]) * h, t['tagIndex']]
-            target = np.array(abs_target)
-            sample = {IMAGE: image, LABEL:target}
-            sample = self.transform(sample)
-            return sample[IMAGE], sample[LABEL]
-            '''
             sample=image
             w, h = image.size
             iris_target = []
@@ -79,12 +63,8 @@ class AzureBlobODDataset(torch.utils.data.Dataset):
                 bbox = t["BoundingBox"]
                 iris_target.append((int(t['tagIndex']), bbox[0], bbox[1], bbox[0] + bbox[2], bbox[1] + bbox[3]))
             sample, iris_target = self.transform(sample, iris_target)
-            target = np.zeros(shape=(len(iris_target), 5), dtype=float)
-            for i, t in enumerate(iris_target):
-                target[i] = np.asarray([(t[1] + t[3]) / 2.0, (t[2] + t[4]) / 2.0, t[3] - t[1], t[4] - t[2], t[0]])
-            target = _keep_max_num_bboxes(target).flatten()
             return sample, target
-
+        '''
     def __len__(self):
         return len(self.image_manifests)
 

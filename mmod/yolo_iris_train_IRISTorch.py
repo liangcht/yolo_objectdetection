@@ -82,7 +82,6 @@ def train(model, num_class, device):
 
 
     # load training data
-    augmenter = YoloV2TrainingTransform(416)
     augmented_dataset = None
     with open(trainingManifestFile) as json_data:
         training_manifest = json.load(json_data)
@@ -92,8 +91,8 @@ def train(model, num_class, device):
         sas_token = training_manifest["sas_token"]
         image_list = training_manifest["images"]['train']
         test_image_list = training_manifest["images"]['val']
-        augmented_dataset = AzureBlobODDataset(account_name, container_name, dataset_name, sas_token, image_list, augmenter)
-        test_dataset = AzureBlobODDataset(account_name, container_name, dataset_name, sas_token, test_image_list, YoloV2InferenceTransform(416), predict_phase=True)
+        augmented_dataset = AzureBlobODDataset(account_name, container_name, dataset_name, sas_token, image_list, YoloV2TrainingTransform(416))
+        test_dataset = AzureBlobODDataset(account_name, container_name, dataset_name, sas_token, test_image_list, YoloV2InferenceTransform(416))
 
     # load training data
     # augmenter = DefaultDarknetAugmentation()
