@@ -44,17 +44,15 @@ class YOLOV2PostProcess(object):
             lambda x : x[(2, 1, 0), :, :],
             torchvision.transforms.Normalize([c / MAX_PIXEL_VAL for c in YOLO_COLOR_MEAN], [u / MAX_PIXEL_VAL for u in UNIT])
         ])
-        import pdb
-        pdb.set_trace()
         img = image_transform(img)
 
         if self.for_training:
-            target = np.zeros(shape=(len(target), 5), dtype=float)
+            new_target = np.zeros(shape=(len(target), 5), dtype=float)
             for i, t in enumerate(target):
-                target[i] = np.asarray([(t[1] + t[3]) / 2.0, (t[2] + t[4]) / 2.0, t[3] - t[1], t[4] - t[2], t[0]])
-            target = _keep_max_num_bboxes(target).flatten()
+                new_target[i] = np.asarray([(t[1] + t[3]) / 2.0, (t[2] + t[4]) / 2.0, t[3] - t[1], t[4] - t[2], t[0]])
+            new_target = _keep_max_num_bboxes(new_target).flatten()
             
-        return img, target
+        return img, new_target
 
 class ODImageTransform(object):
     def __init__(self, transform):
