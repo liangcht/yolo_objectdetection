@@ -65,7 +65,7 @@ def eval(model, num_classes, test_loader):
             im = im.float().cuda()
             with torch.no_grad():
                 features = model(im)
-            result = yolo_predictor(features, torch.Tensor((h, w)))
+            result = yolo_predictor(features)
             results.append(result)
 
     evaluator = ObjectDetectionEvaluator()
