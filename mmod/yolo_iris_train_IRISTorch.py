@@ -9,12 +9,13 @@ import shutil
 from mmod.simple_parser import load_labelmap_list
 from iristorch.models.yolo_v2 import Yolo
 from iristorch.layers.yolo_loss import YoloLoss
-from iristorch.transforms.transforms import YoloV2InferenceTransform, YoloV2TrainingTransform
+#from iristorch.transforms.transforms import YoloV2InferenceTransform, YoloV2TrainingTransform
 from iristorch.evaluators.evaluators import ObjectDetectionEvaluator
 from iristorch.layers.yolo_predictor import PlainPredictorClassSpecificNMS
 from torch.optim.lr_scheduler import StepLR
 from mtorch.azureBlobODDataset import AzureBlobODDataset
 import json
+from iris_transform import YoloV2InferenceTransform, YoloV2TrainingTransform
 
 import numpy as np
 from mmod.detection import result2bbIRIS
