@@ -11,6 +11,8 @@ UNIT = (1.0,) * 3
 def adjust_box(left, top, right, bottom):
     center_x = (left + right) / 2
     center_y = (top + bottom) / 2
+    import pdb
+    pdb.set_trace()
     if center_x >= 0 and center_x <= 1 and center_y >= 0 and center_y <= 1 and left < right and top < bottom:
         return max(left, 0.0), max(top, 0.0), min(right, 1.0), min(bottom, 1.0)
 
