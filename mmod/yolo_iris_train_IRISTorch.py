@@ -56,11 +56,9 @@ def eval(model, num_classes, test_loader):
     yolo_predictor = PlainPredictorClassSpecificNMS(num_classes=num_classes).cuda()
     results = list()
     gts = list()
-    for i, inputs in enumerate(test_loader):
-        data, image_keys, hs, ws, gt_batch = inputs[0], inputs[1], inputs[2], inputs[3], inputs[4]
-        gts += gt_batch
-        # compute output
-        for im, image_key, h, w in zip(data, image_keys, hs, ws):
+    for inputs, targets in test_loader:
+        gts += targets
+        for im in inputs:
             im = im.unsqueeze_(0)
             im = im.float().cuda()
             with torch.no_grad():
