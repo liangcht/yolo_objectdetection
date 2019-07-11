@@ -139,8 +139,6 @@ def train(model, num_class, device):
             'region_target.biases': criterion.criterion.region_target.biases,
             'region_target.seen_images': criterion.criterion.seen_images
         }
-        import pdb
-        pdb.set_trace()
         if optimizer:
             state.update({
                 'optimizer': optimizer.state_dict(),
