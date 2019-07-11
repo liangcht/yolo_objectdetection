@@ -78,7 +78,7 @@ def train(model, num_class, device):
     # model.freeze('dark6')
     optimizer = torch.optim.SGD(model.parameters(), lr=init_lr, momentum=0.9)
     criterion = YoloLoss(num_classes=num_class)
-    #criterion = criterion.cuda()
+    criterion = criterion.cuda()
 
 
     # load training data
@@ -123,7 +123,7 @@ def train(model, num_class, device):
             scheduler.step()
             optimizer.zero_grad()
             outputs = model(inputs.to(device))
-            loss = criterion(outputs.float().to(device), labels.float().to(device))
+            loss = criterion(outputs.to(device), labels.to(device))
             loss.backward()
             print(loss.data)
             optimizer.step()
