@@ -123,6 +123,8 @@ def train(model, num_class, device):
             scheduler.step()
             optimizer.zero_grad()
             outputs = model(inputs.to(device))
+            import pdb
+            pdb.set_trace()
             loss = criterion(outputs.to(device), labels.to(device))
             loss.backward()
             print(loss.data)
