@@ -101,7 +101,7 @@ def train(model, num_class, device):
     with open(trainingManifestFile, encoding='utf-8-sig') as json_data:
         training_manifest = json.load(json_data)
         account_name = "irisliang"
-        container_name = "aml-e1b16b23-d7d0-4156-9d9c-76db1b968d9e"
+        container_name = "aml-e1b16b23d7d041569d9c76db1b968d9e"
         dataset_name = "images"
         sas_token = "?sv=2017-04-17&ss=bfqt&srt=sco&sp=rl&st=2019-07-16T10%3A28%3A00Z&se=2020-07-17T10%3A28%3A00Z&sig=lFxhQ3zXdALYTc0MGmzRiAgiBURsvj%2Fej%2FuUrbV37oc%3D"
         image_list = training_manifest["DataSetManifestInfo"]['Images']
