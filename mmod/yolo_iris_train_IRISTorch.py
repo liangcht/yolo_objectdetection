@@ -176,7 +176,7 @@ def main(args, log_pth):
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
     with open(trainingManifestFile, encoding='utf-8-sig') as json_data:
         training_manifest = json.load(json_data)
-        cmap = training_manifest["DataManifestInfo"]["Tags"] #training_manifest["tags"]
+        cmap = training_manifest["DataSetManifestInfo"]["Tags"] #training_manifest["tags"]
     model = Yolo(num_classes = len(cmap))
 
     if args.eval_only:
