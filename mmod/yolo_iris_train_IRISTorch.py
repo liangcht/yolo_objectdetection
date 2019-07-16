@@ -13,7 +13,8 @@ from iristorch.transforms.transforms import YoloV2InferenceTransform, YoloV2Trai
 from iristorch.evaluators.evaluators import ObjectDetectionEvaluator
 from iristorch.layers.yolo_predictor import PlainPredictorClassSpecificNMS
 from torch.optim.lr_scheduler import StepLR
-from mtorch.azureBlobODDataset import AzureBlobODDataset, IRISAzureBlobODDataset
+from mtorch.azureBlobODDataset import AzureBlobODDataset
+from mtorch.IRIS_azureBlobODDataset import IRISAzureBlobODDataset
 import json
 
 import numpy as np
