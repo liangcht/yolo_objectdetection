@@ -13,7 +13,7 @@ from iristorch.transforms.transforms import YoloV2InferenceTransform, YoloV2Trai
 from iristorch.evaluators.evaluators import ObjectDetectionEvaluator
 from iristorch.layers.yolo_predictor import PlainPredictorClassSpecificNMS
 from torch.optim.lr_scheduler import StepLR
-from mtorch.azureBlobODDataset import AzureBlobODDataset
+from mtorch.azureBlobODDataset import AzureBlobODDataset, IRISAzureBlobDataset
 import json
 
 import numpy as np
@@ -36,7 +36,8 @@ log_pth = './output_irisInit/'
 #testfile = '/app/animal661/Animal.test_images.txt'
 #cmapfile = '/app/animal661/Animal-661_labels.txt'
 #trainingManifestFile = '/app/Ping-Logo/PingLogo_trainingManifest.json'
-trainingManifestFile = '/app/animal661/Animal661_trainingManifest.json'
+#trainingManifestFile = '/app/animal661/Animal661_trainingManifest.json'
+trainingManifestFile = '/app/fridge_trainingManifest.json'
 #label_map = cmapfile
 
 steps = [100, 5000, 9000, 10000000]
@@ -83,6 +84,7 @@ def train(model, num_class, device):
 
     # load training data
     augmented_dataset = None
+    ''' Original json
     with open(trainingManifestFile) as json_data:
         training_manifest = json.load(json_data)
         account_name = training_manifest["account_name"]
@@ -91,6 +93,18 @@ def train(model, num_class, device):
         sas_token = training_manifest["sas_token"]
         image_list = training_manifest["images"]['train']
         test_image_list = training_manifest["images"]['val']
+        augmented_dataset = AzureBlobODDataset(account_name, container_name, dataset_name, sas_token, image_list, YoloV2TrainingTransform(416))
+        test_dataset = AzureBlobODDataset(account_name, container_name, dataset_name, sas_token, test_image_list, YoloV2InferenceTransform(416))
+    '''
+
+    with open(trainingManifestFile) as json_data:
+        training_manifest = json.load(json_data)
+        account_name = "irisliang"
+        container_name = "aml-e1b16b23-d7d0-4156-9d9c-76db1b968d9e"
+        dataset_name = "images"
+        sas_token = "?st=2019-07-04T20%3A04%3A00Z&se=2020-10-05T20%3A04%3A00Z&sp=rwdl&sv=2017-04-17&sr=c&sig=jhBeAru7OzbN9%2F0FVSDN2VL34QDZl1pjD5N9s22wtlI%3D"
+        image_list = training_manifest["DataSetManifestInfo"]['Images']
+        test_image_list = training_manifest["ValidationDataSetManifestInfo"]['Images']
         augmented_dataset = AzureBlobODDataset(account_name, container_name, dataset_name, sas_token, image_list, YoloV2TrainingTransform(416))
         test_dataset = AzureBlobODDataset(account_name, container_name, dataset_name, sas_token, test_image_list, YoloV2InferenceTransform(416))
 
@@ -161,7 +175,7 @@ def main(args, log_pth):
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
     with open(trainingManifestFile) as json_data:
         training_manifest = json.load(json_data)
-        cmap = training_manifest["tags"]
+        cmap = training_manifest["DataManifestInfo"]["Tags"] #training_manifest["tags"]
     model = Yolo(num_classes = len(cmap))
 
     if args.eval_only:

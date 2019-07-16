@@ -12,7 +12,7 @@ import numpy as np
 IMAGE = "image"  # TODO: change to get that as parameter from prototxt
 LABEL = "bbox"   # TODO: change to get that as parameter from prototxt
 
-class AzureBlobODDataset(torch.utils.data.Dataset):
+class IRISAzureBlobODDataset(torch.utils.data.Dataset):
     """
     """
     def __init__(self, accountName, containerName, dataset, sasToken, imageManifests, transform=None):
@@ -27,7 +27,7 @@ class AzureBlobODDataset(torch.utils.data.Dataset):
         image_manifest = self.image_manifests[index]
         target = image_manifest["Regions"]
         image = None
-        blobName = "{0}/{1}".format(self.dataset, image_manifest["name"])
+        blobName = "{0}/{1}".format(self.dataset, image_manifest["Id"])
         try:
             image = self._load_image(blobName)
         except Exception as e:
@@ -39,7 +39,7 @@ class AzureBlobODDataset(torch.utils.data.Dataset):
         iris_target = []
         for i, t in enumerate(target):
             bbox = t["BoundingBox"]
-            iris_target.append((int(t['tagIndex']), bbox[0], bbox[1], (bbox[0] + bbox[2]), (bbox[1] + bbox[3])))
+            iris_target.append((int(t['TagIndex']), bbox[0], bbox[1], (bbox[0] + bbox[2]), (bbox[1] + bbox[3])))
         sample, target = self.transform(sample, iris_target)
         return sample, target
 
