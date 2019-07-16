@@ -103,7 +103,7 @@ def train(model, num_class, device):
         account_name = "irisliang"
         container_name = "aml-e1b16b23-d7d0-4156-9d9c-76db1b968d9e"
         dataset_name = "images"
-        sas_token = "?st=2019-07-04T20%3A04%3A00Z&se=2020-10-05T20%3A04%3A00Z&sp=rwdl&sv=2017-04-17&sr=c&sig=jhBeAru7OzbN9%2F0FVSDN2VL34QDZl1pjD5N9s22wtlI%3D"
+        sas_token = "?sv=2017-04-17&ss=bfqt&srt=sco&sp=rl&st=2019-07-16T10%3A28%3A00Z&se=2020-07-17T10%3A28%3A00Z&sig=lFxhQ3zXdALYTc0MGmzRiAgiBURsvj%2Fej%2FuUrbV37oc%3D"
         image_list = training_manifest["DataSetManifestInfo"]['Images']
         test_image_list = training_manifest["ValidationDataSetManifestInfo"]['Images']
         augmented_dataset = IRISAzureBlobODDataset(account_name, container_name, dataset_name, sas_token, image_list, YoloV2TrainingTransform(416))
