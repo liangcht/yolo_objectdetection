@@ -13,7 +13,7 @@ from iristorch.transforms.transforms import YoloV2InferenceTransform, YoloV2Trai
 from iristorch.evaluators.evaluators import ObjectDetectionEvaluator
 from iristorch.layers.yolo_predictor import PlainPredictorClassSpecificNMS
 from torch.optim.lr_scheduler import StepLR
-from mtorch.azureBlobODDataset import AzureBlobODDataset, IRISAzureBlobDataset
+from mtorch.azureBlobODDataset import AzureBlobODDataset, IRISAzureBlobODDataset
 import json
 
 import numpy as np
@@ -105,8 +105,8 @@ def train(model, num_class, device):
         sas_token = "?st=2019-07-04T20%3A04%3A00Z&se=2020-10-05T20%3A04%3A00Z&sp=rwdl&sv=2017-04-17&sr=c&sig=jhBeAru7OzbN9%2F0FVSDN2VL34QDZl1pjD5N9s22wtlI%3D"
         image_list = training_manifest["DataSetManifestInfo"]['Images']
         test_image_list = training_manifest["ValidationDataSetManifestInfo"]['Images']
-        augmented_dataset = AzureBlobODDataset(account_name, container_name, dataset_name, sas_token, image_list, YoloV2TrainingTransform(416))
-        test_dataset = AzureBlobODDataset(account_name, container_name, dataset_name, sas_token, test_image_list, YoloV2InferenceTransform(416))
+        augmented_dataset = IRISAzureBlobODDataset(account_name, container_name, dataset_name, sas_token, image_list, YoloV2TrainingTransform(416))
+        test_dataset = IRISAzureBlobODDataset(account_name, container_name, dataset_name, sas_token, test_image_list, YoloV2InferenceTransform(416))
 
     # load training data
     # augmenter = DefaultDarknetAugmentation()
