@@ -27,7 +27,7 @@ class IRISAzureBlobODDataset(torch.utils.data.Dataset):
         image_manifest = self.image_manifests[index]
         target = image_manifest["Regions"]
         image = None
-        blobName = "{0}/{1}".format(self.dataset, image_manifest["Id"])
+        blobName = "{0}/{1}".format(self.dataset, image_manifest["Id"].replace('-', ''))
         try:
             image = self._load_image(blobName)
         except Exception as e:
