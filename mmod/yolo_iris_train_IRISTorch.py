@@ -98,7 +98,7 @@ def train(model, num_class, device):
         test_dataset = AzureBlobODDataset(account_name, container_name, dataset_name, sas_token, test_image_list, YoloV2InferenceTransform(416))
     '''
 
-    with open(trainingManifestFile) as json_data:
+    with open(trainingManifestFile, encoding='utf-8-sig') as json_data:
         training_manifest = json.load(json_data)
         account_name = "irisliang"
         container_name = "aml-e1b16b23-d7d0-4156-9d9c-76db1b968d9e"
