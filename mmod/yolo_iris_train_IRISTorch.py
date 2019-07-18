@@ -16,6 +16,7 @@ from iristorch.schedulers import MultiFixedScheduler
 from torch.optim.lr_scheduler import StepLR
 from mtorch.azureBlobODDataset import AzureBlobODDataset
 from mtorch.IRIS_azureBlobODDataset import IRISAzureBlobODDataset
+from torch.utils.data import dataloader
 import json
 
 import numpy as np
@@ -188,7 +189,8 @@ def train(model, num_class, device):
                 yolo_target = _keep_max_num_bboxes(yolo_target).flatten()
                 yolo_targets.append(yolo_target)
             
-            yolo_targets = np.asarray(yolo_targets)
+            #yolo_targets = np.asarray(yolo_targets)
+            yolo_targets = dataloader.default_collate(yolo_targets)
             pdb.set_trace()
             scheduler.step()
             optimizer.zero_grad()
