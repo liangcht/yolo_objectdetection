@@ -86,17 +86,18 @@ def calculate_anchor(image_list):
 
     bellevue_objects = np.asarray(wh_list)
     centroids = bellevue_objects[np.random.choice(np.arange(len(bellevue_objects)), k, replace=False)]
-    objects_anchors = kmeans_iou(k, centroids, bellevue_objects, feature_size=img_size / 32)
-    print(objects_anchors)
+    anchors = kmeans_iou(k, centroids, bellevue_objects, feature_size=img_size / 32)
+    anchor_list = []
+    for a in anchors:
+        anchor_list.append(a[0])
+        anchor_list.append(a[1])
+    return anchor_list
 
 def train(model, num_class, device):
     # switch to train mode
     model.train()
     # model.freeze('dark6')
     optimizer = torch.optim.SGD(model.parameters(), lr=init_lr, momentum=0.9)
-    criterion = YoloLoss(num_classes=num_class)
-    criterion = criterion.cuda()
-
 
     # load training data
     augmented_dataset = None
@@ -123,7 +124,10 @@ def train(model, num_class, device):
         test_image_list = training_manifest["ValidationDataSetManifestInfo"]['Images']
         augmented_dataset = IRISAzureBlobODDataset(account_name, container_name, dataset_name, sas_token, image_list, YoloV2TrainingTransform(416))
         test_dataset = IRISAzureBlobODDataset(account_name, container_name, dataset_name, sas_token, test_image_list, YoloV2InferenceTransform(416))
-        calculate_anchor(image_list)
+        anchors = calculate_anchor(image_list)
+
+    criterion = YoloLoss(num_classes=num_class, biases=anchors)
+    criterion = criterion.cuda()
 
     # load training data
     # augmenter = DefaultDarknetAugmentation()
@@ -203,7 +207,7 @@ def area(x):
         return x[0] * x[1]
     else:
         return x[:, 0] * x[:, 1]
-        
+
 def kmeans_iou(k, centroids, points, iter_count=0, iteration_cutoff=25, feature_size=13):
 
     best_clusters = []
