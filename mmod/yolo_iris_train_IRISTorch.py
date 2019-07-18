@@ -180,24 +180,24 @@ def train(model, num_class, device):
             import pdb
             pdb.set_trace()
 
-            yolo_targets = []
+            target_batch = []
 
             for targets in labels:
                 yolo_target = np.zeros(shape=(len(targets), 5), dtype=float)
                 for i, t in enumerate(targets):
                     yolo_target[i] = np.asarray([(t[1] + t[3]) / 2.0, (t[2] + t[4]) / 2.0, t[3] - t[1], t[4] - t[2], t[0]])
                 yolo_target = _keep_max_num_bboxes(yolo_target).flatten()
-                yolo_targets.append(yolo_target)
+                target_batch.append(yolo_target)
             
             #yolo_targets = np.asarray(yolo_targets)
             pdb.set_trace()
-            yolo_targets = torch.from_numpy(yolo_targets)
-            inputs = torch.stack(inputs)
+            target_batch = torch.stack([torch.from_numpy(b) for b in target_batch], 0)
+            inputs = torch.stack(inputs, 0)
 
             scheduler.step()
             optimizer.zero_grad()
             outputs = model(inputs.to(device))
-            loss = criterion(outputs.float().to(device), yolo_targets.float().to(device))
+            loss = criterion(outputs.float().to(device), target_batch.float().to(device))
             loss.backward()
             print(loss.data)
             optimizer.step()
