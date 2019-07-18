@@ -93,6 +93,18 @@ def calculate_anchor(image_list):
         anchor_list.append(a[1])
     return anchor_list
 
+def _keep_max_num_bboxes(bboxes):
+        """Discards boxes beyond num_bboxes"""
+        num_bboxes = 30
+        cur_num = bboxes.shape[0]
+        diff_to_max = num_bboxes - cur_num
+        if diff_to_max > 0:
+            bboxes = np.lib.pad(bboxes, ((0, diff_to_max), (0, 0)),
+                                "constant", constant_values=(0.0,))
+        elif diff_to_max < 0:
+            bboxes = bboxes[:num_bboxes, :]
+        return bboxes
+
 def train(model, num_class, device):
     # switch to train mode
     model.train()
@@ -124,9 +136,9 @@ def train(model, num_class, device):
         test_image_list = training_manifest["ValidationDataSetManifestInfo"]['Images']
         augmented_dataset = IRISAzureBlobODDataset(account_name, container_name, dataset_name, sas_token, image_list, YoloV2TrainingTransform(416))
         test_dataset = IRISAzureBlobODDataset(account_name, container_name, dataset_name, sas_token, test_image_list, YoloV2InferenceTransform(416))
-        anchors = calculate_anchor(image_list)
+        #anchors = calculate_anchor(image_list)
 
-    criterion = YoloLoss(num_classes=num_class, biases=anchors)
+    criterion = YoloLoss(num_classes=num_class, seen_images=0)
     criterion = criterion.cuda()
 
     # load training data
@@ -164,10 +176,17 @@ def train(model, num_class, device):
     for epoch in range(total_epoch):
         start = time.time()
         for inputs, labels in data_loader:
+            import pdb
+            pdb.set_trace()
+            yolo_target = np.zeros(shape=(len(labels), 5), dtype=float)
+            for i, t in enumerate(labels):
+                yolo_target[i] = np.asarray([(t[1] + t[3]) / 2.0, (t[2] + t[4]) / 2.0, t[3] - t[1], t[4] - t[2], t[0]])
+            yolo_target = _keep_max_num_bboxes(yolo_target).flatten()
+
             scheduler.step()
             optimizer.zero_grad()
             outputs = model(inputs.to(device))
-            loss = criterion(outputs.float().to(device), labels.float().to(device))
+            loss = criterion(outputs.float().to(device), yolo_target.float().to(device))
             loss.backward()
             print(loss.data)
             optimizer.step()
