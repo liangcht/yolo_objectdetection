@@ -12,6 +12,7 @@ from iristorch.layers.yolo_loss import YoloLoss
 from iristorch.transforms.transforms import YoloV2InferenceTransform, YoloV2TrainingTransform
 from iristorch.evaluators.evaluators import ObjectDetectionEvaluator
 from iristorch.layers.yolo_predictor import PlainPredictorClassSpecificNMS
+from iristorch.schedulers import MultiFixedScheduler
 from torch.optim.lr_scheduler import StepLR
 from mtorch.azureBlobODDataset import AzureBlobODDataset
 from mtorch.IRIS_azureBlobODDataset import IRISAzureBlobODDataset
@@ -113,24 +114,33 @@ def train(model, num_class, device):
     # augmenter = DefaultDarknetAugmentation()
     # augmented_dataset = create_imdb_dataset(datafile, cmapfile, augmenter())
     
-
+    
     # calculate config base on the dataset
-    nSample = len(augmented_dataset)
-    #total_epoch = max(5, math.ceil(50000 /(nSample+ 300)))
-    if nSample < 1024:
+    num_samples =  len(augmented_dataset)
+    num_epochs = max(5, 50000 // (num_samples + 300)) * 5
+
+    if num_samples < 1024:
         batch_size = 16
-    elif nSample < 2048:
+    elif num_samples < 2048:
         batch_size = 32
     else:
         batch_size = 64
-    steps = [i_step * total_epoch * nSample / batch_size for i_step in [80, 400, 600, 10000]]
+
+    total_iters = num_epochs * num_samples // batch_size
+    learning_rates = [0.0001, 0.001, 0.0006, 0.0003, 0.0001]
+    original_stage_iters = [50, 120, 400, 600, 10000]
+    stage_iters = [(lambda x : x * total_iters // 1000)(x) for x in original_stage_iters]
+        
+    
+    #steps = [i_step * total_epoch * nSample / batch_size for i_step in [80, 400, 600, 10000]]
 
     data_loader = torch.utils.data.DataLoader(augmented_dataset, shuffle=True, batch_size=batch_size)
 
     sampler = SequentialSampler(test_dataset)
-    test_data_loader = torch.utils.data.DataLoader(test_dataset, sampler=sampler, batch_size=32, num_workers=4, collate_fn=_list_collate)
+    test_data_loader = torch.utils.data.DataLoader(test_dataset, sampler=sampler, batch_size=batch_size, num_workers=4, collate_fn=_list_collate)
 
-    scheduler = StepLR(optimizer, step_size=total_epoch * len(data_loader) // 4, gamma=0.1)
+    #scheduler = StepLR(optimizer, step_size=total_epoch * len(data_loader) // 4, gamma=0.1)
+    scheduler = MultiFixedScheduler(optimizer, stage_iters, learning_rates)
 
     for epoch in range(total_epoch):
         start = time.time()
