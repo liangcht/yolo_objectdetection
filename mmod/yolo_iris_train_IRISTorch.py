@@ -80,7 +80,8 @@ def calculate_anchor(image_list):
     img_size = 416
     wh_list = []
     for image in image_list:
-        for bbox in image["Regions"]:
+        for region in image["Regions"]:
+            bbox = region["BoundingBox"]
             wh_list.append((bbox['Width'], bbox['Height']))
 
     bellevue_objects = np.asarray(wh_list)
