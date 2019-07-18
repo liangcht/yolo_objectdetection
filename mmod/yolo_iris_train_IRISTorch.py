@@ -190,7 +190,7 @@ def train(model, num_class, device):
                 yolo_targets.append(yolo_target)
             
             #yolo_targets = np.asarray(yolo_targets)
-            inputs, yolo_targets = dataloader.default_collate((inputs, yolo_targets))
+            inputs, yolo_targets = dataloader.default_collate((np.asarray(inputs), yolo_targets))
             pdb.set_trace()
             scheduler.step()
             optimizer.zero_grad()
