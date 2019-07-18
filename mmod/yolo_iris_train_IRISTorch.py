@@ -75,6 +75,18 @@ def eval(model, num_classes, test_loader):
     print(eval_result)
     model.train()
 
+def calculate_anchor(image_list):
+    k = 5
+    wh_list = []
+    for image in image_list:
+        for bbox in image["Regions"]:
+            wh_list.append((bbox['Width'], bbox['Height']))
+
+    bellevue_objects = np.asarray(wh_list)
+    centroids = bellevue_objects[np.random.choice(np.arange(len(bellevue_objects)), k, replace=False)]
+    objects_anchors = kmeans_iou(k, centroids, bellevue_objects, feature_size=img_size / 32)
+    print(objects_anchors)
+
 def train(model, num_class, device):
     # switch to train mode
     model.train()
@@ -109,6 +121,7 @@ def train(model, num_class, device):
         test_image_list = training_manifest["ValidationDataSetManifestInfo"]['Images']
         augmented_dataset = IRISAzureBlobODDataset(account_name, container_name, dataset_name, sas_token, image_list, YoloV2TrainingTransform(416))
         test_dataset = IRISAzureBlobODDataset(account_name, container_name, dataset_name, sas_token, test_image_list, YoloV2InferenceTransform(416))
+        calculate_anchor(image_list)
 
     # load training data
     # augmenter = DefaultDarknetAugmentation()
@@ -181,6 +194,60 @@ def _list_collate(batch):
     """
     items = list(zip(*batch))
     return items
+
+def kmeans_iou(k, centroids, points, iter_count=0, iteration_cutoff=25, feature_size=13):
+
+    best_clusters = []
+    best_avg_iou = 0
+    best_avg_iou_iteration = 0
+
+    npoi = points.shape[0]
+    area_p = area(points)  # (npoi, 2) -> (npoi,)
+
+    while True:
+        cen2 = centroids.repeat(npoi, axis=0).reshape(k, npoi, 2)
+        cdiff = points - cen2
+        cidx = np.where(cdiff < 0)
+        cen2[cidx] = points[cidx[1], cidx[2]]
+
+        wh = cen2.prod(axis=2).T  # (k, npoi, 2) -> (npoi, k)
+        dist = 1. - (wh / (area_p[:, np.newaxis] + area(centroids) - wh))  # -> (npoi, k)
+        belongs_to_cluster = np.argmin(dist, axis=1)  # (npoi, k) -> (npoi,)
+        clusters_niou = np.min(dist, axis=1)  # (npoi, k) -> (npoi,)
+        clusters = [points[belongs_to_cluster == i] for i in range(k)]
+        avg_iou = np.mean(1. - clusters_niou)
+        if avg_iou > best_avg_iou:
+            best_avg_iou = avg_iou
+            best_clusters = clusters
+            best_avg_iou_iteration = iter_count
+
+        print("\nIteration {}".format(iter_count))
+        print("Average iou to closest centroid = {}".format(avg_iou))
+        print("Sum of all distances (cost) = {}".format(np.sum(clusters_niou)))
+
+        new_centroids = np.array([np.mean(c, axis=0) for c in clusters])
+        isect = np.prod(np.min(np.asarray([centroids, new_centroids]), axis=0), axis=1)
+        aa1 = np.prod(centroids, axis=1)
+        aa2 = np.prod(new_centroids, axis=1)
+        shifts = 1 - isect / (aa1 + aa2 - isect)
+
+        # for i, s in enumerate(shifts):
+        #     print("{}: Cluster size: {}, Centroid distance shift: {}".format(i, len(clusters[i]), s))
+
+        if sum(shifts) == 0 or iter_count >= best_avg_iou_iteration + iteration_cutoff:
+            break
+
+        centroids = new_centroids
+        iter_count += 1
+
+    # Get anchor boxes from best clusters
+    anchors = np.asarray([np.mean(cluster, axis=0) for cluster in best_clusters])
+    anchors = anchors[anchors[:, 0].argsort()]
+    print("k-means clustering pascal anchor points (original coordinates) \
+    \nFound at iteration {} with best average IoU: {} \
+    \n{}".format(best_avg_iou_iteration, best_avg_iou, anchors*feature_size))
+
+    return anchors
 
 def main(args, log_pth):
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
