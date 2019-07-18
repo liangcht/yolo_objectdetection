@@ -77,6 +77,7 @@ def eval(model, num_classes, test_loader):
 
 def calculate_anchor(image_list):
     k = 5
+    img_size = 416
     wh_list = []
     for image in image_list:
         for bbox in image["Regions"]:
