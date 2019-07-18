@@ -197,6 +197,13 @@ def _list_collate(batch):
     items = list(zip(*batch))
     return items
 
+
+def area(x):
+    if len(x.shape) == 1:
+        return x[0] * x[1]
+    else:
+        return x[:, 0] * x[:, 1]
+        
 def kmeans_iou(k, centroids, points, iter_count=0, iteration_cutoff=25, feature_size=13):
 
     best_clusters = []
