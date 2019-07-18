@@ -178,10 +178,17 @@ def train(model, num_class, device):
         for inputs, labels in data_loader:
             import pdb
             pdb.set_trace()
-            yolo_target = np.zeros(shape=(len(labels), 5), dtype=float)
-            for i, t in enumerate(labels):
-                yolo_target[i] = np.asarray([(t[1] + t[3]) / 2.0, (t[2] + t[4]) / 2.0, t[3] - t[1], t[4] - t[2], t[0]])
-            yolo_target = _keep_max_num_bboxes(yolo_target).flatten()
+
+            yolo_targets = []
+
+            for targets in labels:
+                yolo_target = np.zeros(shape=(len(targets), 5), dtype=float)
+                for i, t in enumerate(targets):
+                    yolo_target[i] = np.asarray([(t[1] + t[3]) / 2.0, (t[2] + t[4]) / 2.0, t[3] - t[1], t[4] - t[2], t[0]])
+                yolo_target = _keep_max_num_bboxes(yolo_target).flatten()
+                yolo_targets.append(yolo_target)
+            
+            yolo_target = np.asarray(yolo_target)
 
             scheduler.step()
             optimizer.zero_grad()
