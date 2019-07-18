@@ -188,12 +188,12 @@ def train(model, num_class, device):
                 yolo_target = _keep_max_num_bboxes(yolo_target).flatten()
                 yolo_targets.append(yolo_target)
             
-            yolo_target = np.asarray(yolo_target)
+            yolo_targets = np.asarray(yolo_targets)
 
             scheduler.step()
             optimizer.zero_grad()
             outputs = model(inputs.to(device))
-            loss = criterion(outputs.float().to(device), yolo_target.float().to(device))
+            loss = criterion(outputs.float().to(device), yolo_targets.float().to(device))
             loss.backward()
             print(loss.data)
             optimizer.step()
