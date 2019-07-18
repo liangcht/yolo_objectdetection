@@ -177,9 +177,6 @@ def train(model, num_class, device):
     for epoch in range(total_epoch):
         start = time.time()
         for inputs, labels in data_loader:
-            import pdb
-            pdb.set_trace()
-
             target_batch = []
 
             for targets in labels:
@@ -190,7 +187,6 @@ def train(model, num_class, device):
                 target_batch.append(yolo_target)
             
             #yolo_targets = np.asarray(yolo_targets)
-            pdb.set_trace()
             target_batch = torch.stack([torch.from_numpy(b) for b in target_batch], 0)
             inputs = torch.stack(inputs, 0)
 
